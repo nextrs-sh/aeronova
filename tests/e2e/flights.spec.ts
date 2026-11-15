@@ -54,8 +54,9 @@ test.describe('flight results', () => {
 
     await expect(cards(page).first()).toBeVisible();
     const first = cards(page).first();
-    await expect(first).toContainText('AeroNova');
-    await expect(first).toContainText('NV 501');
+    await expect(first).toContainText('Velasia');
+    await expect(first).toContainText('VEL 501');
+    await expect(first).not.toContainText('NV 501');
     await expect(first).toContainText('08:15');
     await expect(first).toContainText('12:00');
     await expect(first).toContainText('Direct');
@@ -214,12 +215,12 @@ test.describe('invalid searches and empty results', () => {
     await expect(cards(page).first()).toBeVisible();
   });
 
-  test('explains a route AeroNova does not fly, with alternatives', async ({ page }) => {
+  test('explains a route Velasia does not fly, with alternatives', async ({ page }) => {
     await page.goto(
       '/flights?trip=one-way&from=DPS&to=CGK&depart=2026-12-16&adults=1&cabin=economy',
     );
     const empty = page.getByTestId('empty-no-route');
-    await expect(empty).toContainText('AeroNova doesn’t fly from Bali (Denpasar) to Jakarta');
+    await expect(empty).toContainText('Velasia doesn’t fly from Bali (Denpasar) to Jakarta');
     await expect(cards(page)).toHaveCount(0);
     await empty.getByRole('link', { name: 'Manila' }).click();
     await expect(page).toHaveURL(/from=DPS&to=MNL/);
@@ -304,7 +305,7 @@ test.describe('retailing API failures', () => {
     await page.goto('/');
     await page
       .context()
-      .addCookies([{ name: 'aeronova-fault', value: 'delay=1500', url: 'http://127.0.0.1:3200' }]);
+      .addCookies([{ name: 'velasia-fault', value: 'delay=1500', url: 'http://127.0.0.1:3200' }]);
     await page.goto(ONE_WAY_SIN, { waitUntil: 'commit' });
     await expect(page.getByTestId('search-summary')).toBeVisible();
     await expect(page.getByRole('status').filter({ hasText: 'Searching flights…' })).toBeAttached();

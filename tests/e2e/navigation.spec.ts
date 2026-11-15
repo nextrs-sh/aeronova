@@ -17,7 +17,7 @@ test.describe('site navigation', () => {
       await expect(nav.getByRole('link', { name: link })).toHaveAttribute('aria-current', 'page');
     }
 
-    await page.getByRole('link', { name: 'AeroNova home' }).first().click();
+    await page.getByRole('link', { name: 'Velasia Airways home' }).first().click();
     await expect(page).toHaveURL(/\/$/);
   });
 

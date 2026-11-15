@@ -5,9 +5,9 @@ test.describe('homepage', () => {
   test('loads without errors, broken images, or hydration warnings', async ({ page }) => {
     const errors = trackPageErrors(page);
     await page.goto('/');
-    await expect(page).toHaveTitle(/AeroNova/);
+    await expect(page).toHaveTitle('Velasia Airways | Beyond Every Horizon');
     await expect(
-      page.getByRole('heading', { level: 1, name: /Your journey\.\s*Your way\./ }),
+      page.getByRole('heading', { level: 1, name: /Beyond every\s*horizon\./ }),
     ).toBeVisible();
     await expect(page.getByRole('search', { name: 'Search flights' })).toBeVisible();
 
