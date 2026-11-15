@@ -1,5 +1,5 @@
 import 'server-only';
-import { todayIn } from '@aeronova/contracts';
+import { todayIn } from '@velasia/contracts';
 import { getServerEnv } from './env';
 
 /**

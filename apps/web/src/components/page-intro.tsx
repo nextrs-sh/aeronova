@@ -1,4 +1,4 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import type { ReactNode } from 'react';
 
 interface PageIntroProps {

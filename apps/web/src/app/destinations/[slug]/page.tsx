@@ -1,6 +1,6 @@
-import { REGION_LABELS, type Airport, type Destination } from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { REGION_LABELS, type Airport, type Destination } from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import { ChevronRight, Clock3, Coins, Languages, Plane, SunMedium } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';

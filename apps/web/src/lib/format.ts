@@ -1,4 +1,4 @@
-import { minorToMajor, type Money } from '@aeronova/contracts';
+import { minorToMajor, type Money } from '@velasia/contracts';
 
 const LOCALE = 'en-PH';
 

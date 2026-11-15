@@ -1,4 +1,4 @@
-import { addDays, toZonedDateTime } from '@aeronova/contracts';
+import { addDays, toZonedDateTime } from '@velasia/contracts';
 import { AIRPORT_LOCATIONS, AIRPORTS_BY_CODE } from '../fixtures/airports';
 import { CONNECTION_HUBS } from '../fixtures/network';
 import { greatCircleKm } from '../inventory/geo';

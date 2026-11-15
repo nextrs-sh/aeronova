@@ -1,6 +1,6 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { Armchair, CalendarSync, Luggage, Ticket } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

@@ -1,4 +1,4 @@
-import type { Airport } from '@aeronova/contracts';
+import type { Airport } from '@velasia/contracts';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';

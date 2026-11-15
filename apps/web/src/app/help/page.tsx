@@ -1,4 +1,4 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import { ChevronDown } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

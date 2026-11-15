@@ -1,4 +1,4 @@
-import type { HealthResponse } from '@aeronova/contracts';
+import type { HealthResponse } from '@velasia/contracts';
 import type { FastifyPluginAsync } from 'fastify';
 
 export const healthRoutes: FastifyPluginAsync<{ version: string }> = async (app, options) => {

@@ -1,4 +1,4 @@
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
 import type { ReactNode } from 'react';
 
 interface SectionHeadingProps {

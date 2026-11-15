@@ -1,4 +1,4 @@
-import { base } from '@aeronova/config/eslint/base';
+import { base } from '@velasia/config/eslint/base';
 import nextVitals from 'eslint-config-next/core-web-vitals';
 import nextTs from 'eslint-config-next/typescript';
 

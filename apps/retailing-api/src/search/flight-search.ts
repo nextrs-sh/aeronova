@@ -11,7 +11,7 @@ import {
   type LegResult,
   type PassengerCounts,
   type SearchFacets,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { cabinInventory, seatsAvailable, type Inventory } from '../inventory/inventory';
 import { toItinerary } from '../serialization';

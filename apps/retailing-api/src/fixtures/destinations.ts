@@ -1,4 +1,4 @@
-import { destinationSchema, iataCodeSchema, type Destination } from '@aeronova/contracts';
+import { destinationSchema, iataCodeSchema, type Destination } from '@velasia/contracts';
 import { z } from 'zod';
 
 /**

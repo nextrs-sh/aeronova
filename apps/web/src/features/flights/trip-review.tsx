@@ -5,9 +5,9 @@ import {
   type ItineraryDetail,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
+} from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatMinor } from '@/lib/format';

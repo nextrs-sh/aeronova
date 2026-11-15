@@ -1,4 +1,4 @@
-import { addDays, isoWeekday, toZonedDateTime, zonedDateTimeToUtc } from '@aeronova/contracts';
+import { addDays, isoWeekday, toZonedDateTime, zonedDateTimeToUtc } from '@velasia/contracts';
 import { describe, expect, it } from 'vitest';
 import { AIRCRAFT, AIRCRAFT_BY_CODE } from '../src/fixtures/aircraft';
 import { AIRPORTS, AIRPORTS_BY_CODE, AIRPORT_LOCATIONS } from '../src/fixtures/airports';

@@ -1,5 +1,5 @@
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { Compass } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';

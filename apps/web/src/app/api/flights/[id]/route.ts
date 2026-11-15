@@ -2,7 +2,7 @@ import {
   itineraryIdSchema,
   itineraryQuerySchema,
   type FlightDetailResponse,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { NextResponse, type NextRequest } from 'next/server';
 import { LIVE_CACHE_CONTROL, jsonError, toIssues, upstreamErrorResponse } from '@/lib/api-response';
 import { retailingApi } from '@/lib/retailing-api/client';

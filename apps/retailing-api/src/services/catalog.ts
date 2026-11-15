@@ -5,7 +5,7 @@ import {
   type Airport,
   type Destination,
   type DestinationListQuery,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { AIRPORTS } from '../fixtures/airports';
 import { DESTINATION_CONTENT, type DestinationContent } from '../fixtures/destinations';
 import type { FlightService } from './flights';

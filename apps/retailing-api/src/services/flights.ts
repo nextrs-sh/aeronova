@@ -12,7 +12,7 @@ import {
   type LegResult,
   type NetworkRoute,
   type RouteListQuery,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { Clock } from '../clock';
 import { AIRCRAFT, AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { Inventory, cabinInventory, seatsAvailable } from '../inventory/inventory';

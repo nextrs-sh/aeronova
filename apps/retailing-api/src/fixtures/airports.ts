@@ -1,4 +1,4 @@
-import { airportSchema, type Airport } from '@aeronova/contracts';
+import { airportSchema, type Airport } from '@velasia/contracts';
 import { z } from 'zod';
 
 /** Airport reference point (degrees). Used for great-circle distances and block times. */

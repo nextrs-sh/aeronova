@@ -5,9 +5,9 @@ import {
   type EmptyReason,
   type FlightSearch,
   type NetworkRoute,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { cn } from '@velasia/ui/cn';
 import {
   Armchair,
   CalendarOff,

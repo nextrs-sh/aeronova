@@ -1,5 +1,5 @@
 {
-  "extends": "@aeronova/config/tsconfig/nextjs.json",
+  "extends": "@velasia/config/tsconfig/nextjs.json",
   "compilerOptions": {
     "types": ["node"],
     "paths": {

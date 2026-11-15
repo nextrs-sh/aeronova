@@ -5,10 +5,10 @@ import {
   parseResultsParams,
   type FlightSearch,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+} from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { ArrowLeft, Check, Layers3 } from 'lucide-react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';

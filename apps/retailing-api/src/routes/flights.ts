@@ -5,7 +5,7 @@ import {
   itineraryQuerySchema,
   type FlightSearchResponse,
   type LegResult,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { AIRCRAFT } from '../fixtures/aircraft';
 import { AIRPORTS } from '../fixtures/airports';

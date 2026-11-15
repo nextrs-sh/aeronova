@@ -1,5 +1,5 @@
-import { Container } from '@aeronova/ui/container';
-import { Skeleton } from '@aeronova/ui/skeleton';
+import { Container } from '@velasia/ui/container';
+import { Skeleton } from '@velasia/ui/skeleton';
 
 export function FlightsLoading() {
   return (

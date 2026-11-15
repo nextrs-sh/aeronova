@@ -1,4 +1,4 @@
-import { aircraftSchema, type Aircraft } from '@aeronova/contracts';
+import { aircraftSchema, type Aircraft } from '@velasia/contracts';
 import { z } from 'zod';
 
 /**

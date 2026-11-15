@@ -1,14 +1,14 @@
 // @vitest-environment node
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { buildApp } from '@aeronova/retailing-api/app';
+import { buildApp } from '@velasia/retailing-api/app';
 import {
   aircraftListResponseSchema,
   apiErrorSchema,
   flightDetailResponseSchema,
   flightSearchResponseSchema,
   routeListResponseSchema,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getAircraft } from '@/app/api/aircraft/route';

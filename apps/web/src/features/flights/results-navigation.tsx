@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
 import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { createContext, use, useCallback, useMemo, useTransition, type ReactNode } from 'react';

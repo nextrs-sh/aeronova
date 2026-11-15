@@ -1,4 +1,4 @@
-import { DEFAULT_SEARCH_DRAFT } from '@aeronova/contracts';
+import { DEFAULT_SEARCH_DRAFT } from '@velasia/contracts';
 import { describe, expect, it } from 'vitest';
 import { restoreDraft } from '@/stores/search-draft';
 

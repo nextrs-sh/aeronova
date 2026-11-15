@@ -1,5 +1,5 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import Image from 'next/image';
 import { SearchWidget } from '@/features/search/search-widget';
 import { brandImage } from '@/lib/image-credits';

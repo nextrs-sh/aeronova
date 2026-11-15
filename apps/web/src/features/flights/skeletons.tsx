@@ -1,4 +1,4 @@
-import { Skeleton } from '@aeronova/ui/skeleton';
+import { Skeleton } from '@velasia/ui/skeleton';
 
 export function DateStripSkeleton() {
   return (

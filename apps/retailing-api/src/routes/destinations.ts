@@ -3,7 +3,7 @@ import {
   destinationParamsSchema,
   type DestinationListResponse,
   type DestinationResponse,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { FastifyPluginAsync } from 'fastify';
 import { parseInput, sendError } from '../http';
 import type { Catalog } from '../services/catalog';

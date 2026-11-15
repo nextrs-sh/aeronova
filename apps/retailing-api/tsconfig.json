@@ -1,5 +1,5 @@
 {
-  "extends": "@aeronova/config/tsconfig/base.json",
+  "extends": "@velasia/config/tsconfig/base.json",
   "compilerOptions": {
     "types": ["node"]
   },

@@ -9,10 +9,10 @@ import {
   type Itinerary,
   type ItineraryAvailability,
   type PassengerCounts,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@aeronova/ui/sheet';
-import { Skeleton } from '@aeronova/ui/skeleton';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@velasia/ui/sheet';
+import { Skeleton } from '@velasia/ui/skeleton';
 import { AlertTriangle, ArrowRight, Info, RotateCw } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';

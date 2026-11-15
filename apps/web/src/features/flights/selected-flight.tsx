@@ -1,4 +1,4 @@
-import { formatTravelDate, type FlightSearch, type JourneyDirection } from '@aeronova/contracts';
+import { formatTravelDate, type FlightSearch, type JourneyDirection } from '@velasia/contracts';
 import { Check } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';

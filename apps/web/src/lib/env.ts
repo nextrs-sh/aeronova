@@ -1,5 +1,5 @@
 import 'server-only';
-import { isIsoDate } from '@aeronova/contracts';
+import { isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 
 const serverEnvSchema = z.object({

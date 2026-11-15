@@ -27,7 +27,7 @@ import {
   type ItineraryResponse,
   type NetworkRoute,
   type RouteListQuery,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { z } from 'zod';
 import { getServerEnv } from '../env';
 import { faultHeaders } from './faults';

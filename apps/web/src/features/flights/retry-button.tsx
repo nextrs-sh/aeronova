@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@aeronova/ui/button';
+import { Button } from '@velasia/ui/button';
 import { Loader2, RotateCw } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';

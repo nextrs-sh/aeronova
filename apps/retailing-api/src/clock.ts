@@ -1,4 +1,4 @@
-import { AIRLINE_TIME_ZONE, todayIn, zonedDateTimeToUtc } from '@aeronova/contracts';
+import { AIRLINE_TIME_ZONE, todayIn, zonedDateTimeToUtc } from '@velasia/contracts';
 
 /** Source of "today" and "now" for inventory, pricing, and validation. */
 export interface Clock {

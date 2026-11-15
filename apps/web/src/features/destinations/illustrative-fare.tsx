@@ -1,5 +1,5 @@
-import type { IllustrativeFare as Fare } from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+import type { IllustrativeFare as Fare } from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { formatMoney } from '@/lib/format';
 
 interface IllustrativeFareProps {

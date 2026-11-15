@@ -2,7 +2,7 @@ import {
   routeListQuerySchema,
   type AircraftListResponse,
   type RouteListResponse,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { FastifyPluginAsync } from 'fastify';
 import { parseInput } from '../http';
 import type { FlightService } from '../services/flights';

@@ -1,4 +1,4 @@
-import { todayIn } from '@aeronova/contracts';
+import { todayIn } from '@velasia/contracts';
 import { useSyncExternalStore } from 'react';
 
 function subscribe(onChange: () => void) {

@@ -3,7 +3,7 @@ import {
   flightSearchDraftSchema,
   isIsoDate,
   type FlightSearchDraft,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Sheet, SheetContent, SheetTrigger } from '@aeronova/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger } from '@velasia/ui/sheet';
 import { ChevronRight, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';

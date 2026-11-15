@@ -1,4 +1,4 @@
-import { isIsoDate } from '@aeronova/contracts';
+import { isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 
 const latencySchema = z

@@ -9,9 +9,9 @@ import {
   type FlightSort,
   type ResultsFilters,
   type SearchFacets,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@aeronova/ui/sheet';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@velasia/ui/sheet';
 import { ChevronDown, SlidersHorizontal } from 'lucide-react';
 import { useId, useOptimistic, useState } from 'react';
 import { pluralize } from '@/lib/format';

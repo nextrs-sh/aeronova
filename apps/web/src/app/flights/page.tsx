@@ -8,8 +8,8 @@ import {
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Container } from '@aeronova/ui/container';
+} from '@velasia/contracts';
+import { Container } from '@velasia/ui/container';
 import { CircleAlert, Info } from 'lucide-react';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';

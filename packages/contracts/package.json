@@ -1,5 +1,5 @@
 {
-  "name": "@aeronova/contracts",
+  "name": "@velasia/contracts",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -17,7 +17,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@aeronova/config": "workspace:*",
+    "@velasia/config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",

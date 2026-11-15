@@ -6,7 +6,7 @@ import {
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { getRoutes, loadSection } from '@/lib/content';
 import { searchLeg } from './data';
 import { FilterPanel } from './filter-panel';

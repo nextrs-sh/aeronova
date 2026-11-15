@@ -5,8 +5,8 @@ import {
   matchAirports,
   normalizeSearchText,
   type Airport,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { Loader2, MapPin, RotateCw } from 'lucide-react';
 import { useId, useMemo, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import type { AirportsStatus } from './use-airports';

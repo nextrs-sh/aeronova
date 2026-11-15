@@ -1,5 +1,5 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import { ArrowRight, Tag } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';

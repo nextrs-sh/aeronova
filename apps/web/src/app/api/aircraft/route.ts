@@ -1,4 +1,4 @@
-import type { AircraftListResponse } from '@aeronova/contracts';
+import type { AircraftListResponse } from '@velasia/contracts';
 import { NextResponse } from 'next/server';
 import { PUBLIC_CACHE_CONTROL, upstreamErrorResponse } from '@/lib/api-response';
 import { getAircraft } from '@/lib/content';

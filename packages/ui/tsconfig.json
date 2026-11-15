@@ -1,4 +1,4 @@
 {
-  "extends": "@aeronova/config/tsconfig/react-library.json",
+  "extends": "@velasia/config/tsconfig/react-library.json",
   "include": ["src"]
 }

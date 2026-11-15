@@ -9,8 +9,8 @@ import {
   type DepartureWindow,
   type ResultsFilters,
   type SearchFacets,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { useEffect, useId, useOptimistic, useRef, useState } from 'react';
 import { formatMoney } from '@/lib/format';
 import { useResultsNavigation } from './results-navigation';

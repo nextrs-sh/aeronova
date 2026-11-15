@@ -1,4 +1,4 @@
-import { routeListQuerySchema, type RouteListResponse } from '@aeronova/contracts';
+import { routeListQuerySchema, type RouteListResponse } from '@velasia/contracts';
 import { NextResponse, type NextRequest } from 'next/server';
 import { PUBLIC_CACHE_CONTROL, jsonError, upstreamErrorResponse } from '@/lib/api-response';
 import { getRoutes } from '@/lib/content';

@@ -1,4 +1,4 @@
-import { parseResultsParams, type FlightSearch, type ResultsState } from '@aeronova/contracts';
+import { parseResultsParams, type FlightSearch, type ResultsState } from '@velasia/contracts';
 import { describe, expect, it } from 'vitest';
 import {
   changeHref,

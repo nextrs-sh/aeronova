@@ -1,4 +1,4 @@
-import { addDays, departureWindowFor } from '@aeronova/contracts';
+import { addDays, departureWindowFor } from '@velasia/contracts';
 import { describe, expect, it } from 'vitest';
 import { createClock } from '../src/clock';
 import { seatsAvailable } from '../src/inventory/inventory';

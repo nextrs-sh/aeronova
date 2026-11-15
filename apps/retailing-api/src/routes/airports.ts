@@ -1,4 +1,4 @@
-import { airportListQuerySchema, type AirportListResponse } from '@aeronova/contracts';
+import { airportListQuerySchema, type AirportListResponse } from '@velasia/contracts';
 import type { FastifyPluginAsync } from 'fastify';
 import { parseInput } from '../http';
 import type { Catalog } from '../services/catalog';

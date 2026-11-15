@@ -30,7 +30,7 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @aeronova/retailing-api start',
+      command: 'pnpm --filter @velasia/retailing-api start',
       url: `http://127.0.0.1:${API_PORT}/health`,
       env: {
         RETAILING_API_PORT: String(API_PORT),
@@ -45,7 +45,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `pnpm --filter @aeronova/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
+      command: `pnpm --filter @velasia/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
       url: baseURL,
       env: {
         RETAILING_API_URL: `http://127.0.0.1:${API_PORT}`,

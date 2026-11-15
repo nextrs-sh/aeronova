@@ -1,5 +1,5 @@
-import { CABIN_LABELS, type Itinerary, type PassengerCounts } from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
+import { CABIN_LABELS, type Itinerary, type PassengerCounts } from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
 import { ArrowRight } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';

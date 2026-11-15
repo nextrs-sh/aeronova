@@ -1,4 +1,4 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import { ArrowUpRight } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';

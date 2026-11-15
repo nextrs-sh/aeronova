@@ -5,7 +5,7 @@ import {
   formatTravelDate,
   type Airport,
   type FlightSearch,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { ArrowLeftRight, ArrowRight, Armchair, CalendarDays, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 

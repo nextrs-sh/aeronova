@@ -17,8 +17,8 @@ import {
   type IndicativePrice,
   type Itinerary,
   type PassengerCounts,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { Clock3, Plane } from 'lucide-react';
 import { LogoMark } from '@/components/brand/logo';
 import { formatDuration, formatDurationLong, formatMinor, formatShortDate } from '@/lib/format';

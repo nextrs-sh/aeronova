@@ -1,4 +1,4 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import { Armchair, HeartHandshake, Luggage, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { SectionHeading } from '@/components/section-heading';
 
