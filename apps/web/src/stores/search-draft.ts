@@ -26,7 +26,7 @@ export const useSearchDraftStore = create<SearchDraftState>()(
       setDraft: (draft) => set({ draft }),
     }),
     {
-      name: 'aeronova:search-draft',
+      name: 'velasia:search-draft',
       version: 1,
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,

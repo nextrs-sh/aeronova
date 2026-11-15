@@ -235,7 +235,7 @@ function PriceFilter({
         value={draft}
         aria-valuetext={`${label} per adult`}
         onChange={(event) => setDraft(Number(event.target.value))}
-        className="mt-3 w-full accent-ember-600"
+        className="mt-3 w-full accent-gold-600"
       />
       <div className="mt-1 flex justify-between text-xs text-ink-subtle" aria-hidden="true">
         <span>{formatMoney({ amount: min, currency })}</span>

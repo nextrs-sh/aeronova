@@ -19,7 +19,7 @@ export default function RouteError({
 
   return (
     <Container className="flex flex-col items-center py-24 text-center lg:py-32">
-      <span className="inline-flex size-16 items-center justify-center rounded-full bg-ember-50 text-ember-700">
+      <span className="inline-flex size-16 items-center justify-center rounded-full bg-gold-50 text-gold-800">
         <CloudLightning className="size-8" aria-hidden="true" />
       </span>
       <h1 className="mt-6 text-4xl font-bold text-ink">We hit some turbulence</h1>

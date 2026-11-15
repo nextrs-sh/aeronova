@@ -107,7 +107,7 @@ export async function TripReview({ search, state, airports }: TripReviewProps) {
         aria-labelledby="total-heading"
         className="h-fit rounded-[1.5rem] border border-line bg-white p-5 shadow-card lg:sticky lg:top-24"
       >
-        <Badge tone="ember">Indicative price</Badge>
+        <Badge tone="gold">Indicative price</Badge>
         <h2 id="total-heading" className="mt-3 text-sm font-semibold text-ink-muted">
           Total for {formatPassengerSummary(search.passengers).toLowerCase()}
         </h2>

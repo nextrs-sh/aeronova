@@ -8,7 +8,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-ember-600 text-white shadow-sm hover:bg-ember-700',
+        // Gold is the brand's selective emphasis: reserve `primary` for the one key action per view.
+        primary: 'bg-gold-400 text-navy-950 shadow-sm hover:bg-gold-500',
         secondary: 'bg-navy-900 text-white shadow-sm hover:bg-navy-800',
         outline:
           'border border-line-strong bg-white text-ink hover:border-navy-300 hover:bg-surface',

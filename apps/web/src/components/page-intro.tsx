@@ -14,11 +14,11 @@ export function PageIntro({ eyebrow, title, description, children }: PageIntroPr
     <div className="relative overflow-hidden bg-navy-950 text-white">
       <div
         aria-hidden="true"
-        className="absolute -top-40 -right-32 size-[32rem] rounded-full bg-[radial-gradient(circle,rgb(238_106_31/0.22),transparent_65%)]"
+        className="absolute -top-40 -right-32 size-[32rem] rounded-full bg-[radial-gradient(circle,rgb(239_184_106/0.16),transparent_65%)]"
       />
       <Container className="relative py-14 sm:py-16 lg:py-20">
         {eyebrow ? (
-          <p className="text-xs font-bold tracking-[0.16em] text-ember-300 uppercase">{eyebrow}</p>
+          <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">{eyebrow}</p>
         ) : null}
         <h1 className="mt-2 max-w-3xl text-4xl font-bold sm:text-5xl">{title}</h1>
         {description ? (

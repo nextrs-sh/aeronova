@@ -51,7 +51,7 @@ export function FlightCard({
           <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
             <span>{CABIN_LABELS[itinerary.cabin]}</span>
             {itinerary.seatsAvailable <= LOW_SEATS ? (
-              <span className="font-semibold text-ember-700">
+              <span className="font-semibold text-gold-800">
                 {itinerary.seatsAvailable === 1
                   ? 'Last seat at this price'
                   : `${itinerary.seatsAvailable} seats left`}

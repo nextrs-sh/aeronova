@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { PUBLIC_CACHE_CONTROL, jsonError, upstreamErrorResponse } from '@/lib/api-response';
 import { getRoutes } from '@/lib/content';
 
-/** AeroNova's route network. Supports `?from=` and `?to=` (airport codes). */
+/** Velasia's route network. Supports `?from=` and `?to=` (airport codes). */
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const query = routeListQuerySchema.safeParse({

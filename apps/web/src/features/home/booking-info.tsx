@@ -62,10 +62,10 @@ export function BookingInfo() {
                 href={href}
                 className="group flex h-full flex-col rounded-card bg-white p-6 ring-1 ring-line transition-shadow hover:shadow-card"
               >
-                <Icon className="size-7 text-ember-600" aria-hidden="true" />
+                <Icon className="size-7 text-gold-700" aria-hidden="true" />
                 <h3 className="mt-4 text-lg font-bold text-ink">{title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-ink-muted">{description}</p>
-                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-navy-700 group-hover:text-ember-700">
+                <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-navy-700 group-hover:text-gold-800">
                   {cta}
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </span>

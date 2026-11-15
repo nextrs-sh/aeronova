@@ -57,7 +57,7 @@ export function Inspiration() {
                     className="object-cover transition-transform duration-700 ease-[var(--ease-soft)] group-hover:scale-[1.04]"
                   />
                 </div>
-                <p className="mt-5 text-xs font-bold tracking-[0.16em] text-ember-600 uppercase">
+                <p className="mt-5 text-xs font-bold tracking-[0.16em] text-gold-700 uppercase">
                   {story.kicker}
                 </p>
                 <h3 className="mt-2 text-xl font-bold text-ink group-hover:text-navy-700">

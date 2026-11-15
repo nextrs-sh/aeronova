@@ -9,7 +9,7 @@ export const badgeVariants = cva(
       tone: {
         neutral: 'bg-surface text-ink-muted ring-1 ring-line ring-inset',
         navy: 'bg-navy-50 text-navy-700 ring-1 ring-navy-100 ring-inset',
-        ember: 'bg-ember-50 text-ember-700 ring-1 ring-ember-100 ring-inset',
+        gold: 'bg-gold-50 text-gold-800 ring-1 ring-gold-200 ring-inset',
         inverse: 'bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm ring-inset',
       },
     },

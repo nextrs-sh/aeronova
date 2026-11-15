@@ -2,12 +2,13 @@
 
 import {
   CABIN_LABELS,
-  flightDetailResponseSchema,
-  formatTravelDate,
-  itineraryQueryToParams,
   type FlightDetailResponse,
+  flightDetailResponseSchema,
+  formatFlightNumber,
+  formatTravelDate,
   type Itinerary,
   type ItineraryAvailability,
+  itineraryQueryToParams,
   type PassengerCounts,
 } from '@velasia/contracts';
 import { Button } from '@velasia/ui/button';
@@ -226,7 +227,7 @@ function CabinAvailability({
         <div key={segment.id}>
           {state.detail.segments.length > 1 ? (
             <p className="mb-2 text-sm font-medium text-ink-muted">
-              {segment.flightNumber.replace(/^NV/, 'NV ')} · {segment.aircraft.name}
+              {formatFlightNumber(segment.flightNumber)} · {segment.aircraft.name}
             </p>
           ) : (
             <p className="mb-2 text-sm font-medium text-ink-muted">{segment.aircraft.name}</p>

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import { Inter, Manrope } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { DemoNotice } from '@/components/layout/demo-notice';
 import { SiteFooter } from '@/components/layout/site-footer';
@@ -13,7 +13,8 @@ const textFont = Inter({
   variable: '--font-text',
   display: 'swap',
 });
-const headingFont = Plus_Jakarta_Sans({
+// Manrope is also the typeface of the outlined Velasia wordmark.
+const headingFont = Manrope({
   subsets: ['latin', 'latin-ext'],
   variable: '--font-heading',
   display: 'swap',
@@ -22,20 +23,33 @@ const headingFont = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   metadataBase: new URL(getServerEnv().SITE_URL),
   title: {
-    default: `${site.name} — ${site.tagline}`,
-    template: `%s · ${site.name}`,
+    default: site.title,
+    template: `%s | ${site.name}`,
   },
   description: site.description,
   applicationName: site.name,
+  icons: {
+    icon: [{ url: site.brand.favicon, type: 'image/svg+xml' }],
+    apple: [{ url: site.brand.appleTouchIcon, sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     type: 'website',
     siteName: site.name,
-    locale: 'en_PH',
+    locale: site.locale,
+    title: site.title,
+    description: site.description,
+    images: [site.brand.socialPreview],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: site.title,
+    description: site.description,
+    images: [site.brand.socialPreview],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0b1834',
+  themeColor: site.themeColor,
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -44,7 +58,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className="flex min-h-dvh flex-col">
         <a
           href="#main"
-          className="sr-only z-50 rounded-full bg-navy-900 px-4 py-2 font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+          className="sr-only z-50 rounded-full bg-navy-950 px-4 py-2 font-semibold text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
         >
           Skip to content
         </a>

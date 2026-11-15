@@ -1,10 +1,11 @@
 import {
+  airline,
   CABIN_LABELS,
-  formatTravelDate,
-  totalSeated,
   type EmptyReason,
   type FlightSearch,
+  formatTravelDate,
   type NetworkRoute,
+  totalSeated,
 } from '@velasia/contracts';
 import { Button } from '@velasia/ui/button';
 import { cn } from '@velasia/ui/cn';
@@ -116,7 +117,7 @@ export function EmptyResults(props: EmptyResultsProps) {
       return (
         <StatePanel
           icon={MapPinOff}
-          title={`AeroNova doesn’t fly from ${from} to ${to}`}
+          title={`${airline.shortName} doesn’t fly from ${from} to ${to}`}
           testId={testId}
           actions={editSearch}
         >
@@ -190,8 +191,8 @@ export function EmptyResults(props: EmptyResultsProps) {
           testId={testId}
           actions={editSearch}
         >
-          AeroNova doesn’t have a flight from {from} to {to} you can book that day. Nearby dates
-          above may have availability.
+          {airline.shortName} doesn’t have a flight from {from} to {to} you can book that day.
+          Nearby dates above may have availability.
         </StatePanel>
       );
   }
