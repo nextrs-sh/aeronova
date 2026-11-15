@@ -5,7 +5,12 @@ import {
   type ReviewIssue,
 } from '@velasia/contracts';
 import { crashIf, type CrashPoint } from '../crash';
-import { ORDER_SCHEMA_VERSION, type StoredAllocation, type StoredOrder } from '../db/schema';
+import {
+  ORDER_SCHEMA_VERSION,
+  listingFor,
+  type StoredAllocation,
+  type StoredOrder,
+} from '../db/schema';
 import { seatsAvailable } from '../inventory/inventory';
 import type { RetailingResult, RetailingService } from '../offers/retailing-service';
 import type { Scenario } from '../offers/scenario';
@@ -255,6 +260,15 @@ export function createCheckoutService({
         if (problem) return fail(409, 'INVENTORY_UNAVAILABLE', problem);
 
         const reference = await uniqueReference();
+        const current = {
+          version: 1,
+          journeys: content.snapshot.journeys,
+          seats: content.snapshot.seats,
+          ancillaries: content.snapshot.ancillaries,
+          baggage: content.snapshot.baggage,
+          items: content.items,
+        };
+        const listing = listingFor({ current, snapshot: content.snapshot, currency: content.currency });
         const order: StoredOrder = {
           schemaVersion: ORDER_SCHEMA_VERSION,
           orderId: newId('ord'),
@@ -262,6 +276,10 @@ export function createCheckoutService({
           rev: 1,
           guestId,
           ownerTokenHash: tokenHash,
+          // A new booking belongs to the guest browser that made it (as in M5); linking it to an
+          // account is a separate, explicit step (Milestone 6).
+          ownerAccountId: null,
+          ownership: [{ kind: 'GUEST', id: guestId, at: now }],
           sessionId,
           checkoutKey,
           checkoutRequestHash: requestHash,
@@ -302,6 +320,14 @@ export function createCheckoutService({
           holdExpiresAt: now + config.holdMs,
           flightIds: content.allocations.map((allocation) => allocation.flightId),
           attemptIds: [],
+          current,
+          servicing: [],
+          cancelledAt: null,
+          servicingAttemptIds: [],
+          servicingState: 'NONE',
+          listing,
+          tripStartsAt: listing.departsAt,
+          tripEndsAt: listing.endsAt,
         };
         crashIf(crashAt, 'prepare:before-insert');
         const stored = await store.insert(order);

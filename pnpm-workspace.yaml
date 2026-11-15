@@ -28,6 +28,8 @@ catalog:
   # Persistence (retailing API only)
   taladb: 0.13.0
   '@taladb/node': 0.13.0
+  # Password hashing for demo accounts (Argon2id), retailing API only
+  '@node-rs/argon2': 2.2.2
   tsx: 4.23.15
   # Tooling
   turbo: 2.11.11

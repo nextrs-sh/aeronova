@@ -16,18 +16,29 @@ import type { StoredAllocation, StoredOrder } from '../db/schema';
  * Expiry is read from the clock on every lookup, so an expired hold stops blocking seats at once,
  * before any sweep has marked it expired.
  *
+ * Milestone 6: an order can also hold a *claim* for each servicing operation waiting for its
+ * payment — the replacement flights or seats of a change. A claim takes seats exactly like a
+ * hold (held until it expires, pinned while its payment is undecided), alongside the order's own
+ * committed hold: the original booking keeps its seats until the change is applied.
+ *
  * The flight inventory (`seatsAvailable`) and seat maps subtract these seats from the seeded
  * deterministic demand.
  */
+
+interface Claim {
+  state: 'HELD' | 'COMMITTED';
+  expiresAt: number;
+  pinned: boolean;
+  /** The checkout hold, which its own shopping session may look past (see below). */
+  checkout: boolean;
+  allocations: readonly Pick<StoredAllocation, 'flightId' | 'cabin' | 'seats' | 'seatIds'>[];
+}
 
 interface LedgerEntry {
   orderId: string;
   /** The shopping session the order was checked out from. */
   sessionId: string;
-  state: 'HELD' | 'COMMITTED';
-  expiresAt: number;
-  pinned: boolean;
-  allocations: StoredAllocation[];
+  claims: Claim[];
 }
 
 export interface FlightOccupancy {
@@ -49,23 +60,43 @@ export class AllocationLedger {
   /** Index (or drop) one order's hold, from its durable state. */
   apply(order: StoredOrder): void {
     this.remove(order.orderId);
+    const claims: Claim[] = [];
     const { hold } = order;
-    if (hold.status !== 'HELD' && hold.status !== 'COMMITTED') return;
-    const entry: LedgerEntry = {
+    if (hold.status === 'HELD' || hold.status === 'COMMITTED') {
+      claims.push({
+        state: hold.status,
+        expiresAt: hold.expiresAt,
+        pinned: order.attempts.some((attempt) =>
+          UNRESOLVED_PAYMENT_STATUSES.includes(attempt.status),
+        ),
+        checkout: true,
+        allocations: hold.allocations,
+      });
+    }
+    for (const op of order.servicing ?? []) {
+      if (op.claim?.status !== 'HELD') continue;
+      claims.push({
+        state: 'HELD',
+        expiresAt: op.claim.expiresAt,
+        pinned: op.attempts.some((attempt) =>
+          UNRESOLVED_PAYMENT_STATUSES.includes(attempt.status),
+        ),
+        checkout: false,
+        allocations: op.claim.allocations,
+      });
+    }
+    if (claims.length === 0) return;
+    this.entries.set(order.orderId, {
       orderId: order.orderId,
       sessionId: order.sessionId,
-      state: hold.status,
-      expiresAt: hold.expiresAt,
-      pinned: order.attempts.some((attempt) =>
-        UNRESOLVED_PAYMENT_STATUSES.includes(attempt.status),
-      ),
-      allocations: hold.allocations,
-    };
-    this.entries.set(order.orderId, entry);
-    for (const allocation of hold.allocations) {
-      const set = this.byFlight.get(allocation.flightId) ?? new Set<string>();
-      set.add(order.orderId);
-      this.byFlight.set(allocation.flightId, set);
+      claims,
+    });
+    for (const claim of claims) {
+      for (const allocation of claim.allocations) {
+        const set = this.byFlight.get(allocation.flightId) ?? new Set<string>();
+        set.add(order.orderId);
+        this.byFlight.set(allocation.flightId, set);
+      }
     }
   }
 
@@ -80,16 +111,20 @@ export class AllocationLedger {
     const entry = this.entries.get(orderId);
     if (!entry) return;
     this.entries.delete(orderId);
-    for (const allocation of entry.allocations) {
-      const set = this.byFlight.get(allocation.flightId);
-      set?.delete(orderId);
-      if (set?.size === 0) this.byFlight.delete(allocation.flightId);
+    for (const claim of entry.claims) {
+      for (const allocation of claim.allocations) {
+        const set = this.byFlight.get(allocation.flightId);
+        set?.delete(orderId);
+        if (set?.size === 0) this.byFlight.delete(allocation.flightId);
+      }
     }
   }
 
-  private active(entry: LedgerEntry, now: number): boolean {
-    if (entry.state === 'HELD' && entry.sessionId === this.excludedSession) return false;
-    return entry.state === 'COMMITTED' || entry.pinned || now < entry.expiresAt;
+  private active(entry: LedgerEntry, claim: Claim, now: number): boolean {
+    if (claim.checkout && claim.state === 'HELD' && entry.sessionId === this.excludedSession) {
+      return false;
+    }
+    return claim.state === 'COMMITTED' || claim.pinned || now < claim.expiresAt;
   }
 
   /**
@@ -121,14 +156,16 @@ export class AllocationLedger {
     const seatsByCabin = new Map<CabinClass, number>();
     for (const id of ids) {
       const entry = this.entries.get(id)!;
-      if (!this.active(entry, now)) continue;
-      for (const allocation of entry.allocations) {
-        if (allocation.flightId !== flightId) continue;
-        for (const seat of allocation.seatIds) seatIds.add(seat);
-        seatsByCabin.set(
-          allocation.cabin,
-          (seatsByCabin.get(allocation.cabin) ?? 0) + allocation.seats,
-        );
+      for (const claim of entry.claims) {
+        if (!this.active(entry, claim, now)) continue;
+        for (const allocation of claim.allocations) {
+          if (allocation.flightId !== flightId) continue;
+          for (const seat of allocation.seatIds) seatIds.add(seat);
+          seatsByCabin.set(
+            allocation.cabin,
+            (seatsByCabin.get(allocation.cabin) ?? 0) + allocation.seats,
+          );
+        }
       }
     }
     return { seatIds, seatsByCabin };
@@ -139,11 +176,41 @@ export class AllocationLedger {
     return this.occupancy(flightId).seatsByCabin.get(cabin) ?? 0;
   }
 
-  /** For tests and diagnostics: active holds by order. */
+  /** Seats on a flight held by one order (its committed seats and any claims), by seat id. */
+  ownSeatIds(orderId: string, flightId: string): ReadonlySet<string> {
+    const entry = this.entries.get(orderId);
+    const now = this.now();
+    const seats = new Set<string>();
+    for (const claim of entry?.claims ?? []) {
+      if (!this.active(entry!, claim, now)) continue;
+      for (const allocation of claim.allocations) {
+        if (allocation.flightId === flightId) for (const seat of allocation.seatIds) seats.add(seat);
+      }
+    }
+    return seats;
+  }
+
+  /** For tests and diagnostics: orders with an active hold or claim. */
   activeOrderIds(): string[] {
     const now = this.now();
     return [...this.entries.values()]
-      .filter((entry) => this.active(entry, now))
+      .filter((entry) => entry.claims.some((claim) => this.active(entry, claim, now)))
       .map((entry) => entry.orderId);
+  }
+
+  /** For tests: a canonical view of every active claim, to compare live and rebuilt ledgers. */
+  snapshot(): string[] {
+    const now = this.now();
+    return [...this.entries.values()]
+      .flatMap((entry) =>
+        entry.claims
+          .filter((claim) => this.active(entry, claim, now))
+          .flatMap((claim) =>
+            claim.allocations.map(
+              (a) => `${entry.orderId}|${a.flightId}|${a.cabin}|${a.seats}|${[...a.seatIds].sort().join(',')}`,
+            ),
+          ),
+      )
+      .sort();
   }
 }

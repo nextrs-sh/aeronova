@@ -1,8 +1,8 @@
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { BOOKING_REFERENCE_ALPHABET } from '@velasia/contracts';
 
-/** 128 random bits, base64url: `ord_…`, `pay_…`, `hld_…`. */
-export const newId = (prefix: 'ord' | 'pay' | 'hld') =>
+/** 128 random bits, base64url: `ord_…`, `pay_…`, `hld_…`, and (M6) `svc_…`, `rfd_…`, `acc_…`, `ses_…`, `trv_…`. */
+export const newId = (prefix: 'ord' | 'pay' | 'hld' | 'svc' | 'rfd' | 'acc' | 'ses' | 'trv') =>
   `${prefix}_${randomBytes(16).toString('base64url')}`;
 
 /**

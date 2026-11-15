@@ -1,5 +1,51 @@
 import type { Collection, Document } from 'taladb';
-import { storedOrderSchema, withIndexFields, type StoredOrder } from '../schema';
+import { z } from 'zod';
+import {
+  storedListingSchema,
+  storedOrderSchema,
+  withIndexFields,
+  type StoredOrder,
+} from '../schema';
+
+/** What trip lists read: a projection of the order, never the whole document. */
+export const orderListingSchema = z.object({
+  orderId: z.string(),
+  reference: z.string(),
+  status: z.string(),
+  ownerTokenHash: z.string().nullable(),
+  servicingState: z.enum(['NONE', 'AWAITING_PAYMENT', 'REFUND_PENDING']),
+  flightIds: z.array(z.string()),
+  listing: storedListingSchema,
+});
+export type OrderListing = z.infer<typeof orderListingSchema>;
+
+const LISTING_PROJECTION = {
+  orderId: 1,
+  reference: 1,
+  status: 1,
+  ownerTokenHash: 1,
+  servicingState: 1,
+  flightIds: 1,
+  listing: 1,
+} as const;
+
+export type TripListSection = 'upcoming' | 'past' | 'cancelled' | 'attention';
+
+/** Booking statuses (confirmed at some point), as opposed to checkouts that never paid. */
+const BOOKED = ['CONFIRMED', 'BOOKING_CANCELLED'];
+
+function sectionFilter(section: TripListSection, now: number): Document {
+  switch (section) {
+    case 'upcoming':
+      return { status: 'CONFIRMED', tripEndsAt: { $gte: now } };
+    case 'past':
+      return { status: 'CONFIRMED', tripEndsAt: { $lt: now } };
+    case 'cancelled':
+      return { status: 'BOOKING_CANCELLED' };
+    case 'attention':
+      return { status: { $in: BOOKED }, servicingState: { $ne: 'NONE' } };
+  }
+}
 
 /**
  * A write lost a compare-and-set race: the order changed since it was read. Writes are
@@ -86,6 +132,60 @@ export class OrderRepository {
     return this.parseAll(
       await this.collection.find({ holdState: 'HELD', holdExpiresAt: { $lte: now } }),
     );
+  }
+
+  async byServicingAttemptId(attemptId: string): Promise<StoredOrder | null> {
+    return this.parse(await this.collection.findOne({ servicingAttemptIds: attemptId }));
+  }
+
+  /** Orders with a servicing payment or a refund still to finish (recovery). */
+  async withPendingServicing(): Promise<StoredOrder[]> {
+    return this.parseAll(
+      await this.collection.find({ servicingState: { $in: ['AWAITING_PAYMENT', 'REFUND_PENDING'] } }),
+    );
+  }
+
+  /**
+   * One page of an account's bookings in a section, newest-relevant first, as projections.
+   * Sorting, paging, and projection run inside TalaDB (`aggregate`), so a long history is never
+   * loaded whole.
+   */
+  async listForAccount(
+    accountId: string,
+    section: TripListSection,
+    now: number,
+    page: number,
+    pageSize: number,
+  ): Promise<{ items: OrderListing[]; total: number }> {
+    const match = { ownerAccountId: accountId, ...sectionFilter(section, now) };
+    const sort: Record<string, 1 | -1> =
+      section === 'upcoming' ? { tripStartsAt: 1 } : section === 'past' ? { tripEndsAt: -1 } : { updatedAt: -1 };
+    const [docs, total] = await Promise.all([
+      this.collection.aggregate([
+        { $match: match },
+        { $sort: sort },
+        { $skip: (page - 1) * pageSize },
+        { $limit: pageSize },
+        { $project: LISTING_PROJECTION },
+      ]),
+      this.collection.count(match),
+    ]);
+    return { items: docs.map((doc) => orderListingSchema.parse(doc)), total };
+  }
+
+  async countForAccount(accountId: string, section: TripListSection, now: number) {
+    return this.collection.count({ ownerAccountId: accountId, ...sectionFilter(section, now) });
+  }
+
+  /** Bookings of one guest not linked to any account yet (at most `limit`), as projections. */
+  async linkableForGuest(guestId: string, limit: number): Promise<OrderListing[]> {
+    const docs = await this.collection.aggregate([
+      { $match: { guestId, ownerAccountId: null, status: { $in: BOOKED } } },
+      { $sort: { createdAt: -1 } },
+      { $limit: limit },
+      { $project: LISTING_PROJECTION },
+    ]);
+    return docs.map((doc) => orderListingSchema.parse(doc));
   }
 
   async count(filter: Document = {}): Promise<number> {

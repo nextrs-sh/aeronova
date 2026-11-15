@@ -1,5 +1,12 @@
 import type { Migration } from 'taladb';
-import { ORDERS_COLLECTION, PROVIDER_COLLECTION } from './schema';
+import {
+  ACCOUNTS_COLLECTION,
+  ORDERS_COLLECTION,
+  PROVIDER_COLLECTION,
+  REFUND_PROVIDER_COLLECTION,
+  SESSIONS_COLLECTION,
+  TRAVELLERS_COLLECTION,
+} from './schema';
 
 /*
  * Application schema migrations, run by `openDB({ migrations })` in ascending order. TalaDB
@@ -10,8 +17,8 @@ import { ORDERS_COLLECTION, PROVIDER_COLLECTION } from './schema';
  * Never edit a released migration; add a new one.
  */
 
-/** Indexes the order and provider queries rely on. */
-export const ORDER_INDEXES = [
+/** Indexes the order and provider queries rely on (Milestone 5). */
+const M5_ORDER_INDEXES = [
   'orderId',
   'reference',
   'guestId',
@@ -24,7 +31,15 @@ export const ORDER_INDEXES = [
   'flightIds',
   'attemptIds',
 ] as const;
+/** Milestone 6: account ownership, servicing recovery, servicing payment lookups. */
+const M6_ORDER_INDEXES = ['ownerAccountId', 'servicingState', 'servicingAttemptIds'] as const;
+
+export const ORDER_INDEXES = [...M5_ORDER_INDEXES, ...M6_ORDER_INDEXES] as const;
 export const PROVIDER_INDEXES = ['attemptId', 'orderId'] as const;
+export const REFUND_PROVIDER_INDEXES = ['refundId', 'orderId'] as const;
+export const ACCOUNT_INDEXES = ['accountId', 'email'] as const;
+export const SESSION_INDEXES = ['tokenHash', 'accountId', 'expiresAt'] as const;
+export const TRAVELLER_INDEXES = ['travellerId', 'accountId', 'createKey'] as const;
 
 export const MIGRATIONS: Migration[] = [
   {
@@ -32,9 +47,27 @@ export const MIGRATIONS: Migration[] = [
     description: 'Orders and simulated payment provider: indexes',
     async up(db) {
       const orders = db.collection(ORDERS_COLLECTION);
-      for (const field of ORDER_INDEXES) await orders.createIndex(field);
+      for (const field of M5_ORDER_INDEXES) await orders.createIndex(field);
       const provider = db.collection(PROVIDER_COLLECTION);
       for (const field of PROVIDER_INDEXES) await provider.createIndex(field);
+    },
+  },
+  {
+    version: 2,
+    description: 'Servicing, refunds, demo accounts, sessions, saved travellers: indexes',
+    async up(db) {
+      const orders = db.collection(ORDERS_COLLECTION);
+      for (const field of M6_ORDER_INDEXES) await orders.createIndex(field);
+      const collections: [string, readonly string[]][] = [
+        [REFUND_PROVIDER_COLLECTION, REFUND_PROVIDER_INDEXES],
+        [ACCOUNTS_COLLECTION, ACCOUNT_INDEXES],
+        [SESSIONS_COLLECTION, SESSION_INDEXES],
+        [TRAVELLERS_COLLECTION, TRAVELLER_INDEXES],
+      ];
+      for (const [name, fields] of collections) {
+        const collection = db.collection(name);
+        for (const field of fields) await collection.createIndex(field);
+      }
     },
   },
 ];
