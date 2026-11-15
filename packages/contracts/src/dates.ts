@@ -3,7 +3,7 @@
  * time component, so all arithmetic is done in UTC to avoid DST/offset drift.
  */
 
-/** AeroNova's home time zone. "Today" for booking rules is evaluated here on server and client alike. */
+/** Velasia's home time zone. "Today" for booking rules is evaluated here on server and client alike. */
 export const AIRLINE_TIME_ZONE = 'Asia/Manila';
 
 const ISO_DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;

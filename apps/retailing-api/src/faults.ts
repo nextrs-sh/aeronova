@@ -7,10 +7,10 @@ import { sendError } from './http';
  *
  * - Latency (`RETAILING_API_LATENCY_MS`) applies to `/v1/flights*` when set.
  * - Faults apply only when `RETAILING_API_FAULTS=enabled`, per request, via
- *   the `x-aeronova-fault` header: `delay=<ms>`, `timeout`, `unavailable`,
+ *   the `x-velasia-fault` header: `delay=<ms>`, `timeout`, `unavailable`,
  *   `empty`, or `malformed`.
  */
-export const FAULT_HEADER = 'x-aeronova-fault';
+export const FAULT_HEADER = 'x-velasia-fault';
 
 export type Fault =
   | { kind: 'delay'; ms: number }
@@ -63,8 +63,7 @@ function wait(ms: number, request: FastifyRequest): Promise<void> {
 export function registerFaultInjection(app: FastifyInstance, options: FaultOptions): void {
   app.decorateRequest('simulateEmpty', false);
   if (!options.enabled && !options.latency) return;
-  if (options.enabled)
-    app.log.warn('fault injection is ENABLED (x-aeronova-fault header honoured)');
+  if (options.enabled) app.log.warn('fault injection is ENABLED (x-velasia-fault header honoured)');
 
   app.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/v1/')) return;
@@ -76,7 +75,7 @@ export function registerFaultInjection(app: FastifyInstance, options: FaultOptio
 
     const fault = parseFault(request.headers[FAULT_HEADER]);
     if (!fault) return;
-    reply.header('x-aeronova-fault-applied', fault.kind);
+    reply.header('x-velasia-fault-applied', fault.kind);
     switch (fault.kind) {
       case 'delay':
         await wait(fault.ms, request);
@@ -96,14 +95,14 @@ export function registerFaultInjection(app: FastifyInstance, options: FaultOptio
         return;
       case 'malformed':
         // Replace the body with valid JSON that breaks the response contract.
-        reply.header('x-aeronova-malformed', '1');
+        reply.header('x-velasia-malformed', '1');
         return;
     }
   });
 
   app.addHook('onSend', async (_request, reply, payload) => {
-    if (reply.getHeader('x-aeronova-malformed') !== '1') return payload;
-    reply.removeHeader('x-aeronova-malformed');
+    if (reply.getHeader('x-velasia-malformed') !== '1') return payload;
+    reply.removeHeader('x-velasia-malformed');
     return JSON.stringify({ data: { legs: 'unexpected' }, meta: null });
   });
 }

@@ -42,7 +42,7 @@ test.describe('destinations', () => {
     await expect(page).toHaveTitle(/Tokyo, Japan/);
     await expect(page.getByRole('heading', { level: 1, name: 'Tokyo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Highlights' })).toBeVisible();
-    await expect(page.getByText('Planned routes in AeroNova’s fictional network.')).toBeVisible();
+    await expect(page.getByText('Planned routes in Velasia’s fictional network.')).toBeVisible();
     await expect(page.getByText('Illustrative fare · not a live offer')).toBeVisible();
 
     await expect(page.getByRole('heading', { name: 'Find flights to Tokyo' })).toBeVisible();

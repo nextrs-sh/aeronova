@@ -6,7 +6,7 @@ import {
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { Route } from 'next';
 
 /** Where the traveller is in choosing flights. */

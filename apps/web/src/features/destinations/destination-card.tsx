@@ -1,5 +1,5 @@
-import { REGION_LABELS, type Destination } from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+import { REGION_LABELS, type Destination } from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { ArrowUpRight } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';

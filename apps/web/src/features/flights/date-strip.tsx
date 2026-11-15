@@ -4,8 +4,8 @@ import {
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import Link from 'next/link';
 import { formatMinor, formatShortDate } from '@/lib/format';
 import { loadNearbyDates } from './data';

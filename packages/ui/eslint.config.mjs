@@ -1,1 +1,1 @@
-export { default } from '@aeronova/config/eslint/base';
+export { default } from '@velasia/config/eslint/base';

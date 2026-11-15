@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { airline, displayFlightNumber } from './airline';
 import { currencyCodeSchema, iataCodeSchema, minorAmountSchema } from './common';
 import { addDays, compareIsoDates, isIsoDate } from './dates';
 import { aircraftCodeSchema, aircraftSummarySchema } from './network';
@@ -16,15 +17,17 @@ import { isLocalTime, timeToMinutes } from './time';
 /*
  * Flight inventory, itineraries, and indicative pricing.
  *
- * A *scheduled flight* (e.g. NV 501 daily at 08:15) is a pattern. A *flight
+ * A *scheduled flight* (e.g. NV501, shown to customers as VEL 501, daily at 08:15) is a pattern. A *flight
  * instance* (`NV501-20261201`) is one dated departure of it, with its own seat
  * inventory. An *itinerary* is what a traveller buys for one direction of a
  * trip: one instance (direct) or two connecting instances.
  */
 
 /**
- * AeroNova's flight-number prefix. A fictional marketing prefix for this demo,
- * not a claim to any registered IATA or ICAO airline designator.
+ * Prefix of the stable *internal* flight identifiers (`NV501`, `NV501-20261201`). These keys are
+ * persistent and deterministic, so they did not change with the Velasia rebrand; customers only
+ * ever see the display form from {@link formatFlightNumber} (`VEL 501`). Neither prefix is a
+ * claim to any registered IATA or ICAO airline designator.
  */
 export const FLIGHT_NUMBER_PREFIX = 'NV';
 
@@ -41,9 +44,10 @@ export const itineraryIdSchema = z
   .max(64)
   .regex(/^NV\d{1,4}-\d{8}(_NV\d{1,4}-\d{8})?$/, 'Invalid itinerary identifier.');
 
-/** `NV501` → `NV 501` */
+/** Customer-facing display of an internal flight number: `NV501` → `VEL 501`. */
 export function formatFlightNumber(flightNumber: string): string {
-  return flightNumber.replace(/^([A-Z]{2})(\d+)$/, '$1 $2');
+  const match = /^NV(\d{1,4})$/.exec(flightNumber);
+  return match ? displayFlightNumber(Number(match[1])) : flightNumber;
 }
 
 export const flightStatusSchema = z.enum(['scheduled', 'cancelled']);
@@ -197,7 +201,7 @@ export const MAX_PAGE_SIZE = 50;
 const MAX_PAGE = 500;
 
 export interface FlightFilters {
-  /** `0` for direct flights only. Unset allows every itinerary AeroNova sells (up to one stop). */
+  /** `0` for direct flights only. Unset allows every itinerary Velasia sells (up to one stop). */
   maxStops?: number;
   /** Empty means any time of day. */
   departureWindows: DepartureWindow[];
@@ -359,7 +363,7 @@ export function createFlightSearchQuerySchema(options: FlightQueryValidationOpti
       if (!aircraftCodeSchema.safeParse(code).success) {
         issue(K.aircraft, `Invalid aircraft code "${code}".`);
       } else if (options.knownAircraftCodes && !options.knownAircraftCodes.has(code)) {
-        issue(K.aircraft, `AeroNova doesn't operate aircraft type ${code}.`);
+        issue(K.aircraft, `${airline.shortName} doesn't operate aircraft type ${code}.`);
       }
     }
 
@@ -457,7 +461,7 @@ export function flightSearchQueryToParams(query: FlightSearchQuery): URLSearchPa
  * showing a generic "nothing found".
  */
 export const emptyReasonSchema = z.enum([
-  /** AeroNova has no direct or one-stop connection between these airports. */
+  /** Velasia has no direct or one-stop connection between these airports. */
   'no-route',
   /** The route exists but no flight on it offers the requested cabin. */
   'cabin-not-offered',
@@ -675,7 +679,7 @@ export function createFareCalendarQuerySchema({
         if (!iataCodeSchema.safeParse(code).success)
           issue(path, 'Choose an airport from the list.');
         else if (knownAirportCodes && !knownAirportCodes.has(code)) {
-          issue(path, `AeroNova doesn't serve ${code}.`);
+          issue(path, `${airline.shortName} doesn't serve ${code}.`);
         }
       }
       if (origin && origin === destination) {

@@ -1,6 +1,6 @@
-import { REGION_LABELS, type Airport, type Destination } from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { REGION_LABELS, type Airport, type Destination } from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import { ChevronRight, Clock3, Coins, Languages, Plane, SunMedium } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
@@ -12,6 +12,8 @@ import { IllustrativeFare } from '@/features/destinations/illustrative-fare';
 import { SearchWidget } from '@/features/search/search-widget';
 import { getAirports, getDestination, getDestinations, loadSection } from '@/lib/content';
 import { formatDuration, formatFrequency } from '@/lib/format';
+import { pageMetadata } from '@/lib/metadata';
+import { site } from '@/lib/site';
 
 // Every destination page is fully static. For a slug missing from
 // generateStaticParams this also makes the first request wait for the full
@@ -29,16 +31,13 @@ export async function generateMetadata({
   const { slug } = await params;
   const destination = await getDestination(slug);
   if (!destination) return { title: 'Destination not found' };
-  return {
+  return pageMetadata({
     title: `${destination.name}, ${destination.country}`,
     description: destination.summary,
-    alternates: { canonical: `/destinations/${destination.slug}` },
-    openGraph: {
-      title: `${destination.name} with AeroNova`,
-      description: destination.tagline,
-      images: [{ url: destination.image.src, alt: destination.image.alt }],
-    },
-  };
+    path: `/destinations/${destination.slug}`,
+    socialTitle: `${destination.name} with ${site.name}`,
+    image: { url: destination.image.src, alt: destination.image.alt },
+  });
 }
 
 export default async function DestinationPage({ params }: PageProps<'/destinations/[slug]'>) {
@@ -82,7 +81,7 @@ export default async function DestinationPage({ params }: PageProps<'/destinatio
           <ul className="mt-6 grid gap-4 sm:grid-cols-3">
             {destination.highlights.map((highlight, index) => (
               <li key={highlight.title} className="rounded-card bg-surface p-5">
-                <span className="font-display text-sm font-bold text-ember-600">0{index + 1}</span>
+                <span className="font-display text-sm font-bold text-gold-700">0{index + 1}</span>
                 <h3 className="mt-2 text-lg font-bold text-ink">{highlight.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                   {highlight.description}
@@ -162,7 +161,7 @@ function DestinationHero({ destination }: { destination: Destination }) {
             </li>
           </ol>
         </nav>
-        <p className="mt-6 text-sm font-semibold tracking-[0.16em] text-ember-300 uppercase">
+        <p className="mt-6 text-sm font-semibold tracking-[0.16em] text-gold-300 uppercase">
           {destination.country} · {REGION_LABELS[destination.region]}
         </p>
         <h1 className="mt-2 text-5xl font-extrabold sm:text-6xl lg:text-7xl">{destination.name}</h1>
@@ -226,7 +225,9 @@ function RouteList({
   return (
     <div className="rounded-card bg-navy-950 p-6 text-white">
       <h2 className="text-lg font-bold">Getting there</h2>
-      <p className="mt-1 text-sm text-navy-200">Planned routes in AeroNova’s fictional network.</p>
+      <p className="mt-1 text-sm text-navy-200">
+        Planned routes in {site.shortName}’s fictional network.
+      </p>
       <ul className="mt-5 space-y-4">
         {destination.routes.map((route) => (
           <li key={`${route.origin}-${route.destination}`} className="flex items-center gap-3">

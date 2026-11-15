@@ -1,4 +1,4 @@
-import { createFlightSearchQuerySchema, type FlightSearchResponse } from '@aeronova/contracts';
+import { createFlightSearchQuerySchema, type FlightSearchResponse } from '@velasia/contracts';
 import { NextResponse, type NextRequest } from 'next/server';
 import { LIVE_CACHE_CONTROL, jsonError, toIssues, upstreamErrorResponse } from '@/lib/api-response';
 import { getAirports, loadSection } from '@/lib/content';

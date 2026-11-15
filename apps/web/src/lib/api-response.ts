@@ -1,4 +1,4 @@
-import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@aeronova/contracts';
+import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@velasia/contracts';
 import { NextResponse } from 'next/server';
 import { RetailingApiError } from './retailing-api/client';
 

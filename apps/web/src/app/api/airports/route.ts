@@ -1,4 +1,4 @@
-import { airportListQuerySchema, type AirportListResponse } from '@aeronova/contracts';
+import { airportListQuerySchema, type AirportListResponse } from '@velasia/contracts';
 import { NextResponse, type NextRequest } from 'next/server';
 import { PUBLIC_CACHE_CONTROL, jsonError, upstreamErrorResponse } from '@/lib/api-response';
 import { retailingApi } from '@/lib/retailing-api/client';

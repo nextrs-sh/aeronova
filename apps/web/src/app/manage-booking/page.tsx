@@ -1,16 +1,17 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { Armchair, CalendarSync, Luggage, Ticket } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageIntro } from '@/components/page-intro';
+import { pageMetadata } from '@/lib/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Manage booking',
-  description: 'Manage your AeroNova booking — coming in a future release.',
-  alternates: { canonical: '/manage-booking' },
-};
+  description: 'Manage your Velasia Airways booking — coming in a future release.',
+  path: '/manage-booking',
+});
 
 const FEATURES = [
   {
@@ -41,7 +42,7 @@ export default function ManageBookingPage() {
       <PageIntro
         eyebrow="Manage booking"
         title="Your trip, in your hands"
-        description="Booking management arrives once AeroNova starts creating orders. Here’s what you’ll be able to do."
+        description="Booking management arrives once Velasia starts creating orders. Here’s what you’ll be able to do."
       >
         <Badge tone="inverse" className="mt-6">
           Preview · Not yet available
@@ -51,7 +52,7 @@ export default function ManageBookingPage() {
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <li key={title} className="rounded-card bg-surface p-6">
-              <Icon className="size-7 text-ember-600" aria-hidden="true" />
+              <Icon className="size-7 text-gold-700" aria-hidden="true" />
               <h2 className="mt-4 text-lg font-bold text-ink">{title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">{description}</p>
             </li>
@@ -61,7 +62,7 @@ export default function ManageBookingPage() {
           <div>
             <h2 className="text-xl font-bold text-ink">No bookings to manage yet</h2>
             <p className="mt-1 text-ink-muted">
-              AeroNova can’t take bookings yet, so there’s nothing to look up. Start by planning a
+              Velasia can’t take bookings yet, so there’s nothing to look up. Start by planning a
               trip.
             </p>
           </div>

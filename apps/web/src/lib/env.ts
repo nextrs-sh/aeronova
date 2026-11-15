@@ -1,5 +1,5 @@
 import 'server-only';
-import { isIsoDate } from '@aeronova/contracts';
+import { isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 
 const serverEnvSchema = z.object({
@@ -8,9 +8,9 @@ const serverEnvSchema = z.object({
   /** Time budget for each retailing API request, in milliseconds. */
   RETAILING_API_TIMEOUT_MS: z.coerce.number().int().min(200).max(60_000).default(5_000),
   /** Pin "today" (airline time zone) for deterministic demos and tests. Test-only. */
-  AERONOVA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
+  VELASIA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
   /**
-   * Test-only: forward the `aeronova-fault` cookie to the retailing API as a
+   * Test-only: forward the `velasia-fault` cookie to the retailing API as a
    * fault-injection header. The API must also have faults enabled.
    */
   RETAILING_API_FORWARD_FAULTS: z.enum(['enabled', 'disabled']).default('disabled'),
@@ -27,7 +27,8 @@ export function getServerEnv(): ServerEnv {
     RETAILING_API_URL: process.env.RETAILING_API_URL || undefined,
     SITE_URL: process.env.SITE_URL || undefined,
     RETAILING_API_TIMEOUT_MS: process.env.RETAILING_API_TIMEOUT_MS || undefined,
-    AERONOVA_TODAY: process.env.AERONOVA_TODAY || undefined,
+    // `AERONOVA_TODAY` is the deprecated pre-rebrand name, still honoured for existing setups.
+    VELASIA_TODAY: process.env.VELASIA_TODAY || process.env.AERONOVA_TODAY || undefined,
     RETAILING_API_FORWARD_FAULTS: process.env.RETAILING_API_FORWARD_FAULTS || undefined,
   });
 }

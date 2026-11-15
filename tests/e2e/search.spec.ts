@@ -121,7 +121,7 @@ test.describe('flight search', () => {
       .getByRole('link', { name: 'Explore destinations' })
       .click();
     await expect(page).toHaveURL(/\/destinations$/);
-    await page.getByRole('link', { name: 'AeroNova home' }).first().click();
+    await page.getByRole('link', { name: 'Velasia Airways home' }).first().click();
     await expect(page.getByRole('combobox', { name: 'From' })).toHaveValue('Davao (DVO)');
   });
 

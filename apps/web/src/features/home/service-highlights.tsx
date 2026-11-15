@@ -1,4 +1,4 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import { Armchair, HeartHandshake, Luggage, UtensilsCrossed, type LucideIcon } from 'lucide-react';
 import { SectionHeading } from '@/components/section-heading';
 
@@ -32,7 +32,7 @@ export function ServiceHighlights() {
       <Container>
         <SectionHeading
           id="services-heading"
-          eyebrow="Flying AeroNova"
+          eyebrow="Flying Velasia"
           title="Thoughtful from check‑in to touchdown"
         />
         <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">

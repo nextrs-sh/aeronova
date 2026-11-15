@@ -1,4 +1,4 @@
-import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@aeronova/contracts';
+import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@velasia/contracts';
 import type { FastifyReply } from 'fastify';
 import type { z } from 'zod';
 

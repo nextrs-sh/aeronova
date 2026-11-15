@@ -1,5 +1,5 @@
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { Compass } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -12,7 +12,7 @@ export default function NotFound() {
       <span className="inline-flex size-16 items-center justify-center rounded-full bg-navy-50 text-navy-700">
         <Compass className="size-8" aria-hidden="true" />
       </span>
-      <p className="mt-6 text-sm font-bold tracking-[0.16em] text-ember-600 uppercase">Error 404</p>
+      <p className="mt-6 text-sm font-bold tracking-[0.16em] text-gold-700 uppercase">Error 404</p>
       <h1 className="mt-2 text-4xl font-bold text-ink sm:text-5xl">
         This page has flown off course
       </h1>

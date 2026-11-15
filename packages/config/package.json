@@ -1,9 +1,9 @@
 {
-  "name": "@aeronova/config",
+  "name": "@velasia/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared TypeScript and ESLint configuration for the AeroNova workspace.",
+  "description": "Shared TypeScript and ESLint configuration for the Velasia Airways workspace.",
   "exports": {
     "./tsconfig/base.json": "./tsconfig/base.json",
     "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",

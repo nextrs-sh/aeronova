@@ -1,4 +1,4 @@
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
 import type { ReactNode } from 'react';
 
 interface SectionHeadingProps {
@@ -30,7 +30,7 @@ export function SectionHeading({
           <p
             className={cn(
               'text-xs font-bold tracking-[0.16em] uppercase',
-              inverse ? 'text-ember-300' : 'text-ember-600',
+              inverse ? 'text-gold-300' : 'text-gold-700',
             )}
           >
             {eyebrow}

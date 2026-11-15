@@ -1,16 +1,27 @@
-# AeroNova
+<p align="center">
+  <img src="apps/web/public/brand/velasia-logo.svg" alt="Velasia Airways" width="320">
+</p>
 
-**Your journey. Your way.**
+# Velasia Airways
 
-AeroNova is a fictional airline and a modern airline retailing demo built with Next.js. It is
-growing towards Offer & Order retailing: flight discovery, dynamic offers, fare bundles,
-ancillaries, booking, and order management.
+[![CI](https://github.com/nextrs-sh/velasia-airways/actions/workflows/ci.yml/badge.svg)](https://github.com/nextrs-sh/velasia-airways/actions/workflows/ci.yml)
 
-> AeroNova is not a real airline. It does not operate flights, sell tickets, or process payments.
-> Airports and cities are real; the route network, schedules, and fares are invented. Any price
-> shown is labelled as illustrative.
+**Beyond every horizon.**
 
-![AeroNova homepage](docs/screenshots/home-desktop.jpg)
+A fictional premium airline retailing experience built with Next.js. Explore flight discovery,
+dynamic offers, booking journeys, and modern Offer & Order retailing.
+
+Velasia Airways is a modern, full-service airline headquartered (fictionally) in the
+Philippines, flying across Southeast Asia and to selected international destinations, priced in
+PHP. **Flight discovery and search are built today**; offers, booking, and order management are
+planned milestones (see [status](#milestone-status)).
+
+> Velasia Airways is not a real airline. It does not operate flights, sell tickets, or process
+> payments, and it holds no IATA or ICAO airline designator: flight numbers such as `VEL 501`
+> are a display convention for this demo. Airports and cities are real; the route network,
+> schedules, and fares are invented. Any price shown is labelled as illustrative or indicative.
+
+![Velasia Airways homepage](docs/screenshots/home-desktop.jpg)
 
 ## Milestone status
 
@@ -18,11 +29,14 @@ ancillaries, booking, and order management.
 | --------- | ------------------------------------------------------------- | -------------- |
 | 1         | Monorepo foundation, premium storefront, search, destinations | ✅ Done        |
 | 2         | Flight inventory, dynamic search, indicative pricing          | ✅ Done        |
+| 2.5       | Velasia Airways rebrand: identity, design system, API, docs   | ✅ Done        |
 | 3–7       | Offers & bundles → checkout → orders → accounts → ops         | Planned        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
-[M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md).
+[M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
+[M2.5](docs/MILESTONE-2.5-REBRANDING.md). M1 and M2 were delivered under the project's former
+working name, AeroNova; their reports are kept as written.
 
 **What works today:** search a fictional network of 21 airports and 54 routes, and get real
 results from the Fastify retailing API. Results come from deterministic schedules and seat
@@ -51,6 +65,19 @@ fare-selection preview. Nothing on the site books a flight.
   Offers and fare families arrive in M3.
 - **Network conditions.** Opt-in latency and per-request faults (`delay`, `timeout`,
   `unavailable`, `empty`, `malformed`) for testing the storefront against a failing service.
+
+## Brand
+
+The Velasia symbol is two swept wing blades forming a V on a shared horizon line; the trailing
+blade, in Warm Gold, climbs past the frame. Midnight Navy carries the brand, gold is reserved for
+selective emphasis, and booking screens stay on light, readable surfaces.
+
+- Assets: [`apps/web/public/brand/`](apps/web/public/brand/) (SVG logos, favicon, app icons,
+  social card)
+- Usage, colour, typography, and clear space: [docs/BRAND-GUIDELINES.md](docs/BRAND-GUIDELINES.md)
+- Single source of truth for the airline's name, tagline, currency, and flight-number display:
+  `airline` in [`packages/contracts/src/airline.ts`](packages/contracts/src/airline.ts), also
+  served by the API at `GET /v1/airline`
 
 ## Stack
 
@@ -90,11 +117,11 @@ No API keys, paid services, or databases are needed. Configuration is optional; 
 | `pnpm typecheck` | `tsc --noEmit` across all packages and the E2E suite               |
 | `pnpm test`      | Vitest unit, component, and integration tests                      |
 | `pnpm test:e2e`  | Build, then run Playwright (desktop + mobile) on ports 3200/4210   |
+| `pnpm format`    | Prettier                                                           |
 
 To try slow responses locally, run the API with `RETAILING_API_LATENCY_MS=300-1200`. For
-repeatable prices and seats, set `AERONOVA_TODAY=2026-12-01` for both the API and the
+repeatable prices and seats, set `VELASIA_TODAY=2026-12-01` for both the API and the
 storefront.
-| `pnpm format` | Prettier |
 
 First E2E run: `pnpm exec playwright install chromium`.
 

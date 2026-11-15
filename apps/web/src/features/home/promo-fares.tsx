@@ -1,5 +1,5 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import { ArrowRight, Tag } from 'lucide-react';
 import type { Route } from 'next';
 import Image from 'next/image';
@@ -41,7 +41,7 @@ export async function PromoFares() {
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       className="object-cover"
                     />
-                    <Badge tone="ember" className="absolute top-3 left-3 bg-white">
+                    <Badge tone="gold" className="absolute top-3 left-3 bg-white">
                       <Tag aria-hidden="true" />
                       {destination.name}
                     </Badge>
@@ -57,7 +57,7 @@ export async function PromoFares() {
                       <IllustrativeFare fare={destination.illustrativeFare!} />
                       <Link
                         href={`/destinations/${destination.slug}` as Route}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-navy-700 hover:text-ember-700"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-navy-700 hover:text-gold-800"
                       >
                         Explore<span className="sr-only"> {destination.name}</span>
                         <ArrowRight className="size-4" aria-hidden="true" />

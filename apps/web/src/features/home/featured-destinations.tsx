@@ -1,5 +1,5 @@
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { SectionHeading } from '@/components/section-heading';

@@ -3,7 +3,7 @@ import {
   flightSearchDraftSchema,
   isIsoDate,
   type FlightSearchDraft,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 
@@ -26,7 +26,7 @@ export const useSearchDraftStore = create<SearchDraftState>()(
       setDraft: (draft) => set({ draft }),
     }),
     {
-      name: 'aeronova:search-draft',
+      name: 'velasia:search-draft',
       version: 1,
       storage: createJSONStorage(() => sessionStorage),
       skipHydration: true,

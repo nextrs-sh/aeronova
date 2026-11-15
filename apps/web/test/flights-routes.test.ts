@@ -1,14 +1,14 @@
 // @vitest-environment node
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { buildApp } from '@aeronova/retailing-api/app';
+import { buildApp } from '@velasia/retailing-api/app';
 import {
   aircraftListResponseSchema,
   apiErrorSchema,
   flightDetailResponseSchema,
   flightSearchResponseSchema,
   routeListResponseSchema,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getAircraft } from '@/app/api/aircraft/route';
@@ -24,7 +24,7 @@ let faultCookie: string | undefined;
 vi.mock('next/headers', () => ({
   cookies: async () => ({
     get: (name: string) =>
-      name === 'aeronova-fault' && faultCookie ? { value: faultCookie } : undefined,
+      name === 'velasia-fault' && faultCookie ? { value: faultCookie } : undefined,
   }),
 }));
 
@@ -41,7 +41,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.stubEnv('RETAILING_API_URL', apiUrl);
-  vi.stubEnv('AERONOVA_TODAY', TODAY);
+  vi.stubEnv('VELASIA_TODAY', TODAY);
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -215,7 +215,7 @@ describe('fault-injection forwarding (test-only)', () => {
   const forwarded = async () => {
     const spy = vi.spyOn(globalThis, 'fetch');
     await searchFlights(request(SEARCH));
-    return new Headers(spy.mock.calls.at(-1)![1]?.headers).get('x-aeronova-fault');
+    return new Headers(spy.mock.calls.at(-1)![1]?.headers).get('x-velasia-fault');
   };
 
   it('is off unless explicitly enabled', async () => {

@@ -1,15 +1,16 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import { ChevronDown } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageIntro } from '@/components/page-intro';
+import { pageMetadata } from '@/lib/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Help centre',
   description:
-    'Baggage, travel documents, check-in, and contact information for AeroNova travellers.',
-  alternates: { canonical: '/help' },
-};
+    'Baggage, travel documents, check-in, and contact information for Velasia Airways travellers.',
+  path: '/help',
+});
 
 const TOPICS = [
   {
@@ -66,7 +67,7 @@ export default function HelpPage() {
       <PageIntro
         eyebrow="Help centre"
         title="How can we help?"
-        description="Answers to common questions before you fly. AeroNova is a fictional airline, so these policies are examples for this demo."
+        description="Answers to common questions before you fly. Velasia Airways is a fictional airline, so these policies are examples for this demo."
       />
       <Container className="grid gap-12 py-14 lg:grid-cols-[14rem_minmax(0,1fr)] lg:py-20">
         <nav aria-label="Help topics" className="lg:sticky lg:top-28 lg:self-start">
@@ -124,7 +125,7 @@ export default function HelpPage() {
               Contact us
             </h2>
             <p className="mt-3 max-w-2xl leading-relaxed text-navy-100">
-              AeroNova is a demonstration project, so there is no real contact centre and no
+              Velasia Airways is a demonstration project, so there is no real contact centre and no
               bookings to support. For questions about the project itself, see{' '}
               <Link href="/about" className="font-semibold text-white underline underline-offset-4">
                 About this demo

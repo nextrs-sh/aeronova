@@ -1,4 +1,4 @@
-import { destinationSchema, iataCodeSchema, type Destination } from '@aeronova/contracts';
+import { destinationSchema, iataCodeSchema, type Destination } from '@velasia/contracts';
 import { z } from 'zod';
 
 /**
@@ -36,7 +36,7 @@ const destinations: DestinationContent[] = [
       'The Philippine capital layers Spanish-era Intramuros, a buzzing food scene, and the glittering towers of Makati and BGC.',
     description: [
       'Manila rewards travellers who slow down. Walk the cobbled lanes of Intramuros at golden hour, then cross the river to Binondo, one of the oldest Chinatowns in the world, for dumplings and hopia still warm from the oven.',
-      'As AeroNova’s home hub, Manila is also where many journeys begin. Give yourself a day or two on either side of your trip to explore the galleries of the National Museum and the cafés of Poblacion.',
+      'As Velasia’s home hub, Manila is also where many journeys begin. Give yourself a day or two on either side of your trip to explore the galleries of the National Museum and the cafés of Poblacion.',
     ],
     image: {
       src: '/images/destinations/manila.jpg',

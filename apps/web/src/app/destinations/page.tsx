@@ -1,16 +1,17 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import type { Metadata } from 'next';
 import { PageIntro } from '@/components/page-intro';
 import { SectionUnavailable } from '@/components/section-unavailable';
 import { DestinationExplorer } from '@/features/destinations/destination-explorer';
 import { getDestinations, loadSection } from '@/lib/content';
+import { pageMetadata } from '@/lib/metadata';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Explore destinations',
   description:
     'City breaks, island escapes, and food capitals across the Philippines, Southeast Asia, and East Asia.',
-  alternates: { canonical: '/destinations' },
-};
+  path: '/destinations',
+});
 
 export default async function DestinationsPage() {
   const result = await loadSection(getDestinations);

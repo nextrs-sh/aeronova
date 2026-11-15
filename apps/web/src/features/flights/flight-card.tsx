@@ -1,5 +1,5 @@
-import { CABIN_LABELS, type Itinerary, type PassengerCounts } from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
+import { CABIN_LABELS, type Itinerary, type PassengerCounts } from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
 import { ArrowRight } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
@@ -51,7 +51,7 @@ export function FlightCard({
           <p className="mt-4 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
             <span>{CABIN_LABELS[itinerary.cabin]}</span>
             {itinerary.seatsAvailable <= LOW_SEATS ? (
-              <span className="font-semibold text-ember-700">
+              <span className="font-semibold text-gold-800">
                 {itinerary.seatsAvailable === 1
                   ? 'Last seat at this price'
                   : `${itinerary.seatsAvailable} seats left`}

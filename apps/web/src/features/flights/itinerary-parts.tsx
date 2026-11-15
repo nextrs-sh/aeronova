@@ -7,18 +7,19 @@
  * they are printed as-is and never reinterpreted in the viewer's time zone.
  */
 import {
+  airline,
   CABIN_LABELS,
   daysBetween,
+  type FlightEndpoint,
   formatFlightNumber,
   formatPassengerSummary,
   formatTravelDate,
   formatUtcOffsetLabel,
-  type FlightEndpoint,
   type IndicativePrice,
   type Itinerary,
   type PassengerCounts,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { Clock3, Plane } from 'lucide-react';
 import { LogoMark } from '@/components/brand/logo';
 import { formatDuration, formatDurationLong, formatMinor, formatShortDate } from '@/lib/format';
@@ -39,10 +40,10 @@ export function AirlineMark({
 }) {
   return (
     <span className={cn('inline-flex items-center gap-2 text-sm', className)}>
-      <span className="inline-flex size-7 items-center justify-center rounded-full bg-navy-50 ring-1 ring-navy-100">
-        <LogoMark className="size-4.5 text-navy-900" />
+      <span className="inline-flex size-7 items-center justify-center rounded-full bg-navy-950">
+        <LogoMark tone="inverse" className="h-3.5" />
       </span>
-      <span className="font-semibold text-ink">AeroNova</span>
+      <span className="font-semibold text-ink">{airline.shortName}</span>
       <span className="text-ink-subtle">{flightNumbers.map(formatFlightNumber).join(' · ')}</span>
     </span>
   );
@@ -53,7 +54,7 @@ export function DayOffset({ from, to }: { from: FlightEndpoint; to: FlightEndpoi
   const days = daysBetween(from.date, to.date);
   if (days === 0) return null;
   return (
-    <sup className="ml-0.5 text-xs font-bold text-ember-700">
+    <sup className="ml-0.5 text-xs font-bold text-gold-800">
       <span aria-hidden="true">{days > 0 ? `+${days}` : days}</span>
       <span className="sr-only">, arrives {formatTravelDate(to.date)}</span>
     </sup>
@@ -101,7 +102,7 @@ export function FlightTimes({
           {itinerary.connections.map((connection) => (
             <span
               key={connection.airport}
-              className="size-2 rounded-full border-2 border-ember-500 bg-white"
+              className="size-2 rounded-full border-2 border-gold-600 bg-white"
             />
           ))}
           {itinerary.stops > 0 ? <span className="h-px flex-1 bg-line-strong" /> : null}
@@ -110,7 +111,7 @@ export function FlightTimes({
         <p
           className={cn(
             'truncate text-xs font-semibold',
-            itinerary.stops === 0 ? 'text-success' : 'text-ember-700',
+            itinerary.stops === 0 ? 'text-success' : 'text-gold-800',
           )}
         >
           {stopsLabel(itinerary)}
@@ -220,7 +221,7 @@ export function ItineraryTimeline({
               </div>
             </div>
             {connection ? (
-              <p className="my-4 ml-8 flex items-center gap-2 rounded-xl border border-dashed border-ember-200 bg-ember-50 px-3 py-2 text-sm text-ember-800">
+              <p className="my-4 ml-8 flex items-center gap-2 rounded-xl border border-dashed border-gold-200 bg-gold-50 px-3 py-2 text-sm text-gold-900">
                 <Clock3 className="size-4 shrink-0" aria-hidden="true" />
                 <span>
                   <strong className="font-semibold">

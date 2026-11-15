@@ -1,9 +1,9 @@
 {
-  "name": "@aeronova/web",
+  "name": "@velasia/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AeroNova storefront \u2014 Next.js App Router.",
+  "description": "Velasia Airways storefront \u2014 Next.js App Router.",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "node scripts/with-retailing-api.mjs next build",
@@ -13,8 +13,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aeronova/contracts": "workspace:*",
-    "@aeronova/ui": "workspace:*",
+    "@velasia/contracts": "workspace:*",
+    "@velasia/ui": "workspace:*",
     "@hookform/resolvers": "catalog:",
     "axios": "catalog:",
     "lucide-react": "catalog:",
@@ -28,8 +28,8 @@
     "zustand": "catalog:"
   },
   "devDependencies": {
-    "@aeronova/config": "workspace:*",
-    "@aeronova/retailing-api": "workspace:*",
+    "@velasia/config": "workspace:*",
+    "@velasia/retailing-api": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "@testing-library/dom": "catalog:",
     "@testing-library/jest-dom": "catalog:",

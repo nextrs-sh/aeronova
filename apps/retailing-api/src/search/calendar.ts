@@ -3,7 +3,7 @@ import {
   compareIsoDates,
   type FareCalendarDay,
   type FareCalendarQuery,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import type { Inventory } from '../inventory/inventory';
 import { findSellable } from './flight-search';
 

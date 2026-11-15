@@ -1,12 +1,29 @@
+import { airline } from '@velasia/contracts';
 import type { Route } from 'next';
 
+/** Storefront copy and assets, derived from the shared airline identity in `@velasia/contracts`. */
 export const site = {
-  name: 'AeroNova',
-  tagline: 'Your journey. Your way.',
-  description:
-    'Book flights across the Philippines and Southeast Asia with AeroNova — a fictional airline built to explore modern airline retailing.',
-  disclaimer:
-    'AeroNova is a fictional airline created for demonstration. No real flights, bookings, or payments are offered.',
+  name: airline.name,
+  shortName: airline.shortName,
+  tagline: airline.tagline,
+  /** Default document title. */
+  title: `${airline.name} | Beyond Every Horizon`,
+  description: `Explore destinations and discover your next journey with ${airline.name}, a fictional modern airline retailing experience.`,
+  disclaimer: airline.disclaimer,
+  locale: 'en_PH',
+  themeColor: '#101E38',
+  brand: {
+    logo: '/brand/velasia-logo.svg',
+    favicon: '/brand/velasia-favicon.svg',
+    appleTouchIcon: '/brand/velasia-apple-touch-icon.png',
+    icon512: '/brand/velasia-icon-512.png',
+    socialPreview: {
+      url: '/brand/velasia-social-preview.png',
+      width: 1200,
+      height: 630,
+      alt: `${airline.name} — ${airline.tagline}`,
+    },
+  },
 } as const;
 
 export interface NavItem {
@@ -40,7 +57,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
     ],
   },
   {
-    title: 'AeroNova',
+    title: airline.shortName,
     items: [
       { href: '/about', label: 'About this demo' },
       { href: '/credits', label: 'Photo credits' },

@@ -1,5 +1,8 @@
 # Milestone 1 report — Foundation & storefront
 
+> **Historical record.** This milestone was delivered when the project was called AeroNova. The
+> airline is now Velasia Airways; see [MILESTONE-2.5-REBRANDING.md](MILESTONE-2.5-REBRANDING.md).
+
 ## Implemented
 
 **Monorepo & tooling.** pnpm workspaces + Turborepo; exact dependency pins in the pnpm catalog

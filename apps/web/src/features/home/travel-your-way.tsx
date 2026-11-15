@@ -1,5 +1,5 @@
-import { Badge } from '@aeronova/ui/badge';
-import { Container } from '@aeronova/ui/container';
+import { Badge } from '@velasia/ui/badge';
+import { Container } from '@velasia/ui/container';
 import { Check, Sparkles } from 'lucide-react';
 import Image from 'next/image';
 import { brandImage } from '@/lib/image-credits';
@@ -55,7 +55,7 @@ export function TravelYourWay() {
             Travel your way
           </h2>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-navy-100">
-            Every AeroNova offer will start with a seat and grow with you. Pick a fare bundle, then
+            Every Velasia offer will start with a seat and grow with you. Pick a fare bundle, then
             add bags, seats, meals, and flexibility — so a quick business trip and a family holiday
             each get exactly what they need.
           </p>
@@ -66,7 +66,7 @@ export function TravelYourWay() {
                 key={bundle.name}
                 className={
                   bundle.highlighted
-                    ? 'rounded-2xl bg-white p-5 text-ink ring-2 ring-ember-400'
+                    ? 'rounded-2xl bg-white p-5 text-ink ring-2 ring-gold-400'
                     : 'rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/15'
                 }
               >
@@ -86,8 +86,8 @@ export function TravelYourWay() {
                       <Check
                         className={
                           bundle.highlighted
-                            ? 'mt-0.5 size-4 shrink-0 text-ember-600'
-                            : 'mt-0.5 size-4 shrink-0 text-ember-300'
+                            ? 'mt-0.5 size-4 shrink-0 text-gold-700'
+                            : 'mt-0.5 size-4 shrink-0 text-gold-300'
                         }
                         aria-hidden="true"
                       />

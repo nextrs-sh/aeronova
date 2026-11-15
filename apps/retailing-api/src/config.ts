@@ -1,4 +1,4 @@
-import { isIsoDate } from '@aeronova/contracts';
+import { isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 
 const latencySchema = z
@@ -11,10 +11,16 @@ const latencySchema = z
 
 const envSchema = z.object({
   /** Pin "today" (airline time zone) for deterministic demos and tests. */
+  VELASIA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
+  /** Deprecated pre-rebrand name for `VELASIA_TODAY`, still honoured so local setups keep working. */
   AERONOVA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
+  /**
+   * Seed for simulated demand. The default intentionally keeps its pre-rebrand value: changing it
+   * would reshuffle every deterministic seat count and price, which the rebrand must not do.
+   */
   INVENTORY_SEED: z.string().min(1).max(64).default('aeronova'),
   INVENTORY_HORIZON_DAYS: z.coerce.number().int().min(14).max(355).default(120),
-  /** Development/test only: honour `x-aeronova-fault` request headers. */
+  /** Development/test only: honour `x-velasia-fault` request headers. */
   RETAILING_API_FAULTS: z.enum(['enabled', 'disabled']).default('disabled'),
   /** Artificial latency on `/v1/flights*`, e.g. `400` or `200-900` (ms). Off when unset. */
   RETAILING_API_LATENCY_MS: latencySchema.optional(),
@@ -38,7 +44,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== '')),
   );
   return {
-    today: parsed.AERONOVA_TODAY,
+    today: parsed.VELASIA_TODAY ?? parsed.AERONOVA_TODAY,
     inventory: { seed: parsed.INVENTORY_SEED, horizonDays: parsed.INVENTORY_HORIZON_DAYS },
     faults: {
       enabled: parsed.RETAILING_API_FAULTS === 'enabled',

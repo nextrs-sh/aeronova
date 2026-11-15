@@ -3,7 +3,7 @@ import { iataCodeSchema } from './common';
 import { cabinClassSchema } from './search';
 
 /**
- * AeroNova's fictional fleet and route network. Aircraft types and airports
+ * Velasia Airways' fictional fleet and route network. Aircraft types and airports
  * are real; which aircraft flies where, and when, is invented.
  */
 

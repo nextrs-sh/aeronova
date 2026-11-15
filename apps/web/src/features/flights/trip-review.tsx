@@ -5,9 +5,9 @@ import {
   type ItineraryDetail,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
+} from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
 import { AlertTriangle, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { formatMinor } from '@/lib/format';
@@ -107,7 +107,7 @@ export async function TripReview({ search, state, airports }: TripReviewProps) {
         aria-labelledby="total-heading"
         className="h-fit rounded-[1.5rem] border border-line bg-white p-5 shadow-card lg:sticky lg:top-24"
       >
-        <Badge tone="ember">Indicative price</Badge>
+        <Badge tone="gold">Indicative price</Badge>
         <h2 id="total-heading" className="mt-3 text-sm font-semibold text-ink-muted">
           Total for {formatPassengerSummary(search.passengers).toLowerCase()}
         </h2>

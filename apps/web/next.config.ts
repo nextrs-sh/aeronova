@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   // Internal workspace packages ship TypeScript source.
-  transpilePackages: ['@aeronova/contracts', '@aeronova/ui'],
+  transpilePackages: ['@velasia/contracts', '@velasia/ui'],
   images: {
     // All imagery is local (public/images); trim variants to what layouts use.
     deviceSizes: [640, 828, 1080, 1280, 1600, 1920],

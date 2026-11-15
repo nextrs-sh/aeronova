@@ -1,4 +1,4 @@
-import type { Airport } from '@aeronova/contracts';
+import type { Airport } from '@velasia/contracts';
 import { useEffect, useSyncExternalStore } from 'react';
 import { fetchAirports } from './airports-api';
 

@@ -1,6 +1,6 @@
 # Architecture
 
-AeroNova is a pnpm + Turborepo monorepo: a Next.js storefront, an independent Fastify mock of
+Velasia Airways is a pnpm + Turborepo monorepo: a Next.js storefront, an independent Fastify mock of
 the airline's retailing API, and three small shared packages.
 
 ```text
@@ -9,7 +9,7 @@ the airline's retailing API, and three small shared packages.
    │  (streamed)    │                    │   destinations, routes, aircraft)             │
    │                │                    └▶ features/flights/data.ts (live, no-store)    │
    │                │                          └─▶ lib/retailing-api/client.ts ──fetch───┼──▶ apps/retailing-api (Fastify)
-   │ Axios (fetch)  │ Route Handlers  /api/airports, /api/destinations, /api/flights,    │      GET /health
+   │ Axios (fetch)  │ Route Handlers  /api/airports, /api/destinations, /api/flights,    │      GET /health, /v1/airline
    └──GET /api/*───▶│   /api/flights/[id], /api/routes, /api/aircraft                    │      GET /v1/airports, /v1/destinations[/:slug]
                     │   └─▶ lib/retailing-api/client.ts ────────────────────────fetch────┼──▶   GET /v1/flights, /v1/flights/calendar
                     └─────────────────────────────────────────────────────────────────────┘      GET /v1/flights/:id[/availability]
@@ -24,18 +24,28 @@ the airline's retailing API, and three small shared packages.
 | `apps/web`           | Storefront. Feature folders (`features/search`, `features/destinations`, `features/home`, `features/flights`), app shell in `components/layout`.      |
 | `apps/retailing-api` | Fastify service: `routes/` (HTTP + validation), `inventory/` (schedule + seats), `pricing/`, `search/`, `serialization.ts`, `services/`, `faults.ts`. |
 | `packages/contracts` | Zod schemas and types for airports, destinations, network, flights, and errors, plus pure rules: search validation, time zones, URL codecs.           |
-| `packages/ui`        | Tailwind 4 `@theme` tokens (navy, ember, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                |
+| `packages/ui`        | Tailwind 4 `@theme` tokens (navy, gold, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                 |
 | `packages/config`    | Shared `tsconfig` bases and the ESLint flat config.                                                                                                   |
 
 Internal packages ship TypeScript source (Turborepo "just-in-time" packages). Next.js compiles
 them via `transpilePackages`; the API runs through `tsx`. The API has no separate build step —
 container builds arrive with deployment work in M7.
 
+## Brand identity (M2.5)
+
+The airline's identity lives in one place: `airline` in `packages/contracts/src/airline.ts`
+(name, short name, tagline, country, currency, display flight-number prefix, disclaimer). The
+storefront derives `lib/site.ts` from it, the API serves it at `GET /v1/airline`, and validation
+messages read the short name from it. Flight numbers have two forms: stable internal identifiers
+(`NV501`, `NV501-20261215`) used in URLs, fixtures, and tests, and the customer-facing display
+(`VEL 501`) produced only by `formatFlightNumber`. Logo geometry is generated together with the
+SVG files by `scripts/brand/generate-brand-assets.mjs`; see `docs/BRAND-GUIDELINES.md`.
+
 ## Flight inventory (M2)
 
 All inventory lives in the retailing API. Nothing is persisted; everything is a deterministic
 function of three inputs: the rotation fixtures, a **seed**, and a **reference date** ("today",
-from the system clock or `AERONOVA_TODAY`).
+from the system clock or `VELASIA_TODAY`).
 
 | Layer              | What it is                                                                                                                                                                    | Where                                 |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
@@ -130,8 +140,8 @@ with an explicit `currency`, and every price is typed `kind: 'indicative'`.
   from parsed values. They map errors to the envelope: 400 forwards the API's validation issues,
   then 404, 503 `UPSTREAM_UNAVAILABLE`, or 504 `UPSTREAM_TIMEOUT`. Hostnames and upstream status
   codes never leak. Live responses are `private, no-store`; network data is public-cacheable.
-- **Fault injection** is test-only and off by default. The API honours an `x-aeronova-fault`
-  header only with `RETAILING_API_FAULTS=enabled`. The storefront forwards an `aeronova-fault`
+- **Fault injection** is test-only and off by default. The API honours an `x-velasia-fault`
+  header only with `RETAILING_API_FAULTS=enabled`. The storefront forwards an `velasia-fault`
   cookie as that header only with `RETAILING_API_FORWARD_FAULTS=enabled`, and E2E enables both.
 
 ## Server and client boundaries in `/flights`

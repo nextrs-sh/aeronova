@@ -1,63 +1,74 @@
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
+import {
+  LOCKUP,
+  SYMBOL_BOX,
+  SYMBOL_LEAD,
+  SYMBOL_TRAIL,
+  WORDMARK_NAME,
+  WORDMARK_SUB,
+} from './logo-geometry';
+
+/*
+ * The Velasia Airways identity, inlined so it is crisp at any size and needs no extra request.
+ * Geometry is generated with the files in /public/brand — see docs/BRAND-GUIDELINES.md.
+ * Both components are decorative: wrap them in a labelled link or heading.
+ */
+
+type Tone = 'default' | 'inverse';
+
+const COLORS: Record<Tone, { lead: string; trail: string; name: string; sub: string }> = {
+  // On light surfaces: navy with the deeper gold blade.
+  default: { lead: '#101E38', trail: '#C48A3C', name: '#101E38', sub: '#172B49' },
+  // On navy or dark imagery: white with Warm Gold.
+  inverse: { lead: '#FFFFFF', trail: '#EFB86A', name: '#FFFFFF', sub: '#EFB86A' },
+};
 
 interface LogoMarkProps {
   className?: string;
-  /** Colour of the gap stroke where the flight path crosses the star. */
-  knockout?: string;
-  starColor?: string;
+  tone?: Tone;
 }
 
-/** The AeroNova mark: a four-point nova crossed by an orbiting flight path. */
-export function LogoMark({
-  className,
-  knockout = '#ffffff',
-  starColor = 'currentColor',
-}: LogoMarkProps) {
+/** The Velasia symbol: two swept wing blades forming a V on a shared horizon line. */
+export function LogoMark({ className, tone = 'default' }: LogoMarkProps) {
+  const colors = COLORS[tone];
+  const { x, y, width, height } = SYMBOL_BOX;
   return (
-    <svg viewBox="0 0 32 32" aria-hidden="true" className={cn('size-8', className)}>
-      <path
-        d="M16 2.5c.9 7.6 4.9 11.6 13.5 13.5-8.6 1.9-12.6 5.9-13.5 13.5-.9-7.6-4.9-11.6-13.5-13.5C11.1 14.1 15.1 10.1 16 2.5Z"
-        fill={starColor}
-      />
-      <path
-        d="M3.5 21.5c5.6 6.3 18.6 5.8 25-8.5"
-        fill="none"
-        stroke={knockout}
-        strokeWidth="4.5"
-        strokeLinecap="round"
-      />
-      <path
-        d="M3.5 21.5c5.6 6.3 18.6 5.8 25-8.5"
-        fill="none"
-        stroke="#ee6a1f"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-      />
+    <svg
+      viewBox={`${x} ${y} ${width} ${height}`}
+      aria-hidden="true"
+      focusable="false"
+      className={cn('h-8 w-auto', className)}
+    >
+      <path fill={colors.lead} d={SYMBOL_LEAD} />
+      <path fill={colors.trail} d={SYMBOL_TRAIL} />
     </svg>
   );
 }
 
 interface LogoProps {
   className?: string;
-  tone?: 'default' | 'inverse';
+  tone?: Tone;
 }
 
+/** The horizontal lockup: symbol plus the VELASIA / AIRWAYS wordmark. */
 export function Logo({ className, tone = 'default' }: LogoProps) {
-  const inverse = tone === 'inverse';
+  const colors = COLORS[tone];
   return (
-    <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <LogoMark
-        className={inverse ? 'text-white' : 'text-navy-900'}
-        knockout={inverse ? '#060e21' : '#ffffff'}
-      />
-      <span
-        className={cn(
-          'font-display text-[1.375rem] leading-none font-bold tracking-[-0.03em]',
-          inverse ? 'text-white' : 'text-navy-900',
-        )}
-      >
-        Aero<span className="font-extrabold">Nova</span>
-      </span>
-    </span>
+    <svg
+      viewBox={`0 0 ${LOCKUP.width} ${LOCKUP.height}`}
+      aria-hidden="true"
+      focusable="false"
+      data-brand-logo={tone}
+      className={cn('h-9 w-auto', className)}
+    >
+      <g transform={LOCKUP.symbolTransform}>
+        <path fill={colors.lead} d={SYMBOL_LEAD} />
+        <path fill={colors.trail} d={SYMBOL_TRAIL} />
+      </g>
+      <g transform={LOCKUP.wordmarkTransform}>
+        <path fill={colors.name} transform={WORDMARK_NAME.transform} d={WORDMARK_NAME.d} />
+        <path fill={colors.sub} transform={WORDMARK_SUB.transform} d={WORDMARK_SUB.d} />
+      </g>
+    </svg>
   );
 }

@@ -8,10 +8,10 @@ import {
   passengerStepLimits,
   type PassengerCounts,
   type PassengerType,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { cn } from '@aeronova/ui/cn';
-import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@aeronova/ui/popover';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { cn } from '@velasia/ui/cn';
+import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '@velasia/ui/popover';
 import { ChevronDown, Minus, Plus, Users } from 'lucide-react';
 import { useId, type Ref } from 'react';
 import { FieldError } from './field-shell';

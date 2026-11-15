@@ -9,8 +9,8 @@ import {
   type DepartureWindow,
   type ResultsFilters,
   type SearchFacets,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { useEffect, useId, useOptimistic, useRef, useState } from 'react';
 import { formatMoney } from '@/lib/format';
 import { useResultsNavigation } from './results-navigation';
@@ -235,7 +235,7 @@ function PriceFilter({
         value={draft}
         aria-valuetext={`${label} per adult`}
         onChange={(event) => setDraft(Number(event.target.value))}
-        className="mt-3 w-full accent-ember-600"
+        className="mt-3 w-full accent-gold-600"
       />
       <div className="mt-1 flex justify-between text-xs text-ink-subtle" aria-hidden="true">
         <span>{formatMoney({ amount: min, currency })}</span>

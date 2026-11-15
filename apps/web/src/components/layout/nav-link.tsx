@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';

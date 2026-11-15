@@ -5,7 +5,7 @@ import {
   formatTravelDate,
   type Airport,
   type FlightSearch,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { ArrowLeftRight, ArrowRight, Armchair, CalendarDays, Users } from 'lucide-react';
 import type { ReactNode } from 'react';
 
@@ -62,7 +62,7 @@ export function SearchSummary({ search, airportsByCode, action }: SearchSummaryP
         <p className="grid w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 sm:flex sm:w-auto sm:gap-6">
           <Place code={search.origin} airport={origin} align="start" />
           <RouteIcon
-            className="mt-1.5 size-7 shrink-0 text-ember-300"
+            className="mt-1.5 size-7 shrink-0 text-gold-300"
             aria-label={roundTrip ? 'round trip to' : 'to'}
           />
           <Place code={search.destination} airport={destination} align="end" />

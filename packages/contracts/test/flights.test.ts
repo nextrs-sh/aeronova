@@ -142,7 +142,8 @@ describe('itinerary and calendar queries', () => {
 
 describe('display helpers', () => {
   it('formats flight numbers and departure windows', () => {
-    expect(formatFlightNumber('NV501')).toBe('NV 501');
+    expect(formatFlightNumber('NV501')).toBe('VEL 501');
+    expect(formatFlightNumber('NV9')).toBe('VEL 9');
     expect(departureWindowFor('05:59')).toBe('early-morning');
     expect(departureWindowFor('06:00')).toBe('morning');
     expect(departureWindowFor('12:00')).toBe('afternoon');

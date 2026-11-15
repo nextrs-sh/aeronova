@@ -1,10 +1,10 @@
 // @vitest-environment node
-import { buildApp } from '@aeronova/retailing-api/app';
+import { buildApp } from '@velasia/retailing-api/app';
 import {
   airportListResponseSchema,
   apiErrorSchema,
   destinationListResponseSchema,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GET as getAirports } from '@/app/api/airports/route';

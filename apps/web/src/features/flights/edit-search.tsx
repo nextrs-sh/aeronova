@@ -1,7 +1,7 @@
 'use client';
 
-import { Button } from '@aeronova/ui/button';
-import { Sheet, SheetContent } from '@aeronova/ui/sheet';
+import { Button } from '@velasia/ui/button';
+import { Sheet, SheetContent } from '@velasia/ui/sheet';
 import { PencilLine, X } from 'lucide-react';
 import { useEffect, useId, useState, useSyncExternalStore, type ReactNode } from 'react';
 

@@ -10,7 +10,7 @@ import {
   type ItineraryResponse,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { cache } from 'react';
 import {
   RetailingApiError,

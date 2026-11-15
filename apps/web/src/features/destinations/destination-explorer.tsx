@@ -6,9 +6,9 @@ import {
   regionSchema,
   type Destination,
   type Region,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { cn } from '@velasia/ui/cn';
 import { Search, X } from 'lucide-react';
 import { useDeferredValue, useMemo, useState } from 'react';
 import { DestinationCard } from './destination-card';

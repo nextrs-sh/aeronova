@@ -155,7 +155,7 @@ importers:
 
   apps/retailing-api:
     dependencies:
-      '@aeronova/contracts':
+      '@velasia/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       fastify:
@@ -168,12 +168,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
-      '@aeronova/config':
-        specifier: workspace:*
-        version: link:../../packages/config
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.5
+      '@velasia/config':
+        specifier: workspace:*
+        version: link:../../packages/config
       eslint:
         specifier: 'catalog:'
         version: 9.39.5(jiti@2.7.0)
@@ -189,15 +189,15 @@ importers:
 
   apps/web:
     dependencies:
-      '@aeronova/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@aeronova/ui':
-        specifier: workspace:*
-        version: link:../../packages/ui
       '@hookform/resolvers':
         specifier: 'catalog:'
         version: 7.0.6(ajv-formats@3.0.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.92.0(@types/react@19.3.0)(react@19.3.1))(zod@4.6.7)
+      '@velasia/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@velasia/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       axios:
         specifier: 'catalog:'
         version: 1.21.1
@@ -229,12 +229,6 @@ importers:
         specifier: 'catalog:'
         version: 5.1.0(@types/react@19.3.0)(react@19.3.1)
     devDependencies:
-      '@aeronova/config':
-        specifier: workspace:*
-        version: link:../../packages/config
-      '@aeronova/retailing-api':
-        specifier: workspace:*
-        version: link:../retailing-api
       '@tailwindcss/postcss':
         specifier: 'catalog:'
         version: 4.3.5
@@ -259,6 +253,12 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      '@velasia/config':
+        specifier: workspace:*
+        version: link:../../packages/config
+      '@velasia/retailing-api':
+        specifier: workspace:*
+        version: link:../retailing-api
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.3.0(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
@@ -305,12 +305,12 @@ importers:
         specifier: 'catalog:'
         version: 4.6.7
     devDependencies:
-      '@aeronova/config':
-        specifier: workspace:*
-        version: link:../config
       '@types/node':
         specifier: 'catalog:'
         version: 22.20.5
+      '@velasia/config':
+        specifier: workspace:*
+        version: link:../config
       eslint:
         specifier: 'catalog:'
         version: 9.39.5(jiti@2.7.0)
@@ -342,15 +342,15 @@ importers:
         specifier: 'catalog:'
         version: 3.7.0
     devDependencies:
-      '@aeronova/config':
-        specifier: workspace:*
-        version: link:../config
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      '@velasia/config':
+        specifier: workspace:*
+        version: link:../config
       eslint:
         specifier: 'catalog:'
         version: 9.39.5(jiti@2.7.0)

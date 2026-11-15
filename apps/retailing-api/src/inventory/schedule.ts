@@ -5,7 +5,7 @@ import {
   toZonedDateTime,
   zonedDateTimeToUtc,
   type DistanceBand,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { AIRPORT_LOCATIONS, AIRPORTS_BY_CODE } from '../fixtures/airports';
 import type { Rotation, Weekday } from '../fixtures/network';

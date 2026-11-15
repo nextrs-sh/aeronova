@@ -33,7 +33,7 @@ if (!(await isHealthy())) {
     process.exit(1);
   }
   console.warn(`[with-retailing-api] starting a local retailing API on ${apiUrl}`);
-  api = spawn('pnpm', ['--filter', '@aeronova/retailing-api', 'start'], {
+  api = spawn('pnpm', ['--filter', '@velasia/retailing-api', 'start'], {
     stdio: 'inherit',
     env: {
       ...process.env,

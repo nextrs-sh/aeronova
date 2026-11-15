@@ -30,14 +30,14 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: 'pnpm --filter @aeronova/retailing-api start',
+      command: 'pnpm --filter @velasia/retailing-api start',
       url: `http://127.0.0.1:${API_PORT}/health`,
       env: {
         RETAILING_API_PORT: String(API_PORT),
         RETAILING_API_HOST: '127.0.0.1',
         LOG_LEVEL: 'warn',
-        AERONOVA_TODAY: E2E_TODAY,
-        // Test-only: lets specs simulate failures with the `aeronova-fault` cookie.
+        VELASIA_TODAY: E2E_TODAY,
+        // Test-only: lets specs simulate failures with the `velasia-fault` cookie.
         RETAILING_API_FAULTS: 'enabled',
         RETAILING_API_FAULT_TIMEOUT_MS: '10000',
       },
@@ -45,11 +45,11 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `pnpm --filter @aeronova/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
+      command: `pnpm --filter @velasia/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
       url: baseURL,
       env: {
         RETAILING_API_URL: `http://127.0.0.1:${API_PORT}`,
-        AERONOVA_TODAY: E2E_TODAY,
+        VELASIA_TODAY: E2E_TODAY,
         RETAILING_API_FORWARD_FAULTS: 'enabled',
         RETAILING_API_TIMEOUT_MS: '2500',
       },

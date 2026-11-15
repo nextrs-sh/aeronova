@@ -1,9 +1,9 @@
 {
-  "name": "@aeronova/retailing-api",
+  "name": "@velasia/retailing-api",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Independent Fastify mock of AeroNova's airline retailing API.",
+  "description": "Independent Fastify mock of Velasia Airways' airline retailing API.",
   "exports": {
     "./app": "./src/app.ts"
   },
@@ -15,13 +15,13 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@aeronova/contracts": "workspace:*",
+    "@velasia/contracts": "workspace:*",
     "fastify": "catalog:",
     "tsx": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@aeronova/config": "workspace:*",
+    "@velasia/config": "workspace:*",
     "@types/node": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",

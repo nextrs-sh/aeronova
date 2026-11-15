@@ -7,7 +7,7 @@ import {
   type CabinClass,
   type FlightStatus,
   type NetworkRoute,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { AIRPORTS_BY_CODE } from '../fixtures/airports';
 import { ROTATIONS } from '../fixtures/network';

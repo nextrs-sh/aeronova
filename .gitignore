@@ -148,7 +148,7 @@ vite.config.ts.timestamp-*
 # Turbo Repo
 .turbo
 
-# --- AeroNova additions ---
+# --- Velasia Airways additions ---
 .next/
 out/
 .turbo/

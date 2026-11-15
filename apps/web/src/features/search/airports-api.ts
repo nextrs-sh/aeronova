@@ -1,4 +1,4 @@
-import { airportListResponseSchema, type Airport } from '@aeronova/contracts';
+import { airportListResponseSchema, type Airport } from '@velasia/contracts';
 import { httpClient } from '@/lib/http-client';
 
 /** Fetch the airport catalogue from the storefront's GET Route Handler. */

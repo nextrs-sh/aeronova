@@ -1,54 +1,61 @@
 /*
- * AeroNova design tokens for Tailwind CSS 4.
- * Import after `tailwindcss` in the app stylesheet.
+ * Velasia Airways design tokens for Tailwind CSS 4.
+ * Import after `tailwindcss` in the app stylesheet. See docs/BRAND-GUIDELINES.md.
  */
 @theme {
   /* Typography — font variables are provided by next/font in the app layout. */
   --font-sans: var(--font-text), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: var(--font-heading), var(--font-text), ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand: deep navy */
-  --color-navy-50: #eef3fb;
-  --color-navy-100: #dae4f4;
-  --color-navy-200: #b6c8e7;
-  --color-navy-300: #87a1d0;
-  --color-navy-400: #5676b0;
-  --color-navy-500: #34548f;
-  --color-navy-600: #243f74;
-  --color-navy-700: #1a315d;
-  --color-navy-800: #122447;
-  --color-navy-900: #0b1834;
-  --color-navy-950: #060e21;
+  /* Brand navy. 950 = Midnight Navy, 900 = Deep Navy. Premium surfaces and primary ink. */
+  --color-navy-50: #f1f4f9;
+  --color-navy-100: #e1e7f0;
+  --color-navy-200: #c3cedf;
+  --color-navy-300: #9aabc6;
+  --color-navy-400: #6e83a6;
+  --color-navy-500: #4b6188;
+  --color-navy-600: #33496f;
+  --color-navy-700: #243a5e;
+  --color-navy-800: #1c3254;
+  --color-navy-900: #172b49;
+  --color-navy-950: #101e38;
 
-  /* Accent: restrained ember orange. 600+ meets AA for text on white and surface. */
-  --color-ember-50: #fff5ee;
-  --color-ember-100: #ffe6d5;
-  --color-ember-200: #ffc8a3;
-  --color-ember-300: #fea56b;
-  --color-ember-400: #f9843b;
-  --color-ember-500: #ee6a1f;
-  --color-ember-600: #b5430b;
-  --color-ember-700: #963709;
-  --color-ember-800: #78300d;
+  /*
+   * Brand gold, for selective emphasis. 400 = Warm Gold.
+   * 300–400: text and accents on navy (≥ 7.9:1 on navy-900/950).
+   * 600: focus rings and non-text marks (≥ 3:1 on both white and navy-950).
+   * 700–800: gold text on light surfaces (≥ 5.5:1 on white and gold-50).
+   * Never set gold-200–500 text on a light surface.
+   */
+  --color-gold-50: #fdf8ef;
+  --color-gold-100: #faedd5;
+  --color-gold-200: #f5d9a8;
+  --color-gold-300: #f2c988;
+  --color-gold-400: #efb86a;
+  --color-gold-500: #d99a43;
+  --color-gold-600: #b47a2a;
+  --color-gold-700: #8a5a1a;
+  --color-gold-800: #6e4614;
+  --color-gold-900: #553611;
 
   /* Semantic surfaces and text */
   --color-canvas: #ffffff;
-  --color-surface: #f5f7fb;
-  --color-surface-strong: #eaeff6;
-  --color-ink: #0b1834;
-  --color-ink-muted: #4a5875;
-  --color-ink-subtle: #5d6a84;
-  --color-line: #e1e7ef;
-  --color-line-strong: #c9d3e0;
-  --color-focus: #b5430b;
+  --color-surface: #f8fafc; /* Soft White */
+  --color-surface-strong: #eef2f7;
+  --color-ink: #101e38;
+  --color-ink-muted: #475569;
+  --color-ink-subtle: #64748b; /* Cool Gray — 4.76:1 on white, 4.55:1 on surface */
+  --color-line: #e2e8f0;
+  --color-line-strong: #cbd5e1;
+  --color-focus: #b47a2a;
   --color-danger: #b42318;
   --color-danger-surface: #fef3f2;
   --color-success: #067647;
 
   /* Shape and depth */
   --radius-card: 1.25rem;
-  --shadow-card: 0 1px 2px rgb(11 24 52 / 0.04), 0 10px 30px -12px rgb(11 24 52 / 0.14);
-  --shadow-float: 0 30px 60px -24px rgb(6 14 33 / 0.38), 0 2px 6px rgb(6 14 33 / 0.06);
+  --shadow-card: 0 1px 2px rgb(16 30 56 / 0.04), 0 10px 30px -12px rgb(16 30 56 / 0.14);
+  --shadow-float: 0 30px 60px -24px rgb(16 30 56 / 0.4), 0 2px 6px rgb(16 30 56 / 0.06);
 
   /* Motion */
   --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);

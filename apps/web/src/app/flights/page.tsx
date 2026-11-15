@@ -8,8 +8,8 @@ import {
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Container } from '@aeronova/ui/container';
+} from '@velasia/contracts';
+import { Container } from '@velasia/ui/container';
 import { CircleAlert, Info } from 'lucide-react';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
@@ -30,13 +30,17 @@ import {
 import { TripReview } from '@/features/flights/trip-review';
 import { SearchWidget } from '@/features/search/search-widget';
 import { getAirports, loadSection } from '@/lib/content';
+import { pageMetadata } from '@/lib/metadata';
 import { getToday } from '@/lib/today';
 import { FlightsLoading } from './flights-loading';
 
 export const metadata: Metadata = {
-  title: 'Book flights',
-  description: 'Search AeroNova flights across the Philippines, Southeast Asia, and East Asia.',
-  alternates: { canonical: '/flights' },
+  ...pageMetadata({
+    title: 'Book flights',
+    description:
+      'Search Velasia Airways flights across the Philippines, Southeast Asia, and East Asia.',
+    path: '/flights',
+  }),
   // Search URLs are infinite and personal; keep them out of the index.
   robots: { index: false, follow: true },
 };
@@ -59,7 +63,7 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
     return (
       <Shell
         title="Where would you like to go?"
-        description="Search AeroNova’s network across the Philippines and Asia."
+        description="Search Velasia’s network across the Philippines and Asia."
       >
         <SearchPanel />
       </Shell>
@@ -109,7 +113,7 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
       <div className="bg-navy-950 text-white">
         <Container className="flex flex-wrap pt-8 pb-8 sm:pt-10 lg:pb-10">
           <div className="w-full">
-            <p className="text-xs font-bold tracking-[0.16em] text-ember-300 uppercase">
+            <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
               Book flights
             </p>
             <h1 className="sr-only">
@@ -228,7 +232,7 @@ function Shell({
     <>
       <div className="bg-navy-950 text-white">
         <Container className="pt-12 pb-28 sm:pt-14 lg:pb-32">
-          <p className="text-xs font-bold tracking-[0.16em] text-ember-300 uppercase">
+          <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
             Book flights
           </p>
           <h1 className="mt-2 text-4xl font-bold sm:text-5xl">{title}</h1>

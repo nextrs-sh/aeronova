@@ -3,6 +3,7 @@ import { createClock } from './clock';
 import type { ApiConfig } from './config';
 import { registerFaultInjection } from './faults';
 import { sendError } from './http';
+import { airlineRoutes } from './routes/airline';
 import { airportRoutes } from './routes/airports';
 import { destinationRoutes } from './routes/destinations';
 import { flightRoutes } from './routes/flights';
@@ -19,6 +20,7 @@ export interface BuildAppOptions extends FastifyServerOptions {
 }
 
 const DEFAULT_CONFIG: ApiConfig = {
+  // Pre-rebrand seed kept on purpose: it keeps deterministic inventory identical (see config.ts).
   inventory: { seed: 'aeronova', horizonDays: 120 },
   faults: { enabled: false, timeoutMs: 15_000 },
 };
@@ -40,6 +42,7 @@ export function buildApp({ config = {}, ...options }: BuildAppOptions = {}): Fas
 
   registerFaultInjection(app, settings.faults);
   app.register(healthRoutes, { version: API_VERSION });
+  app.register(airlineRoutes);
   app.register(airportRoutes, { catalog });
   app.register(destinationRoutes, { catalog });
   app.register(flightRoutes, { flights });

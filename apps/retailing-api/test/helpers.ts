@@ -1,4 +1,4 @@
-import type { FlightSearchQuery } from '@aeronova/contracts';
+import type { FlightSearchQuery } from '@velasia/contracts';
 import { createClock } from '../src/clock';
 import { Inventory } from '../src/inventory/inventory';
 

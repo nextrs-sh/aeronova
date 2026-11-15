@@ -1,14 +1,15 @@
-import { Container } from '@aeronova/ui/container';
+import { Container } from '@velasia/ui/container';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { PageIntro } from '@/components/page-intro';
+import { pageMetadata } from '@/lib/metadata';
 import { imageCredits } from '@/lib/image-credits';
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: 'Photo credits',
-  description: 'Attribution for the photography used on the AeroNova demo site.',
-  alternates: { canonical: '/credits' },
-};
+  description: 'Attribution for the photography used on the Velasia Airways demo site.',
+  path: '/credits',
+});
 
 export default function CreditsPage() {
   return (

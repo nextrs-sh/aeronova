@@ -27,8 +27,8 @@ export async function simulateApiFault(
   fault: 'unavailable' | 'timeout' | 'empty' | 'malformed' | null,
 ) {
   const context = page.context();
-  if (fault === null) await context.clearCookies({ name: 'aeronova-fault' });
-  else await context.addCookies([{ name: 'aeronova-fault', value: fault, url: BASE_URL }]);
+  if (fault === null) await context.clearCookies({ name: 'velasia-fault' });
+  else await context.addCookies([{ name: 'velasia-fault', value: fault, url: BASE_URL }]);
 }
 
 /** Collect uncaught errors, console errors (incl. hydration), and failed requests. */

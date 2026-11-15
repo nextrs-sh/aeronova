@@ -1,4 +1,4 @@
-import { airportSchema, type Airport } from '@aeronova/contracts';
+import { airportSchema, type Airport } from '@velasia/contracts';
 import { z } from 'zod';
 
 /** Airport reference point (degrees). Used for great-circle distances and block times. */
@@ -8,7 +8,7 @@ export interface AirportLocation {
 }
 
 /**
- * Airports in AeroNova's fictional network. Codes, names, and locations are
+ * Airports in Velasia Airways' fictional network. Codes, names, and locations are
  * real; the network itself is not.
  */
 const airports: Airport[] = [

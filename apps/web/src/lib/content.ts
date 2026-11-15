@@ -1,5 +1,5 @@
 import 'server-only';
-import type { Aircraft, Airport, Destination, NetworkRoute } from '@aeronova/contracts';
+import type { Aircraft, Airport, Destination, NetworkRoute } from '@velasia/contracts';
 import { cacheLife, cacheTag } from 'next/cache';
 import { RetailingApiError, retailingApi } from './retailing-api/client';
 

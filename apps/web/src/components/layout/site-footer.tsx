@@ -11,16 +11,26 @@ async function CopyrightYear() {
 
 export function SiteFooter() {
   return (
-    <footer className="bg-navy-950 text-navy-100">
+    <footer className="relative bg-navy-950 text-navy-100">
+      {/* A thin gold horizon: the brand's single accent line. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-400/70 to-transparent"
+      />
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.4fr_2fr] lg:px-8">
         <div className="max-w-sm">
-          <Link href="/" className="-m-1 inline-block rounded-lg p-1" aria-label="AeroNova home">
-            <Logo tone="inverse" />
+          <Link
+            href="/"
+            className="-m-1 inline-block rounded-lg p-1"
+            aria-label={`${site.name} home`}
+          >
+            <Logo tone="inverse" className="h-10" />
           </Link>
           <p className="mt-5 font-display text-xl font-semibold text-white">{site.tagline}</p>
           <p className="mt-3 text-sm leading-relaxed text-navy-200">
-            Flying the Philippines and Southeast Asia from our hubs in Manila and Cebu — in a
-            fictional network built to explore modern airline retailing.
+            A premium full-service airline for the Philippines, Southeast Asia, and beyond, flying
+            from our hubs in Manila and Cebu — in a fictional network built to explore modern
+            airline retailing.
           </p>
         </div>
 
@@ -50,7 +60,7 @@ export function SiteFooter() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-6 text-xs text-navy-300 sm:px-6 md:flex-row md:items-center md:justify-between lg:px-8">
           <p>
-            © <CopyrightYear /> AeroNova. A fictional airline. All fares shown are illustrative.
+            © <CopyrightYear /> {site.name}. A fictional airline. All fares shown are illustrative.
           </p>
           <p>{site.disclaimer}</p>
         </div>

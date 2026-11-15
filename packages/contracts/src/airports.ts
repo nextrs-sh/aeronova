@@ -9,7 +9,7 @@ export const airportSchema = z.object({
   countryCode: z.string().regex(/^[A-Z]{2}$/),
   /** IANA time zone, e.g. `Asia/Manila`. */
   timeZone: z.string().min(1),
-  /** AeroNova hub airports are listed first in suggestions. */
+  /** Velasia hub airports are listed first in suggestions. */
   hub: z.boolean(),
   /** Destination guide for this airport's city, when one exists. */
   destinationSlug: slugSchema.optional(),

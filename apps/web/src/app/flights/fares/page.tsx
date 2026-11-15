@@ -5,10 +5,10 @@ import {
   parseResultsParams,
   type FlightSearch,
   type ResultsState,
-} from '@aeronova/contracts';
-import { Badge } from '@aeronova/ui/badge';
-import { Button } from '@aeronova/ui/button';
-import { Container } from '@aeronova/ui/container';
+} from '@velasia/contracts';
+import { Badge } from '@velasia/ui/badge';
+import { Button } from '@velasia/ui/button';
+import { Container } from '@velasia/ui/container';
 import { ArrowLeft, Check, Layers3 } from 'lucide-react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ import { getToday } from '@/lib/today';
 
 export const metadata: Metadata = {
   title: 'Fare options (preview)',
-  description: 'A preview of AeroNova fare options for your selected flights.',
+  description: 'A preview of Velasia Airways fare options for your selected flights.',
   robots: { index: false, follow: false },
 };
 
@@ -93,7 +93,7 @@ async function FaresPreview({ searchParams }: Pick<PageProps<'/flights/fares'>, 
           <Badge tone="inverse">Preview · coming in the next release</Badge>
           <h1 className="mt-4 text-4xl font-bold sm:text-5xl">Choose your fare</h1>
           <p className="mt-3 max-w-2xl text-lg text-navy-100">
-            Fare options with bags, seats, and flexibility arrive in the next release of AeroNova.
+            Fare options with bags, seats, and flexibility arrive in the next release of Velasia.
             Nothing has been reserved and no offer has been created.
           </p>
         </Container>

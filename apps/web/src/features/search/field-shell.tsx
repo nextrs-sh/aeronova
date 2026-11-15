@@ -1,4 +1,4 @@
-import { cn } from '@aeronova/ui/cn';
+import { cn } from '@velasia/ui/cn';
 import { CircleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 

@@ -5,8 +5,8 @@ import {
   matchAirports,
   normalizeSearchText,
   type Airport,
-} from '@aeronova/contracts';
-import { cn } from '@aeronova/ui/cn';
+} from '@velasia/contracts';
+import { cn } from '@velasia/ui/cn';
 import { Loader2, MapPin, RotateCw } from 'lucide-react';
 import { useId, useMemo, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import type { AirportsStatus } from './use-airports';
@@ -244,7 +244,7 @@ export function AirportCombobox({
               <span
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-full',
-                  airport.hub ? 'bg-ember-50 text-ember-700' : 'bg-navy-50 text-navy-600',
+                  airport.hub ? 'bg-gold-50 text-gold-800' : 'bg-navy-50 text-navy-600',
                 )}
                 aria-hidden="true"
               >

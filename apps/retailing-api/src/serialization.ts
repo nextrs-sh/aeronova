@@ -6,7 +6,7 @@ import {
   type FlightSegment,
   type Itinerary,
   type PassengerCounts,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { AIRCRAFT_BY_CODE } from './fixtures/aircraft';
 import { AIRPORTS_BY_CODE } from './fixtures/airports';
 import { seatsAvailable, type FlightInstance } from './inventory/inventory';

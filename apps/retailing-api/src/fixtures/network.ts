@@ -1,5 +1,5 @@
 /**
- * AeroNova's fictional schedule, authored as aircraft rotations: an outbound
+ * Velasia Airways' fictional schedule, authored as aircraft rotations: an outbound
  * flight from a Philippine base and its return, operated by the same aircraft
  * after a turnaround. The return flight (number + 1) is derived from the
  * outbound's arrival, so the two can never disagree.
@@ -91,5 +91,5 @@ export const ROTATIONS: readonly Rotation[] = Object.freeze([
   r(801, 'CRK', 'SIN', '13:20', 'B38M', [1, 3, 5]),
 ]);
 
-/** Airports where AeroNova sells one-stop connections. */
+/** Airports where Velasia sells one-stop connections. */
 export const CONNECTION_HUBS: readonly string[] = Object.freeze(['MNL', 'CEB']);

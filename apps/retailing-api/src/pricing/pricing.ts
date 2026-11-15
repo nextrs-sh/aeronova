@@ -7,7 +7,7 @@ import {
   type PassengerCounts,
   type PriceBreakdownItem,
   type PricedPassengerType,
-} from '@aeronova/contracts';
+} from '@velasia/contracts';
 import { cabinInventory, isPeakSeason, type FlightInstance } from '../inventory/inventory';
 
 /*

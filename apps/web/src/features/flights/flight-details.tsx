@@ -2,17 +2,18 @@
 
 import {
   CABIN_LABELS,
-  flightDetailResponseSchema,
-  formatTravelDate,
-  itineraryQueryToParams,
   type FlightDetailResponse,
+  flightDetailResponseSchema,
+  formatFlightNumber,
+  formatTravelDate,
   type Itinerary,
   type ItineraryAvailability,
+  itineraryQueryToParams,
   type PassengerCounts,
-} from '@aeronova/contracts';
-import { Button } from '@aeronova/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@aeronova/ui/sheet';
-import { Skeleton } from '@aeronova/ui/skeleton';
+} from '@velasia/contracts';
+import { Button } from '@velasia/ui/button';
+import { Sheet, SheetContent, SheetTrigger } from '@velasia/ui/sheet';
+import { Skeleton } from '@velasia/ui/skeleton';
 import { AlertTriangle, ArrowRight, Info, RotateCw } from 'lucide-react';
 import type { Route } from 'next';
 import Link from 'next/link';
@@ -226,7 +227,7 @@ function CabinAvailability({
         <div key={segment.id}>
           {state.detail.segments.length > 1 ? (
             <p className="mb-2 text-sm font-medium text-ink-muted">
-              {segment.flightNumber.replace(/^NV/, 'NV ')} · {segment.aircraft.name}
+              {formatFlightNumber(segment.flightNumber)} · {segment.aircraft.name}
             </p>
           ) : (
             <p className="mb-2 text-sm font-medium text-ink-muted">{segment.aircraft.name}</p>
