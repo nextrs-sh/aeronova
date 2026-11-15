@@ -1,5 +1,5 @@
 import 'server-only';
-import type { Airport, Destination } from '@aeronova/contracts';
+import type { Aircraft, Airport, Destination, NetworkRoute } from '@aeronova/contracts';
 import { cacheLife, cacheTag } from 'next/cache';
 import { RetailingApiError, retailingApi } from './retailing-api/client';
 
@@ -30,6 +30,21 @@ export async function getAirports(): Promise<Airport[]> {
   cacheLife('hours');
   cacheTag('airports');
   return retailingApi.listAirports();
+}
+
+/** The route network changes only with schedule releases: cache like other content. */
+export async function getRoutes(): Promise<NetworkRoute[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('network');
+  return retailingApi.listRoutes();
+}
+
+export async function getAircraft(): Promise<Aircraft[]> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('network');
+  return retailingApi.listAircraft();
 }
 
 export type ContentResult<T> = { ok: true; data: T } | { ok: false };
