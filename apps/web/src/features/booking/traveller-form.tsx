@@ -1,6 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
+import type { SavedTraveller } from '@velasia/contracts';
 import {
   COUNTRIES,
   SPECIAL_ASSISTANCE,
@@ -33,6 +34,12 @@ interface TravellerFormProps {
   rules: TravellerRulesContext;
   defaultValues: TravellersFormInput;
   version: number;
+  /**
+   * Milestone 6: the signed-in account's saved travellers. Choosing one fills that traveller's
+   * fields in this form only; nothing is sent until the traveller saves, and the API validates
+   * the details against the trip like any typed ones.
+   */
+  savedTravellers?: SavedTraveller[];
 }
 
 const inputClass =
@@ -103,7 +110,12 @@ function Select({
   );
 }
 
-export function TravellerForm({ rules, defaultValues, version }: TravellerFormProps) {
+export function TravellerForm({
+  rules,
+  defaultValues,
+  version,
+  savedTravellers = [],
+}: TravellerFormProps) {
   const schema = useMemo(() => createTravellersFormSchema(rules), [rules]);
   const form = useForm<TravellersFormInput>({
     resolver: zodResolver(schema),
@@ -199,6 +211,37 @@ export function TravellerForm({ rules, defaultValues, version }: TravellerFormPr
             data-testid={`traveller-${slot.id}`}
           >
             <legend className="sr-only">{slot.label}</legend>
+            {savedTravellers.length ? (
+              <div className="mb-4">
+                <label htmlFor={id('saved')} className="text-sm font-semibold text-ink">
+                  Fill in from a saved traveller
+                </label>
+                <select
+                  id={id('saved')}
+                  defaultValue=""
+                  className={cn(inputClass, 'mt-1 pr-8')}
+                  data-testid={`saved-traveller-${slot.id}`}
+                  onChange={(event) => {
+                    const chosen = savedTravellers.find((t) => t.id === event.target.value);
+                    if (!chosen) return;
+                    const fill = { shouldDirty: true, shouldValidate: isSubmitted } as const;
+                    form.setValue(`${prefix}.title`, chosen.title ?? '', fill);
+                    form.setValue(`${prefix}.givenName`, chosen.givenName, fill);
+                    form.setValue(`${prefix}.middleName`, chosen.middleName ?? '', fill);
+                    form.setValue(`${prefix}.familyName`, chosen.familyName, fill);
+                    form.setValue(`${prefix}.dateOfBirth`, chosen.dateOfBirth, fill);
+                    form.setValue(`${prefix}.nationality`, chosen.nationality, fill);
+                  }}
+                >
+                  <option value="">Choose a saved traveller…</option>
+                  {savedTravellers.map((traveller) => (
+                    <option key={traveller.id} value={traveller.id}>
+                      {traveller.givenName} {traveller.familyName} · born {traveller.dateOfBirth}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div aria-hidden="true" className="mb-5 flex items-center gap-3">
               <span className="inline-flex size-10 items-center justify-center rounded-full bg-navy-50 text-navy-700">
                 {isInfant ? <Baby className="size-5" /> : <UserRound className="size-5" />}
