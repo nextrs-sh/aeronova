@@ -340,7 +340,7 @@ const MIX = [
   [3, api.payment],
 ];
 const MIX_TOTAL = MIX.reduce((sum, [weight]) => sum + weight, 0);
-function mixed() {
+export function mixed() {
   let roll = Math.random() * MIX_TOTAL;
   for (const [weight, run] of MIX) {
     roll -= weight;

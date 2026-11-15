@@ -33,6 +33,8 @@ const { values } = parseArgs({
     scenarios: { type: 'string' },
     soak: { type: 'string' },
     'soak-vus': { type: 'string', default: '30' },
+    /** Also run the burst-and-recovery profile (k6/burst.js) after the scenarios. */
+    burst: { type: 'boolean', default: false },
     /** Where the TalaDB file lives: a disk directory (default) or a tmpfs such as /tmp. */
     'db-dir': { type: 'string', default: join(homedir(), '.cache') },
   },
@@ -140,7 +142,7 @@ async function sample(scenario) {
   };
 }
 
-function k6(scenario, { vus, duration, file }) {
+function k6(scenario, { vus, duration, file, script = 'scenarios.js' }) {
   const args = [
     '-c',
     '4,5',
@@ -163,7 +165,7 @@ function k6(scenario, { vus, duration, file }) {
     `VUS=${vus}`,
     '-e',
     `DURATION=${duration}`,
-    join(here, 'k6', 'scenarios.js'),
+    join(here, 'k6', script),
   ];
   return new Promise((resolve) => {
     const child = spawn('taskset', args, { stdio: ['ignore', 'pipe', 'pipe'] });
@@ -340,6 +342,55 @@ if (values.soak) {
   console.log(`[bench]   soak ${soak.rps.toFixed(1)} req/s, p99 ${soak.httpP99Ms?.toFixed(1)} ms`);
 }
 
+let burst = null;
+if (values.burst) {
+  console.log('[bench] burst: 60 s × 10 VUs, 60 s × 80 VUs, 60 s × 10 VUs (mixed)');
+  const file = join(out, 'k6', 'burst.json');
+  const samples = [];
+  let sampling = true;
+  const sampler = (async () => {
+    while (sampling) {
+      await sleep(2_000);
+      if (sampling) samples.push(await sample('burst'));
+    }
+  })();
+  const run = await k6('mixed', { vus: 10, duration: '60s', file, script: 'burst.js' });
+  sampling = false;
+  await sampler;
+  const m = JSON.parse(readFileSync(file, 'utf8')).metrics;
+  const phase = (name) => {
+    const d = m[`http_req_duration{scenario:${name}}`] ?? {};
+    return {
+      requests: m[`http_reqs{scenario:${name}}`]?.count ?? 0,
+      rps: (m[`http_reqs{scenario:${name}}`]?.count ?? 0) / 60,
+      p50Ms: d.med,
+      p95Ms: d['p(95)'],
+      p99Ms: d['p(99)'],
+      correctRate:
+        m[`velasia_correct{scenario:${name}}`]?.value ??
+        m[`velasia_correct{scenario:${name}}`]?.rate ??
+        null,
+    };
+  };
+  burst = {
+    k6Exit: run.code,
+    calm: phase('calm'),
+    burst: phase('burst'),
+    recovery: phase('recovery'),
+    apiQueueDepthMax: Math.max(0, ...samples.map((s) => s.apiQueueDepth ?? 0)),
+    apiRssMaxMb: Math.max(0, ...samples.map((s) => s.apiRssMb ?? 0)),
+    webRssMaxMb: Math.max(0, ...samples.map((s) => s.webRssMb ?? 0)),
+    webLoopP99MaxMs: Math.max(0, ...samples.map((s) => s.webLoopP99Ms ?? 0)),
+    samples,
+  };
+  for (const name of ['calm', 'burst', 'recovery']) {
+    const p = burst[name];
+    console.log(
+      `[bench]   ${name}: ${p.rps.toFixed(1)} req/s, p95 ${p.p95Ms?.toFixed(1)} ms, p99 ${p.p99Ms?.toFixed(1)} ms`,
+    );
+  }
+}
+
 // Graceful stop, then the end-to-end integrity check of what the load wrote.
 web.kill('SIGTERM');
 api.kill('SIGTERM');
@@ -363,6 +414,7 @@ const report = {
   fixtures: fixtureSummary,
   results: results.map(({ samples, ...rest }) => rest),
   soak: soak ? (({ samples, ...rest }) => rest)(soak) : null,
+  burst: burst ? (({ samples, ...rest }) => rest)(burst) : null,
   shutdown: { web: webExit, api: apiExit },
   dbBytesAtEnd,
   integrity,
@@ -370,7 +422,7 @@ const report = {
 writeFileSync(join(out, 'summary.json'), `${JSON.stringify(report, null, 2)}\n`);
 writeFileSync(
   join(out, 'samples.json'),
-  `${JSON.stringify([...results, ...(soak ? [soak] : [])].map(({ scenario, kind, samples }) => ({ scenario, kind, samples })))}\n`,
+  `${JSON.stringify([...results, ...(soak ? [soak] : []), ...(burst ? [{ scenario: 'mixed', kind: 'burst', samples: burst.samples }] : [])].map(({ scenario, kind, samples }) => ({ scenario, kind, samples })))}\n`,
 );
 writeFileSync(join(out, 'api.log'), api.log());
 writeFileSync(join(out, 'web.log'), web.log());

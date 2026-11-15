@@ -1,0 +1,211 @@
+{
+  "root_group": {
+    "groups": {},
+    "checks": {
+      "session created": {
+        "path": "::session created",
+        "id": "fe128c16ddba45c98ab17e9ba70507fd",
+        "passes": 11347,
+        "fails": 0,
+        "name": "session created"
+      },
+      "offer selected": {
+        "name": "offer selected",
+        "path": "::offer selected",
+        "id": "266e533e1fe5ba0ccfc614a0d3b22e4b",
+        "passes": 11347,
+        "fails": 0
+      },
+      "repriced": {
+        "name": "repriced",
+        "path": "::repriced",
+        "id": "c72ae29642f367edc6d5c1ca7c046803",
+        "passes": 11347,
+        "fails": 0
+      },
+      "session read": {
+        "id": "0bbfdc52eabd6d1da3565002a896d826",
+        "passes": 11347,
+        "fails": 0,
+        "name": "session read",
+        "path": "::session read"
+      }
+    },
+    "name": "",
+    "path": "",
+    "id": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "metrics": {
+    "http_req_tls_handshaking": {
+      "p(95)": 0,
+      "p(99)": 0,
+      "max": 0,
+      "count": 56735,
+      "avg": 0,
+      "min": 0,
+      "med": 0,
+      "p(90)": 0
+    },
+    "iteration_duration": {
+      "p(95)": 44.27017969999994,
+      "p(99)": 55.36424213999998,
+      "max": 85.259156,
+      "count": 11347,
+      "avg": 26.450412146206,
+      "min": 9.851321,
+      "med": 24.882222,
+      "p(90)": 34.9798744
+    },
+    "vus_max": {
+      "value": 20,
+      "min": 20,
+      "max": 20
+    },
+    "http_req_failed": {
+      "passes": 0,
+      "fails": 56735,
+      "value": 0
+    },
+    "velasia_step_reprice_ms": {
+      "count": 11347,
+      "avg": 5.143914691107782,
+      "min": 0,
+      "med": 5,
+      "p(90)": 7,
+      "p(95)": 9,
+      "p(99)": 13,
+      "max": 43
+    },
+    "data_received": {
+      "count": 356523076,
+      "rate": 23743098.41635412
+    },
+    "iterations": {
+      "count": 11347,
+      "rate": 755.6676015281832
+    },
+    "checks": {
+      "passes": 45388,
+      "fails": 0,
+      "value": 1
+    },
+    "http_reqs": {
+      "count": 56735,
+      "rate": 3778.338007640916
+    },
+    "velasia_step_select_ms": {
+      "min": 0,
+      "med": 5,
+      "p(90)": 8,
+      "p(95)": 10,
+      "p(99)": 13,
+      "max": 41,
+      "count": 11347,
+      "avg": 5.205340618665726
+    },
+    "http_req_duration": {
+      "med": 4.606824,
+      "p(90)": 7.2849546,
+      "p(95)": 9.030659799999999,
+      "p(99)": 12.79433597999999,
+      "max": 43.266155,
+      "count": 56735,
+      "avg": 5.167042871384519,
+      "min": 0.191837
+    },
+    "http_req_duration{expected_response:true}": {
+      "p(90)": 7.2849546,
+      "p(95)": 9.030659799999999,
+      "p(99)": 12.79433597999999,
+      "max": 43.266155,
+      "count": 56735,
+      "avg": 5.167042871384519,
+      "min": 0.191837,
+      "med": 4.606824
+    },
+    "http_req_sending": {
+      "max": 6.642838,
+      "count": 56735,
+      "avg": 0.01652450295232207,
+      "min": 0.003654,
+      "med": 0.006349,
+      "p(90)": 0.009818599999999999,
+      "p(95)": 0.012441599999999992,
+      "p(99)": 0.3163399399999994
+    },
+    "velasia_step_offers_ms": {
+      "min": 0,
+      "med": 5,
+      "p(90)": 7,
+      "p(95)": 9,
+      "p(99)": 14,
+      "max": 39,
+      "count": 11347,
+      "avg": 5.151493786904028
+    },
+    "http_req_connecting": {
+      "p(90)": 0,
+      "p(95)": 0,
+      "p(99)": 0,
+      "max": 1.755934,
+      "count": 56735,
+      "avg": 0.00026533238741517585,
+      "min": 0,
+      "med": 0
+    },
+    "http_req_waiting": {
+      "avg": 5.121342233224613,
+      "min": 0.173304,
+      "med": 4.568816,
+      "p(90)": 7.2182813999999995,
+      "p(95)": 8.964155799999993,
+      "p(99)": 12.696317699999998,
+      "max": 43.240826,
+      "count": 56735
+    },
+    "vus": {
+      "max": 20,
+      "value": 20,
+      "min": 20
+    },
+    "velasia_step_session_ms": {
+      "p(90)": 7,
+      "p(95)": 9,
+      "p(99)": 13,
+      "max": 40,
+      "count": 11347,
+      "avg": 5.417290913897947,
+      "min": 0,
+      "med": 5
+    },
+    "http_req_receiving": {
+      "p(95)": 0.035792499999999984,
+      "p(99)": 0.14726525999999976,
+      "max": 11.367176,
+      "count": 56735,
+      "avg": 0.029176135207543703,
+      "min": 0.011122,
+      "med": 0.021428,
+      "p(90)": 0.030584
+    },
+    "http_req_blocked": {
+      "count": 56735,
+      "avg": 0.0022752634352692265,
+      "min": 0.00118,
+      "med": 0.001795,
+      "p(90)": 0.002454,
+      "p(95)": 0.002851,
+      "p(99)": 0.005894,
+      "max": 1.78904
+    },
+    "data_sent": {
+      "count": 13763454,
+      "rate": 916594.3661693381
+    },
+    "velasia_correct": {
+      "passes": 45388,
+      "fails": 0,
+      "value": 1
+    }
+  }
+}
