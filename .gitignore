@@ -69,6 +69,7 @@ web_modules/
 .env
 .env.*
 !.env.example
+!.env.production.example
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
@@ -165,5 +166,11 @@ next-env.d.ts
 apps/retailing-api/data/
 *.db
 
-# Project documentation and screenshots are kept out of version control.
-docs/
+# Milestone 7: project documentation is version-controlled again (docs/ was ignored in M6).
+# Still never committed: local databases, backups (they hold passenger data), secrets, and
+# generated benchmark output beyond the curated summaries.
+backups/
+*.db.partial
+*.db.pre-restore-*
+*.db.restore-partial
+benchmarks/**/results/raw-local/
