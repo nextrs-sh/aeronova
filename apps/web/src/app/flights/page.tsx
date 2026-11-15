@@ -1,19 +1,36 @@
 import {
+  formatTravelDate,
   hasFlightSearchParams,
   parseFlightSearchParams,
+  parseResultsParams,
   serializeFlightSearch,
-  todayIn,
   type Airport,
+  type FlightSearch,
+  type JourneyDirection,
+  type ResultsState,
 } from '@aeronova/contracts';
 import { Container } from '@aeronova/ui/container';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Info } from 'lucide-react';
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { ResultsPreview } from '@/features/flights/results-preview';
+import { DateStrip } from '@/features/flights/date-strip';
+import { EditSearch } from '@/features/flights/edit-search';
+import { FlightResults } from '@/features/flights/flight-results';
+import { cityOf, type AirportNames } from '@/features/flights/itinerary-parts';
+import { changeHref, journeyStage, legDate, legRoute } from '@/features/flights/journey';
+import { JourneySteps } from '@/features/flights/journey-steps';
 import { SearchSummary } from '@/features/flights/search-summary';
+import { SelectedFlight } from '@/features/flights/selected-flight';
+import {
+  DateStripSkeleton,
+  ResultsSkeleton,
+  SelectedFlightSkeleton,
+} from '@/features/flights/skeletons';
+import { TripReview } from '@/features/flights/trip-review';
 import { SearchWidget } from '@/features/search/search-widget';
 import { getAirports, loadSection } from '@/lib/content';
+import { getToday } from '@/lib/today';
 import { FlightsLoading } from './flights-loading';
 
 export const metadata: Metadata = {
@@ -49,11 +66,11 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
     );
   }
 
-  // "Today" must be read per request, never baked into a prerender.
+  // Live inventory and "today" are read per request, never baked into a prerender.
   await connection();
   const parsed = parseFlightSearchParams(params, {
     // Booking rules use the airline's time zone so server and browser agree on "today".
-    today: todayIn(),
+    today: getToday(),
     knownAirportCodes: airportsResult.ok ? new Set(airportsByCode.keys()) : undefined,
   });
 
@@ -83,20 +100,116 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
   }
 
   const { search, draft } = parsed;
+  const { state, ignored } = parseResultsParams(params);
+  const names: AirportNames = Object.fromEntries(
+    airports.map((airport) => [airport.code, { city: airport.city, name: airport.name }]),
+  );
   return (
-    <Shell
-      title="Your flight search"
-      summary={<SearchSummary search={search} airportsByCode={airportsByCode} />}
-    >
-      <SearchPanel
-        draftKey={serializeFlightSearch(search).toString()}
-        initialDraft={draft}
-        heading="Change your search"
-      />
-      <div className="mt-10">
-        <ResultsPreview search={search} destination={airportsByCode.get(search.destination)} />
+    <>
+      <div className="bg-navy-950 text-white">
+        <Container className="flex flex-wrap pt-8 pb-8 sm:pt-10 lg:pb-10">
+          <div className="w-full">
+            <p className="text-xs font-bold tracking-[0.16em] text-ember-300 uppercase">
+              Book flights
+            </p>
+            <h1 className="sr-only">
+              Flights from {cityOf(names, search.origin)} to {cityOf(names, search.destination)}
+            </h1>
+            <div className="mt-4">
+              <SearchSummary
+                search={search}
+                airportsByCode={airportsByCode}
+                action={
+                  <EditSearch key={serializeFlightSearch(search).toString()}>
+                    <SearchWidget initialDraft={draft} />
+                  </EditSearch>
+                }
+              />
+            </div>
+          </div>
+        </Container>
       </div>
-    </Shell>
+      <Container className="space-y-6 py-8 sm:py-10">
+        <JourneySteps
+          stage={journeyStage(search, state)}
+          roundTrip={search.tripType === 'round-trip'}
+        />
+        {ignored.length > 0 ? (
+          <p
+            role="status"
+            className="flex items-center gap-2 rounded-2xl bg-surface px-4 py-3 text-sm text-ink-muted"
+          >
+            <Info className="size-4 shrink-0" aria-hidden="true" />
+            Some options in this link weren’t recognised and were reset.
+          </p>
+        ) : null}
+        <Journey search={search} state={state} airports={names} />
+      </Container>
+    </>
+  );
+}
+
+/** The current step: choose a departing flight, a return flight, or review. */
+function Journey({
+  search,
+  state,
+  airports,
+}: {
+  search: FlightSearch;
+  state: ResultsState;
+  airports: AirportNames;
+}) {
+  const stage = journeyStage(search, state);
+  const searchKey = serializeFlightSearch(search).toString();
+  if (stage === 'review') {
+    return (
+      <Suspense
+        key={`review|${searchKey}|${state.outboundId}|${state.inboundId}`}
+        fallback={<ResultsSkeleton />}
+      >
+        <TripReview search={search} state={state} airports={airports} />
+      </Suspense>
+    );
+  }
+
+  const direction: JourneyDirection = stage;
+  // Filters and sort keep the current results on screen while updating;
+  // a new date, direction, or page shows the skeleton.
+  const legKey = `${direction}|${searchKey}|${state.outboundId ?? ''}|${state.page}`;
+  const { origin, destination } = legRoute(search, direction);
+  return (
+    <>
+      {direction === 'inbound' && state.outboundId ? (
+        <Suspense fallback={<SelectedFlightSkeleton />}>
+          <SelectedFlight
+            id={state.outboundId}
+            search={search}
+            direction="outbound"
+            airports={airports}
+            changeHref={changeHref(search, state, 'outbound')}
+          />
+        </Suspense>
+      ) : null}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2">
+        <h2 className="font-display text-2xl font-bold text-ink sm:text-3xl" id="results-heading">
+          {search.tripType === 'one-way'
+            ? 'Choose your flight'
+            : direction === 'outbound'
+              ? 'Choose your departing flight'
+              : 'Choose your return flight'}
+        </h2>
+        <p className="text-ink-muted">
+          {cityOf(airports, origin)} to {cityOf(airports, destination)} ·{' '}
+          {formatTravelDate(legDate(search, direction))}
+        </p>
+      </div>
+      <Suspense key={`dates|${direction}|${searchKey}`} fallback={<DateStripSkeleton />}>
+        <DateStrip search={search} state={state} direction={direction} />
+      </Suspense>
+      <Suspense key={legKey} fallback={<ResultsSkeleton />}>
+        <FlightResults search={search} state={state} direction={direction} airports={airports} />
+      </Suspense>
+    </>
   );
 }
 

@@ -14,18 +14,43 @@ ancillaries, booking, and order management.
 
 ## Milestone status
 
-| Milestone | Scope                                                             | Status         |
-| --------- | ----------------------------------------------------------------- | -------------- |
-| 1         | Monorepo foundation, premium storefront, search, destinations     | ✅ This branch |
-| 2–7       | Inventory & offers → bundles → checkout → orders → accounts → ops | Planned        |
-| 8         | NextRS runtime integration and compatibility                      | Planned (last) |
+| Milestone | Scope                                                         | Status         |
+| --------- | ------------------------------------------------------------- | -------------- |
+| 1         | Monorepo foundation, premium storefront, search, destinations | ✅ Done        |
+| 2         | Flight inventory, dynamic search, indicative pricing          | ✅ Done        |
+| 3–7       | Offers & bundles → checkout → orders → accounts → ops         | Planned        |
+| 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
-See [docs/ROADMAP.md](docs/ROADMAP.md) and the
-[Milestone 1 report](docs/MILESTONE-1-REPORT.md).
+See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
+[M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md).
 
-**What works today:** homepage, flight search with airport autocomplete, URL-validated `/flights`
-summary (results are explicitly “coming soon”), destination discovery with 12 guides, help,
-and preview pages for features that don’t exist yet. Nothing on the site books a flight.
+**What works today:** search a fictional network of 21 airports and 54 routes, and get real
+results from the Fastify retailing API. Results come from deterministic schedules and seat
+inventory, with direct and one-stop itineraries and indicative prices that include simulated
+taxes. One-way and round trips step through choosing a departing flight, a return flight, and a
+review with a transparent total. You can filter by stops, departure time, price, and aircraft;
+sort; browse nearby dates with their lowest fares; and open flight details with per-cabin seat
+availability. Results stream into a server-rendered `/flights` page, and every empty and error
+state is explained. There are also destination guides, help pages, and a clearly labelled
+fare-selection preview. Nothing on the site books a flight.
+
+## Flight search
+
+- **Inventory.** 48 aircraft rotations (96 flight numbers) over 21 airports and four aircraft
+  types — 562 departures a week, expanded into 9,628 dated flights over a 120-day horizon. Block times come from
+  great-circle distance; local times are converted through each airport's IANA time zone.
+  Load factors, demand, and cancellations are seeded and deterministic.
+- **Search.** `GET /v1/flights` handles one-way and round-trip searches, cabins, passenger mixes,
+  filters (stops, departure windows, price, aircraft), sort, and pagination. One-stop
+  connections go through Manila or Cebu, with minimum and maximum connection times. Every
+  empty result carries a reason: `no-route`, `cabin-not-offered`, `beyond-schedule`,
+  `no-flights-on-date`, `insufficient-seats`, or `filtered-out`.
+- **Pricing.** Indicative only, calculated by the API in integer minor units (PHP centavos).
+  It depends on distance band, cabin, days to departure, demand band, weekday, season, and time
+  of day, and adds simulated passenger service charges, fuel surcharges, and domestic VAT.
+  Offers and fare families arrive in M3.
+- **Network conditions.** Opt-in latency and per-request faults (`delay`, `timeout`,
+  `unavailable`, `empty`, `malformed`) for testing the storefront against a failing service.
 
 ## Stack
 
@@ -35,7 +60,7 @@ Vitest · Playwright · pnpm workspaces · Turborepo
 
 ```text
 apps/web             Next.js storefront
-apps/retailing-api   Fastify mock retailing API (fixtures, no database)
+apps/retailing-api   Fastify mock retailing API (fixtures + deterministic inventory, no database)
 packages/contracts   Shared Zod schemas, types, and pure domain rules
 packages/ui          Design tokens and accessible UI primitives
 packages/config      Shared TypeScript and ESLint configuration
@@ -65,19 +90,31 @@ No API keys, paid services, or databases are needed. Configuration is optional; 
 | `pnpm typecheck` | `tsc --noEmit` across all packages and the E2E suite               |
 | `pnpm test`      | Vitest unit, component, and integration tests                      |
 | `pnpm test:e2e`  | Build, then run Playwright (desktop + mobile) on ports 3200/4210   |
-| `pnpm format`    | Prettier                                                           |
+
+To try slow responses locally, run the API with `RETAILING_API_LATENCY_MS=300-1200`. For
+repeatable prices and seats, set `AERONOVA_TODAY=2026-12-01` for both the API and the
+storefront.
+| `pnpm format` | Prettier |
 
 First E2E run: `pnpm exec playwright install chromium`.
 
 ## Screenshots
 
-| Destination guide                                              | Flight search summary                                   |
-| -------------------------------------------------------------- | ------------------------------------------------------- |
-| ![Tokyo guide](docs/screenshots/destination-tokyo-desktop.jpg) | ![Search summary](docs/screenshots/flights-desktop.jpg) |
+| Flight results                                                  | Flight details                                                 |
+| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| ![Flight results](docs/screenshots/flights-results-desktop.jpg) | ![Flight details](docs/screenshots/flight-details-desktop.jpg) |
 
-| Mobile home                                      | Mobile menu                                      | Airport autocomplete                                       |
-| ------------------------------------------------ | ------------------------------------------------ | ---------------------------------------------------------- |
-| ![Mobile home](docs/screenshots/home-mobile.jpg) | ![Mobile menu](docs/screenshots/menu-mobile.jpg) | ![Autocomplete](docs/screenshots/autocomplete-desktop.jpg) |
+| Round-trip review                                        | API unavailable                                            |
+| -------------------------------------------------------- | ---------------------------------------------------------- |
+| ![Trip review](docs/screenshots/trip-review-desktop.jpg) | ![Error state](docs/screenshots/results-error-desktop.jpg) |
+
+| Mobile results                                         | Mobile filters                                         | Mobile edit search                                             |
+| ------------------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------- |
+| ![Mobile results](docs/screenshots/flights-mobile.jpg) | ![Mobile filters](docs/screenshots/filters-mobile.jpg) | ![Mobile edit search](docs/screenshots/edit-search-mobile.jpg) |
+
+| Destination guide                                              | Mobile home                                      |
+| -------------------------------------------------------------- | ------------------------------------------------ |
+| ![Tokyo guide](docs/screenshots/destination-tokyo-desktop.jpg) | ![Mobile home](docs/screenshots/home-mobile.jpg) |
 
 ## Credits and license
 

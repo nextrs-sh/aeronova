@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-import { chooseAirport, manilaDate, trackPageErrors, waitForSearch } from './helpers';
+import { chooseAirport, manilaDate, trackPageErrors, waitForSearch, expect, test } from './helpers';
 
 test.describe('flight search', () => {
   test('airport autocomplete filters and supports the keyboard', async ({ page }) => {
@@ -84,11 +83,10 @@ test.describe('flight search', () => {
     await expect(summary).toContainText('Seoul');
     await expect(summary).toContainText('2 Adults, 1 Infant');
     await expect(summary).toContainText('Premium Economy');
-    await expect(page.getByTestId('results-preview')).toContainText(
-      'Live flight results are on their way',
-    );
+    await expect(page.getByTestId('flight-card').first()).toBeVisible();
 
     // The editable search keeps the submitted values.
+    await page.getByRole('button', { name: 'Edit search' }).click();
     await expect(page.getByRole('combobox', { name: 'From' })).toHaveValue('Manila (MNL)');
     await expect(page.getByRole('combobox', { name: 'To' })).toHaveValue('Seoul (ICN)');
     await expect(page.getByLabel('Depart', { exact: true })).toHaveValue(depart);
@@ -135,7 +133,7 @@ test.describe('flight search', () => {
     await expect(alert).toContainText('Departure and arrival airports must be different.');
     await expect(alert).toContainText('Choose a date from today onwards.');
     await expect(alert).toContainText('At least one adult must travel on every booking.');
-    await expect(page.getByTestId('results-preview')).toHaveCount(0);
+    await expect(page.getByTestId('flight-card')).toHaveCount(0);
     await expect(page.getByRole('combobox', { name: 'From' })).toHaveValue('Manila (MNL)');
   });
 

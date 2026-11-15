@@ -1,6 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
-import { expectNoBrokenImages, trackPageErrors, waitForSearch } from './helpers';
+import { expectNoBrokenImages, trackPageErrors, waitForSearch, expect, test } from './helpers';
 
 test.describe('destinations', () => {
   test('lists, searches, and filters destinations', async ({ page }) => {

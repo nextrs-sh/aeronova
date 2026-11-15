@@ -1,9 +1,34 @@
-import { expect, type Page } from '@playwright/test';
+import { test as base, expect, type Page } from '@playwright/test';
+import { BASE_URL, E2E_TODAY } from './constants';
 
-/** `YYYY-MM-DD` for today + `days`, in the airline's time zone (Asia/Manila). */
+/**
+ * Every spec uses this `test`: the browser clock is pinned to the same
+ * "today" as the API and the Next.js server (see playwright.config.ts).
+ * Timers keep running, so the app behaves normally.
+ */
+export const test = base.extend({
+  page: async ({ page }, use) => {
+    await page.clock.setFixedTime(new Date(`${E2E_TODAY}T10:00:00+08:00`));
+    await use(page);
+  },
+});
+export { expect };
+
+/** `YYYY-MM-DD` for the pinned "today" + `days`. */
 export function manilaDate(days = 0): string {
-  const now = new Date(Date.now() + days * 86_400_000);
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Manila' }).format(now);
+  return new Date(Date.parse(`${E2E_TODAY}T00:00:00Z`) + days * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+/** Simulate a retailing API failure for this browser context (test-only fault injection). */
+export async function simulateApiFault(
+  page: Page,
+  fault: 'unavailable' | 'timeout' | 'empty' | 'malformed' | null,
+) {
+  const context = page.context();
+  if (fault === null) await context.clearCookies({ name: 'aeronova-fault' });
+  else await context.addCookies([{ name: 'aeronova-fault', value: fault, url: BASE_URL }]);
 }
 
 /** Collect uncaught errors, console errors (incl. hydration), and failed requests. */

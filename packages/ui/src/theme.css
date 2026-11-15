@@ -55,6 +55,7 @@
   --animate-in-fade: in-fade 180ms var(--ease-soft);
   --animate-in-pop: in-pop 180ms var(--ease-soft);
   --animate-in-slide: in-slide 260ms var(--ease-soft);
+  --animate-in-slide-up: in-slide-up 280ms var(--ease-soft);
   --animate-rise: rise 700ms var(--ease-soft) both;
 
   @keyframes in-fade {
@@ -78,6 +79,14 @@
   @keyframes in-slide {
     from {
       transform: translateX(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes in-slide-up {
+    from {
+      transform: translateY(100%);
     }
     to {
       transform: none;

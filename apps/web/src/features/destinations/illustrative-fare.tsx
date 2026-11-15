@@ -9,8 +9,9 @@ interface IllustrativeFareProps {
 }
 
 /**
- * A "from" price that is clearly marked as illustrative. These are marketing
- * figures from fixtures, not offers — there is no inventory behind them yet.
+ * A "from" price that is clearly marked as illustrative: the lowest indicative
+ * direct Economy fare the retailing API currently publishes on the route. It is
+ * marketing copy, not an offer, and may differ from a specific date's price.
  */
 export function IllustrativeFare({ fare, className, tone = 'default' }: IllustrativeFareProps) {
   const inverse = tone === 'inverse';

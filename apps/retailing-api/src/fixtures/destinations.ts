@@ -1,26 +1,19 @@
-import {
-  destinationSchema,
-  type Destination,
-  type IllustrativeFare,
-  type PlannedRoute,
-} from '@aeronova/contracts';
+import { destinationSchema, iataCodeSchema, type Destination } from '@aeronova/contracts';
 import { z } from 'zod';
 
-const route = (
-  origin: string,
-  destination: string,
-  durationMinutes: number,
-  weeklyFrequency: number,
-): PlannedRoute => ({ origin, destination, durationMinutes, weeklyFrequency });
+/**
+ * Editorial destination content. Routes and the "from" fare are not authored
+ * here: the catalogue derives them from the flight network and indicative
+ * pricing, so a destination page can never contradict search results.
+ */
+export interface DestinationContent extends Omit<Destination, 'routes' | 'illustrativeFare'> {
+  /** Departure airport for the destination's "from" fare. */
+  fareOrigin?: string;
+}
 
-/** Deterministic "from" prices for marketing placements. Never bookable. */
-const fare = (amount: number, origin = 'MNL'): IllustrativeFare => ({
-  amount,
-  currency: 'PHP',
-  origin,
-  cabin: 'economy',
-  kind: 'illustrative',
-});
+const destinationContentSchema = destinationSchema
+  .omit({ routes: true, illustrativeFare: true })
+  .extend({ fareOrigin: iataCodeSchema.optional() });
 
 const PH_INFO = {
   timeZone: 'Asia/Manila',
@@ -29,7 +22,7 @@ const PH_INFO = {
   language: 'Filipino and English',
 };
 
-const destinations: Destination[] = [
+const destinations: DestinationContent[] = [
   {
     slug: 'manila',
     name: 'Manila',
@@ -67,13 +60,7 @@ const destinations: Destination[] = [
     ],
     tags: ['City', 'Food', 'History'],
     travelInfo: { ...PH_INFO, bestTimeToVisit: 'December to April, during the cooler dry season' },
-    routes: [
-      route('CEB', 'MNL', 80, 35),
-      route('DVO', 'MNL', 115, 21),
-      route('PPS', 'MNL', 85, 14),
-      route('ILO', 'MNL', 65, 14),
-    ],
-    illustrativeFare: fare(1899, 'CEB'),
+    fareOrigin: 'CEB',
   },
   {
     slug: 'cebu',
@@ -111,8 +98,7 @@ const destinations: Destination[] = [
     ],
     tags: ['Beach', 'Adventure', 'Food'],
     travelInfo: { ...PH_INFO, bestTimeToVisit: 'January to May, for calm seas and sunny days' },
-    routes: [route('MNL', 'CEB', 80, 35), route('DVO', 'CEB', 65, 14), route('ILO', 'CEB', 50, 7)],
-    illustrativeFare: fare(1899),
+    fareOrigin: 'MNL',
     promotion: {
       headline: 'Island weekends',
       blurb:
@@ -154,8 +140,7 @@ const destinations: Destination[] = [
     ],
     tags: ['Nature', 'Food', 'Adventure'],
     travelInfo: { ...PH_INFO, bestTimeToVisit: 'Year-round; Davao sits south of the typhoon belt' },
-    routes: [route('MNL', 'DVO', 115, 21), route('CEB', 'DVO', 65, 14)],
-    illustrativeFare: fare(2299),
+    fareOrigin: 'MNL',
   },
   {
     slug: 'singapore',
@@ -199,8 +184,7 @@ const destinations: Destination[] = [
       language: 'English, Mandarin, Malay, and Tamil',
       bestTimeToVisit: 'February to April, the driest months',
     },
-    routes: [route('MNL', 'SIN', 215, 21), route('CEB', 'SIN', 225, 7)],
-    illustrativeFare: fare(5499),
+    fareOrigin: 'MNL',
     promotion: {
       headline: 'A long weekend in the Lion City',
       blurb:
@@ -250,12 +234,7 @@ const destinations: Destination[] = [
       language: 'Japanese',
       bestTimeToVisit: 'March to May and October to November',
     },
-    routes: [
-      route('MNL', 'NRT', 265, 14),
-      route('MNL', 'HND', 270, 7),
-      route('CEB', 'NRT', 290, 4),
-    ],
-    illustrativeFare: fare(9999),
+    fareOrigin: 'MNL',
     promotion: {
       headline: 'Cherry blossom season',
       blurb: 'Plan early for sakura. Spring in Tokyo is worth every minute of the wait.',
@@ -302,8 +281,7 @@ const destinations: Destination[] = [
       language: 'Korean',
       bestTimeToVisit: 'April to June and September to November',
     },
-    routes: [route('MNL', 'ICN', 235, 14), route('CEB', 'ICN', 260, 7)],
-    illustrativeFare: fare(8499),
+    fareOrigin: 'MNL',
   },
   {
     slug: 'bangkok',
@@ -346,8 +324,7 @@ const destinations: Destination[] = [
       language: 'Thai',
       bestTimeToVisit: 'November to February, during the cool season',
     },
-    routes: [route('MNL', 'BKK', 210, 14)],
-    illustrativeFare: fare(5999),
+    fareOrigin: 'MNL',
   },
   {
     slug: 'hong-kong',
@@ -390,8 +367,7 @@ const destinations: Destination[] = [
       language: 'Cantonese and English',
       bestTimeToVisit: 'October to December, for clear skies and cool air',
     },
-    routes: [route('MNL', 'HKG', 125, 21), route('CEB', 'HKG', 150, 7)],
-    illustrativeFare: fare(4299),
+    fareOrigin: 'MNL',
     promotion: {
       headline: 'Dim sum by lunchtime',
       blurb: 'Leave Manila after breakfast, be at a dim sum table in Hong Kong before noon.',
@@ -439,8 +415,7 @@ const destinations: Destination[] = [
       language: 'Malay and English',
       bestTimeToVisit: 'May to July, between the monsoon seasons',
     },
-    routes: [route('MNL', 'KUL', 230, 7)],
-    illustrativeFare: fare(5299),
+    fareOrigin: 'MNL',
   },
   {
     slug: 'taipei',
@@ -483,8 +458,7 @@ const destinations: Destination[] = [
       language: 'Mandarin',
       bestTimeToVisit: 'October to December and March to May',
     },
-    routes: [route('MNL', 'TPE', 125, 14)],
-    illustrativeFare: fare(4799),
+    fareOrigin: 'MNL',
     promotion: {
       headline: 'Snack your way through Taipei',
       blurb: 'Two hours from Manila, a lifetime of night-market bites. Pack stretchy trousers.',
@@ -531,8 +505,7 @@ const destinations: Destination[] = [
       language: 'Japanese',
       bestTimeToVisit: 'March to May and October to November',
     },
-    routes: [route('MNL', 'KIX', 245, 7), route('CEB', 'KIX', 265, 4)],
-    illustrativeFare: fare(9499),
+    fareOrigin: 'MNL',
   },
   {
     slug: 'ho-chi-minh-city',
@@ -575,12 +548,11 @@ const destinations: Destination[] = [
       language: 'Vietnamese',
       bestTimeToVisit: 'December to April, during the dry season',
     },
-    routes: [route('MNL', 'SGN', 175, 7)],
-    illustrativeFare: fare(4999),
+    fareOrigin: 'MNL',
   },
 ];
 
 /** Validated once at startup so a bad fixture fails fast, not per request. */
-export const DESTINATIONS: readonly Destination[] = Object.freeze(
-  z.array(destinationSchema).parse(destinations),
+export const DESTINATION_CONTENT: readonly DestinationContent[] = Object.freeze(
+  z.array(destinationContentSchema).parse(destinations),
 );
