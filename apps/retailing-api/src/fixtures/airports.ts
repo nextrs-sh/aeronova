@@ -8,7 +8,7 @@ export interface AirportLocation {
 }
 
 /**
- * Airports in AeroNova's fictional network. Codes, names, and locations are
+ * Airports in Velasia Airways' fictional network. Codes, names, and locations are
  * real; the network itself is not.
  */
 const airports: Airport[] = [

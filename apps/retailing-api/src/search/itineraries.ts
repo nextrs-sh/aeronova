@@ -55,7 +55,7 @@ export function connectionProblem(first: FlightInstance, second: FlightInstance)
   return null;
 }
 
-/** True when AeroNova can ever sell this city pair: direct, or one stop through a hub. */
+/** True when Velasia can ever sell this city pair: direct, or one stop through a hub. */
 export function isServed(inventory: Inventory, origin: string, destination: string): boolean {
   if (inventory.hasRoute(origin, destination)) return true;
   return CONNECTION_HUBS.some(

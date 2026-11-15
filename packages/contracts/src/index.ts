@@ -1,4 +1,5 @@
 export * from './common';
+export * from './airline';
 export * from './airports';
 export * from './destinations';
 export * from './dates';

@@ -2,7 +2,7 @@ import { aircraftSchema, type Aircraft } from '@velasia/contracts';
 import { z } from 'zod';
 
 /**
- * AeroNova's fictional fleet. Types and ranges are real; cabin layouts are
+ * Velasia Airways' fictional fleet. Types and ranges are real; cabin layouts are
  * plausible configurations invented for the demo. Seat selection arrives in M4.
  */
 const fleet: Aircraft[] = [

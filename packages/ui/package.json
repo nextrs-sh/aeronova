@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "AeroNova design tokens and accessible UI primitives.",
+  "description": "Velasia Airways design tokens and accessible UI primitives.",
   "sideEffects": [
     "**/*.css"
   ],

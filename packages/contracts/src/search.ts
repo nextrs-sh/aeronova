@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { airline } from './airline';
 import { iataCodeSchema, type IataCode } from './common';
 import { addDays, compareIsoDates, isIsoDate } from './dates';
 
@@ -173,7 +174,10 @@ export function createFlightSearchSchema({ today, knownAirportCodes }: SearchVal
           return issue([field], 'Choose an airport from the list.');
         }
         if (knownAirportCodes && !knownAirportCodes.has(code)) {
-          return issue([field], `AeroNova doesn't serve ${code}. Choose an airport from the list.`);
+          return issue(
+            [field],
+            `${airline.shortName} doesn't serve ${code}. Choose an airport from the list.`,
+          );
         }
       };
       checkAirport('origin', 'Choose where you are flying from.');

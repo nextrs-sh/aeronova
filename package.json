@@ -1,7 +1,7 @@
 {
   "name": "velasia-airways",
   "private": true,
-  "description": "AeroNova — a fictional airline retailing demo built with Next.js.",
+  "description": "Velasia Airways — a fictional premium airline retailing demo built with Next.js.",
   "license": "MIT",
   "packageManager": "pnpm@10.23.0",
   "engines": {

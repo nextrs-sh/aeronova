@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AeroNova storefront \u2014 Next.js App Router.",
+  "description": "Velasia Airways storefront \u2014 Next.js App Router.",
   "scripts": {
     "dev": "next dev --port 3000",
     "build": "node scripts/with-retailing-api.mjs next build",

@@ -21,7 +21,7 @@ export const destinationHighlightSchema = z.object({
   description: z.string().min(1),
 });
 
-/** A route in AeroNova's fictional network. Durations are approximate block times. */
+/** A route in Velasia's fictional network. Durations are approximate block times. */
 export const plannedRouteSchema = z.object({
   origin: iataCodeSchema,
   destination: iataCodeSchema,

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "Shared Zod schemas, types, and pure domain helpers for AeroNova.",
+  "description": "Shared Zod schemas, types, airline identity, and pure domain helpers for Velasia Airways.",
   "sideEffects": false,
   "exports": {
     ".": "./src/index.ts"

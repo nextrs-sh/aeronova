@@ -66,7 +66,7 @@ export const healthResponseSchema = z.object({
 });
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
-/** Minor units per major unit. Every currency AeroNova prices in uses two decimals. */
+/** Minor units per major unit. Every currency Velasia prices in uses two decimals. */
 const MINOR_UNIT_FACTOR: Record<string, number> = { PHP: 100 };
 
 export function minorUnitFactor(currency: string): number {

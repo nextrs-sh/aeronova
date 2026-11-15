@@ -1,4 +1,6 @@
 import {
+  airline,
+  airlineIdentitySchema,
   airportListResponseSchema,
   apiErrorSchema,
   destinationListResponseSchema,
@@ -26,7 +28,48 @@ describe('GET /health', () => {
   it('reports ok', async () => {
     const response = await get('/health');
     expect(response.statusCode).toBe(200);
-    expect(healthResponseSchema.parse(response.json()).status).toBe('ok');
+    const body = healthResponseSchema.parse(response.json());
+    expect(body.status).toBe('ok');
+    expect(body.service).toBe('velasia-retailing-api');
+  });
+});
+
+describe('GET /v1/airline', () => {
+  it('serves the fictional Velasia Airways identity from the shared config', async () => {
+    const response = await get('/v1/airline');
+    expect(response.statusCode).toBe(200);
+    const body = airlineIdentitySchema.parse(response.json());
+    expect(body).toMatchObject({
+      name: 'Velasia Airways',
+      shortName: 'Velasia',
+      tagline: 'Beyond every horizon.',
+      country: 'PH',
+      currency: 'PHP',
+      isFictional: true,
+    });
+    expect(body.name).toBe(airline.name);
+  });
+});
+
+describe('mock fixtures carry no legacy branding', () => {
+  it('every API payload is free of the retired brand name', async () => {
+    for (const url of [
+      '/health',
+      '/v1/airline',
+      '/v1/airports',
+      '/v1/destinations',
+      '/v1/routes',
+      '/v1/aircraft',
+      '/v1/flights?from=MNL&to=SIN&departureDate=2026-12-15',
+      '/v1/flights/NV501-20261215',
+    ]) {
+      const text = (await get(url)).body;
+      expect(text, url).not.toMatch(/aero\s*-?\s*nova/i);
+    }
+    for (const destination of DESTINATION_CONTENT) {
+      const text = (await get(`/v1/destinations/${destination.slug}`)).body;
+      expect(text, destination.slug).not.toMatch(/aero\s*-?\s*nova/i);
+    }
   });
 });
 
