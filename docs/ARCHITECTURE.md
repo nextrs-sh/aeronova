@@ -175,6 +175,84 @@ minutes ahead (`offer-expired`), also one demand band higher (`price-increase`),
 selection's flights sold out (`sold-out`), or after every session's lifetime
 (`session-expired`).
 
+## Booking steps (M4)
+
+Everything lives in the M3 shopping session (`StoredSession.booking`); there is no second
+session mechanism and no cart. The API owns every rule and amount; the storefront renders it.
+
+```text
+M3 trip summary ──Continue (re-validated)──▶ travellers ──▶ seats ──▶ extras ──▶ review ──▶ checkout preview
+                                              PUT …/passengers   PUT …/seats   PUT …/ancillaries   POST …/validate
+                                                                 POST …/steps {seats}  POST …/steps {extras}
+```
+
+**Step gating** (`booking/booking.ts` `stepStates`, enforced on every mutation, mirrored by each
+page): travellers open once every direction is selected, has been confirmed at least once, and
+is still sellable (an expired offer is fine — the review re-prices it); seats need saved
+travellers; extras need the seats step finished; review needs extras finished. A step already
+finished stays reachable when the final check reopens seats, so the review can explain why.
+Deep links without a session, or to a locked step, render a recovery panel with one way forward.
+
+**Traveller data flow.** Slots (`ADT1`, `CHD1`, `INF1`) come from the session's passenger
+counts. `createTravellersFormSchema` (contracts) validates fields and trip rules — ages on the
+first/last local departure dates, lap infants under 2 on every flight with a distinct adult of
+16+ — and runs in React Hook Form, in `savePassengersAction`, and in the API. Details are stored
+only in the session (bounded, ≤ 3 h), returned only to the bearer, never put in URLs, cookies,
+browser storage, Zustand, logs, or error messages. The form posts without JavaScript too.
+
+**Seat maps** (`fixtures/seat-layouts.ts`, `booking/seat-map.ts`). Each aircraft type has its own
+layout (cabins, rows without 13, aisles, missing seats where the fuselage narrows, exit rows,
+bulkheads); layouts must match the fleet's cabin capacities or the API refuses to start. Per
+flight, exactly `sold` seats per cabin are `OCCUPIED` (deterministic, seeded, biased to
+front/window/aisle), up to two Economy seats are `UNAVAILABLE` (held for the airport, still
+counted as seats left), and the rest `AVAILABLE`, so `available + blocked` always equals the
+inventory's seats left. A guest's choice is not availability: it is a provisional preference
+in their session, checked again at review, never a hold. `seatProblem()` (contracts) is the one
+eligibility rule (cabin of the fare, exit row: adults without an infant, lap infants: no seat).
+
+**Ancillaries** (`fixtures/ancillaries.ts`). Baggage (+10/15/20 kg) and priority (check-in,
+boarding) are per traveller per direction and priced by the direction's longest flight, so a
+connection is charged once. Meals are per traveller per flight: none under 90 minutes, premium
+from 3 hours, child meals for children, complimentary choice in Business. Inclusion always
+comes from the fare family: Flex and Business priority is never offered, included seat
+categories cost 0, checked allowances add to the fare's. Changes are slot-based (`BAGGAGE:ADT1:outbound`)
+and idempotent.
+
+**Pricing.** Seat and service prices are computed from the catalogue and the current fare each
+time the session is read, so a fare change re-prices them at once and nothing included is
+charged. `summary.totalMinor = flights + extras`; `totals` (base, family, taxes, extras) add up
+to it. The review's quote is itemised (`buildQuote`) and throws if lines, totals, or included
+items ever disagree. `priceVersion = <offer pricing>+<catalogue>`.
+
+**Consistency.** Every mutation runs synchronously on a cloned booking and is kept only if it
+fully succeeds; optional `expectedVersion` rejects stale writes (`SESSION_CONFLICT`); the
+traveller form always sends it. Seat and extras changes are per-slot and idempotent, so they
+don't need it. Changing a selected offer reconciles the booking (`reconcileBooking`): seats on
+other flights or cabins, exit rows that no longer fit, and services now included or unavailable
+are dropped with a notice; a flight change also reopens seats and extras. On a timeout after a
+mutation the storefront never retries: it says the outcome is unknown and re-renders from the
+session.
+
+**Review validation** (`POST …/validate`): re-price offers (M3 rules: refresh at the same price,
+`PRICE_CHANGED` waits for acceptance, unsellable flagged), reconcile, re-check each chosen seat
+against current availability (a taken seat is released and the seats step reopened), rebuild
+the quote, and record `{status, issues, sessionVersion, totalMinor}`. The review is `READY` only
+while `sessionVersion` equals the session's version.
+
+**Server Actions** (`features/booking/actions.ts`): `savePassengersAction`, `selectSeatAction`,
+`removeSeatAction`, `continueFromSeatsAction`, `updateBaggageAction`, `selectMealAction`,
+`updatePriorityAction`, `continueFromExtrasAction`, `validateBookingReviewAction`,
+`acceptPriceChangeAction`. Each reads the session only from the HTTP-only cookie, parses a small
+Zod input (unknown fields such as prices are dropped), maps API errors to typed, PII-free
+results, and calls `refresh()` so the page and its totals re-render from the session.
+
+**Rendering and caching.** Booking pages are partial prerenders: a static step header plus a
+`<Suspense>` section that reads the session (`no-store`). Client components are leaves: the
+traveller form, the seat selector, extras choices, and action buttons. Seat maps for other
+flights load through `GET /api/flights/[id]/seatmap` (Axios, Fetch adapter). The ancillary
+catalogue is `use cache` (`cacheTag('ancillaries')`); availability, eligibility, and prices
+are never cached.
+
 ## Search request flow
 
 1. `/flights?trip&from&to&depart&return&adults&children&infants&cabin` plus results state
@@ -271,11 +349,12 @@ Cache Components is enabled with Partial Prefetching. From `next build`:
 | `/destinations/[slug]`                                                      | 12 pages prerendered by `generateStaticParams`. `ensureStatic = 'navigation'` makes unknown slugs return a real 404. |
 | `/flights`                                                                  | Partial prerender: static shell; search, date strip, and results streamed per request in separate `<Suspense>`.      |
 | `/flights` (`fares=`, summary)                                              | Same page: the fare step and the trip summary stream behind their own `<Suspense>`; session and offers are no-store. |
-| `/booking/travellers`                                                       | Partial prerender: static shell; the validated trip (from the session cookie) streams per request.                   |
+| `/booking/travellers`, `/seats`, `/extras`, `/review`, `/checkout`          | Partial prerender: static step header; the guest's booking (session cookie) streams per request, no-store.           |
 | `/help`, `/manage-booking`, `/about`, `/credits`                            | Static.                                                                                                              |
 | `/api/airports`, `/api/destinations`, `/api/routes`                         | Dynamic Route Handlers with `public, max-age=300, s-maxage=3600, stale-while-revalidate=86400`.                      |
-| `/api/aircraft`, `/api/fare-families`                                       | Prerendered from cached content (same public cache headers).                                                         |
+| `/api/aircraft`, `/api/fare-families`, `/api/ancillaries`                   | Prerendered from cached content (same public cache headers).                                                         |
 | `/api/flights`, `/api/flights/[id]`, `/api/offers`, `/api/offers/[offerId]` | Dynamic; `private, no-store` (live inventory, offers, and prices).                                                   |
+| `/api/flights/[id]/seatmap`                                                 | Dynamic; `private, no-store`, `Vary: Cookie` (the guest's own seat view, or the public map).                         |
 | `/sitemap.xml`, `/robots.txt`                                               | Static (sitemap cached with destination data).                                                                       |
 
 Client components are leaves: header nav links and the mobile sheet, the search widget and its
@@ -290,6 +369,7 @@ instance for the build and stops it afterwards.
 
 ## Out of scope so far
 
-There is no database (TalaDB is planned for orders, holds, and shared sessions in M4), no
-authentication, no orders, holds, ancillary purchases, or payments, and no NextRS integration
-(M8). Offers and shopping sessions are in-memory in a single API process.
+There is no database (TalaDB is planned for orders, holds, and shared sessions in M5), no
+authentication, no orders, seat holds, ticketing, or payments, and no NextRS integration (M8).
+Offers and shopping sessions (including traveller details, seats, and extras) are in-memory in
+a single API process.
