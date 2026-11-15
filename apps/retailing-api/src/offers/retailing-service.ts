@@ -1,8 +1,27 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import {
+  SEAT_PROBLEM_MESSAGES,
+  ancillarySlotId,
   createFlightSearchSchema,
   requiredDirections,
+  seatProblem,
+  slotLabel,
+  travellerIssues,
+  type AncillaryChange,
+  type BookingNotice,
+  type BookingReview,
+  type CompleteStepRequest,
+  type Quote,
+  type ReviewIssue,
+  type ReviewResponse,
+  type SeatMap,
+  type SessionAncillaries,
+  type SessionSeatMap,
+  type Traveller,
+  type Contact,
+  type UpdateSeatsRequest,
   type ApiErrorCode,
+  type Booking,
   type FlightSearch,
   type JourneyDirection,
   type OfferPriceCheckResponse,
@@ -23,6 +42,36 @@ import { FARE_FAMILIES, toPublicFareFamily } from '../fixtures/fare-families';
 import { PRICING_CURRENCY } from '../pricing/pricing';
 import { resolveCandidate, type Candidate } from '../search/itineraries';
 import type { FlightService } from '../services/flights';
+import {
+  ANCILLARIES,
+  ANCILLARIES_BY_ID,
+  ANCILLARY_CATALOGUE_VERSION,
+  toPublicProduct,
+} from '../fixtures/ancillaries';
+import { buildSeatMap, seatOn } from '../booking/seat-map';
+import {
+  ancillaryOffers,
+  baggageAllowances,
+  bookingIssues,
+  findLeg,
+  flightsReady,
+  mealServiceFor,
+  seatPricing,
+  seatTravellers,
+  travelDates,
+  buildQuote,
+  emptyBooking,
+  extrasTotals,
+  longestBand,
+  offerIndex,
+  publicAncillaries,
+  publicSeats,
+  reconcileBooking,
+  slotsFor,
+  stepStates,
+  type StoredBooking,
+  type Trip,
+} from '../booking/booking';
 import { BoundedStore } from './bounded-store';
 import {
   PRICING_VERSION,
@@ -72,6 +121,8 @@ export type RetailingFailure = {
   code: ApiErrorCode;
   message: string;
   path?: string;
+  /** Every field-level problem, when there are several (traveller details). */
+  issues?: { path: string; message: string }[];
 };
 export type RetailingResult<T> = { ok: true; value: T } | RetailingFailure;
 
@@ -82,7 +133,7 @@ const fail = (
   path?: string,
 ): RetailingFailure => ({ ok: false, status, code, message, path });
 
-interface StoredSelection {
+export interface StoredSelection {
   direction: JourneyDirection;
   offer: StoredOffer;
   /** Stored status; `EXPIRED` is derived when the offer's validity has passed. */
@@ -99,11 +150,13 @@ interface StoredSelection {
   } | null;
 }
 
-interface StoredSession {
+export interface StoredSession {
   id: string;
   tokenHash: Buffer;
   search: FlightSearch;
   selections: { outbound: StoredSelection | null; inbound: StoredSelection | null };
+  /** Traveller details, seats, services, and the last review (Milestone 4). */
+  booking: StoredBooking;
   createdAt: number;
   updatedAt: number;
   expiresAt: number;
@@ -154,6 +207,7 @@ export function createRetailingService({
       inventoryVersion: inventoryVersionFor(inventory.referenceDate),
       demandShift: scenario.demandShift,
       soldOut: scenario.soldOut,
+      seatTaken: scenario.seatTaken,
     };
   }
 
@@ -190,6 +244,59 @@ export function createRetailingService({
     return selection.status;
   }
 
+  /** The trip as the booking steps see it: selected legs with their flights and fare. */
+  function tripFor(session: StoredSession, ctx: PricingContext): Trip {
+    const required = requiredDirections(session.search);
+    const legs = required.flatMap((direction) => {
+      const selection = session.selections[direction];
+      if (!selection) return [];
+      const segments = candidateFor(selection.offer.itineraryId)?.segments ?? [];
+      return [
+        {
+          direction,
+          offer: selection.offer,
+          family: selection.offer.family,
+          segments,
+          status: selectionStatus(selection, ctx),
+          validatedAt: selection.validatedAt,
+          band: longestBand(segments),
+        },
+      ];
+    });
+    return {
+      search: session.search,
+      legs,
+      complete: legs.length === required.length,
+      slots: slotsFor(session.search),
+    };
+  }
+
+  function toPublicBooking(session: StoredSession, trip: Trip): Booking {
+    const { booking } = session;
+    const seats = publicSeats(booking, trip);
+    const ancillaries = publicAncillaries(booking, offerIndex(ancillaryOffers(trip)));
+    const reviewCurrent = booking.review?.sessionVersion === session.version;
+    return {
+      slots: trip.slots,
+      passengers: booking.passengers,
+      contact: booking.contact,
+      seats,
+      ancillaries,
+      steps: stepStates(booking, trip, reviewCurrent),
+      notices: booking.notices,
+      review: booking.review
+        ? {
+            status: booking.review.status,
+            checkedAt: iso(booking.review.checkedAt),
+            sessionVersion: booking.review.sessionVersion,
+            current: reviewCurrent,
+            totalMinor: booking.review.totalMinor,
+            issues: booking.review.issues,
+          }
+        : null,
+    };
+  }
+
   function toPublicSession(session: StoredSession, ctx: PricingContext): ShoppingSession {
     const view = (selection: StoredSelection | null): Selection | null => {
       if (!selection) return null;
@@ -221,6 +328,9 @@ export function createRetailingService({
     const sum = (pick: (selection: Selection) => number) =>
       chosen.reduce((total, selection) => total + pick(selection), 0);
     const complete = required.every((selection) => selection !== null);
+    const booking = toPublicBooking(session, tripFor(session, ctx));
+    const extras = extrasTotals(booking.seats, booking.ancillaries);
+    const flightsTotalMinor = sum((selection) => selection.offer.price.totalMinor);
     return {
       id: session.id,
       search: session.search,
@@ -230,17 +340,21 @@ export function createRetailingService({
         complete,
         readyToContinue:
           complete && required.every((selection) => selection!.status === 'VALIDATED'),
-        totalMinor: sum((selection) => selection.offer.price.totalMinor),
+        totalMinor: flightsTotalMinor + extras.totalMinor,
+        flightsTotalMinor,
         totals: {
           baseFareMinor: sum((selection) => selection.offer.price.totals.baseFareMinor),
           fareFamilyMinor: sum((selection) => selection.offer.price.totals.fareFamilyMinor),
           taxesMinor: sum((selection) => selection.offer.price.totals.taxesMinor),
+          extrasMinor: extras.totalMinor,
         },
+        extras,
         offersExpireAt:
           chosen.length > 0
             ? iso(Math.min(...chosen.map((selection) => Date.parse(selection.offer.expiresAt))))
             : null,
       },
+      booking,
       createdAt: iso(session.createdAt),
       updatedAt: iso(session.updatedAt),
       expiresAt: iso(session.expiresAt),
@@ -310,6 +424,259 @@ export function createRetailingService({
       }
     }
     return null;
+  }
+
+  /**
+   * Re-validate selections against current inventory and rules (see `reprice`). Mutates the
+   * session; the caller touches it.
+   */
+  function repriceSelections(
+    session: StoredSession,
+    ctx: PricingContext,
+    directions: JourneyDirection[] | undefined,
+  ): RepriceResponse['data']['outcomes'] {
+    const outcomes: RepriceResponse['data']['outcomes'] = [];
+
+    for (const direction of directions ?? (['outbound', 'inbound'] as const)) {
+      const selection = session.selections[direction];
+      if (!selection) continue;
+      const previousTotalMinor = selection.offer.price.totalMinor;
+      const record = (outcome: RepriceOutcome, currentTotalMinor: number | null) => {
+        selection.lastCheck = { outcome, at: ctx.now, previousTotalMinor, currentTotalMinor };
+        outcomes.push({ direction, outcome, previousTotalMinor, currentTotalMinor });
+      };
+
+      const candidate = candidateFor(selection.offer.itineraryId);
+      const eligibility = candidate
+        ? familyEligibility(candidate, selection.offer.family, selection.offer.passengers, ctx)
+        : { ok: false as const };
+      if (!candidate || !eligibility.ok) {
+        selection.status = 'UNAVAILABLE';
+        selection.pendingOffer = null;
+        record('UNAVAILABLE', null);
+        continue;
+      }
+      if (!isExpired(selection.offer, ctx)) {
+        selection.status = 'VALIDATED';
+        selection.validatedAt = ctx.now;
+        selection.pendingOffer = null;
+        record('VALIDATED', previousTotalMinor);
+        continue;
+      }
+      // A price change already waiting for an answer stays as it is while it is valid.
+      if (selection.pendingOffer && !isExpired(selection.pendingOffer, ctx)) {
+        record('PRICE_CHANGED', selection.pendingOffer.price.totalMinor);
+        continue;
+      }
+      const fresh = storeOffer(
+        createOffer(
+          candidate,
+          selection.offer.family,
+          selection.offer.passengers,
+          ctx,
+          config.offerValidityMs,
+        ),
+        ctx.now,
+      );
+      if (fresh.price.totalMinor === previousTotalMinor) {
+        selection.offer = fresh;
+        selection.status = 'VALIDATED';
+        selection.validatedAt = ctx.now;
+        selection.pendingOffer = null;
+        record('REFRESHED', fresh.price.totalMinor);
+      } else {
+        selection.status = 'PRICE_CHANGED';
+        selection.pendingOffer = fresh;
+        record('PRICE_CHANGED', fresh.price.totalMinor);
+      }
+    }
+    return outcomes;
+  }
+
+  /** Keep seats and services in line with a changed selection, and say what moved. */
+  function afterSelectionChange(
+    session: StoredSession,
+    ctx: PricingContext,
+    flightsChanged: boolean,
+  ) {
+    const { booking } = session;
+    const notices = reconcileBooking(booking, tripFor(session, ctx));
+    if (flightsChanged && (booking.progress.seats || booking.progress.extras)) {
+      booking.progress = { seats: false, extras: false };
+      notices.push({
+        code: 'SEATS_RESET',
+        message: 'Your flights changed, so please check your seats and extras again.',
+      });
+    }
+    booking.notices = notices;
+  }
+
+  // -------------------------------------------------------------------------
+  // Booking steps: internal helpers
+  // -------------------------------------------------------------------------
+
+  /** The seat map for a flight as this session sees it (scenarios included). */
+  function seatMapFor(
+    segment: Trip['legs'][number]['segments'][number],
+    session: StoredSession,
+    ctx: PricingContext,
+  ): SeatMap {
+    const taken = ctx.seatTaken
+      ? new Set(
+          session.booking.seats
+            .filter((seat) => seat.flightId === segment.id)
+            .map((seat) => seat.seatId),
+        )
+      : undefined;
+    return buildSeatMap(segment, {
+      seed: flights.current().seed,
+      now: ctx.now,
+      takenSeatIds: taken,
+    });
+  }
+
+  /**
+   * Apply a booking change atomically: authorise, check the expected version, run `apply` on
+   * the stored booking, and keep the change only if it succeeds. Everything is synchronous, so
+   * no other request can interleave.
+   */
+  function mutateBooking<T>(
+    id: string,
+    token: string | undefined,
+    expectedVersion: number | undefined,
+    scenario: Scenario | undefined,
+    apply: (session: StoredSession, trip: Trip, ctx: PricingContext) => RetailingFailure | T,
+  ): RetailingResult<{ session: ShoppingSession; result: T }> {
+    const ctx = context(scenario);
+    const found = authorize(id, token, ctx);
+    if (!found.ok) return found;
+    const session = found.value;
+    if (expectedVersion !== undefined && expectedVersion !== session.version) {
+      return fail(
+        409,
+        'SESSION_CONFLICT',
+        'Your trip was changed in another window or tab. We’ve loaded the latest version.',
+      );
+    }
+    const before = structuredClone(session.booking);
+    const outcome = apply(session, tripFor(session, ctx), ctx);
+    if (isFailure(outcome)) {
+      session.booking = before;
+      return outcome;
+    }
+    touch(session, ctx.now);
+    return { ok: true, value: { session: toPublicSession(session, ctx), result: outcome } };
+  }
+
+  const isFailure = (value: unknown): value is RetailingFailure =>
+    typeof value === 'object' && value !== null && (value as { ok?: unknown }).ok === false;
+
+  function requireFlights(trip: Trip): RetailingFailure | null {
+    return flightsReady(trip)
+      ? null
+      : fail(
+          409,
+          'BOOKING_STEP_UNAVAILABLE',
+          'Confirm your flights and fares on the trip summary first.',
+        );
+  }
+
+  function requireTravellers(session: StoredSession, trip: Trip): RetailingFailure | null {
+    return (
+      requireFlights(trip) ??
+      (session.booking.passengers
+        ? null
+        : fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Add traveller details first.'))
+    );
+  }
+
+  /** Why a change to one service can't be made, or the slot it fills. */
+  function checkAncillaryChange(
+    change: AncillaryChange,
+    index: number,
+    trip: Trip,
+    offers: ReturnType<typeof offerIndex>,
+  ): RetailingFailure | { slot: string; direction: JourneyDirection; flightId: string | null } {
+    const at = (field: string) => `changes.${index}.${field}`;
+    if (!trip.slots.some((slot) => slot.id === change.travellerId)) {
+      return fail(
+        422,
+        'TRAVELLER_MISSING',
+        'This traveller isn’t part of your booking.',
+        at('travellerId'),
+      );
+    }
+    if (change.quantity !== undefined && change.quantity !== 1) {
+      return fail(
+        422,
+        'INVALID_QUANTITY',
+        'Each service can be added once per traveller.',
+        at('quantity'),
+      );
+    }
+    let direction: JourneyDirection;
+    let flightId: string | null = null;
+    if (change.category === 'MEAL') {
+      const found = findLeg(trip, change.flightId);
+      if (!found) {
+        return fail(
+          422,
+          'INVALID_SELECTION',
+          'This flight isn’t part of your trip.',
+          at('flightId'),
+        );
+      }
+      direction = found.leg.direction;
+      flightId = change.flightId;
+    } else {
+      if (!trip.legs.some((leg) => leg.direction === change.direction)) {
+        return fail(
+          422,
+          'INVALID_SELECTION',
+          'Your trip has no flight in this direction.',
+          at('direction'),
+        );
+      }
+      direction = change.direction;
+    }
+    const slot = ancillarySlotId({ ...change, direction, flightId });
+    const productId = change.productId;
+    if (productId === null) return { slot, direction, flightId };
+    const product = ANCILLARIES_BY_ID.get(productId);
+    if (!product || product.category !== change.category) {
+      return fail(422, 'ANCILLARY_UNAVAILABLE', 'We don’t offer that service.', at('productId'));
+    }
+    const offered = offers.get(
+      `${ancillarySlotId({ category: change.category, travellerId: change.travellerId, direction, flightId, productId })}|${productId}`,
+    );
+    if (!offered) {
+      const leg = trip.legs.find((candidate) => candidate.direction === direction)!;
+      const included = leg.family.services.some(
+        (service) => service.code === productId && service.inclusion === 'included',
+      );
+      return fail(
+        422,
+        'ANCILLARY_UNAVAILABLE',
+        included
+          ? `${product.name} is already included with ${leg.family.name}.`
+          : `${product.name} isn’t available for ${slotLabel(change.travellerId)} on this flight.`,
+        at('productId'),
+      );
+    }
+    return { slot, direction, flightId };
+  }
+
+  function publicReview(session: StoredSession): BookingReview | null {
+    const review = session.booking.review;
+    if (!review) return null;
+    return {
+      status: review.status,
+      checkedAt: iso(review.checkedAt),
+      sessionVersion: review.sessionVersion,
+      current: review.sessionVersion === session.version,
+      totalMinor: review.totalMinor,
+      issues: review.issues,
+    };
   }
 
   return {
@@ -447,6 +814,7 @@ export function createRetailingService({
         tokenHash: hashToken(token),
         search: parsed.data,
         selections: { outbound: null, inbound: null },
+        booking: emptyBooking(),
         createdAt: ctx.now,
         updatedAt: ctx.now,
         expiresAt: ctx.now + config.sessionIdleMs,
@@ -525,6 +893,9 @@ export function createRetailingService({
         session.selections.inbound = null;
         inboundCleared = true;
       }
+      const flightsChanged =
+        !existing || existing.offer.flightIds.join() !== offer.flightIds.join() || inboundCleared;
+      afterSelectionChange(session, ctx, flightsChanged);
       touch(session, ctx.now);
       return { ok: true, value: { session: toPublicSession(session, ctx), inboundCleared } };
     },
@@ -544,63 +915,403 @@ export function createRetailingService({
       const found = authorize(id, token, ctx);
       if (!found.ok) return found;
       const session = found.value;
-      const outcomes: RepriceResponse['data']['outcomes'] = [];
-
-      for (const direction of directions ?? (['outbound', 'inbound'] as const)) {
-        const selection = session.selections[direction];
-        if (!selection) continue;
-        const previousTotalMinor = selection.offer.price.totalMinor;
-        const record = (outcome: RepriceOutcome, currentTotalMinor: number | null) => {
-          selection.lastCheck = { outcome, at: ctx.now, previousTotalMinor, currentTotalMinor };
-          outcomes.push({ direction, outcome, previousTotalMinor, currentTotalMinor });
-        };
-
-        const candidate = candidateFor(selection.offer.itineraryId);
-        const eligibility = candidate
-          ? familyEligibility(candidate, selection.offer.family, selection.offer.passengers, ctx)
-          : { ok: false as const };
-        if (!candidate || !eligibility.ok) {
-          selection.status = 'UNAVAILABLE';
-          selection.pendingOffer = null;
-          record('UNAVAILABLE', null);
-          continue;
-        }
-        if (!isExpired(selection.offer, ctx)) {
-          selection.status = 'VALIDATED';
-          selection.validatedAt = ctx.now;
-          selection.pendingOffer = null;
-          record('VALIDATED', previousTotalMinor);
-          continue;
-        }
-        // A price change already waiting for an answer stays as it is while it is valid.
-        if (selection.pendingOffer && !isExpired(selection.pendingOffer, ctx)) {
-          record('PRICE_CHANGED', selection.pendingOffer.price.totalMinor);
-          continue;
-        }
-        const fresh = storeOffer(
-          createOffer(
-            candidate,
-            selection.offer.family,
-            selection.offer.passengers,
-            ctx,
-            config.offerValidityMs,
-          ),
-          ctx.now,
-        );
-        if (fresh.price.totalMinor === previousTotalMinor) {
-          selection.offer = fresh;
-          selection.status = 'VALIDATED';
-          selection.validatedAt = ctx.now;
-          selection.pendingOffer = null;
-          record('REFRESHED', fresh.price.totalMinor);
-        } else {
-          selection.status = 'PRICE_CHANGED';
-          selection.pendingOffer = fresh;
-          record('PRICE_CHANGED', fresh.price.totalMinor);
-        }
-      }
+      const outcomes = repriceSelections(session, ctx, directions);
       touch(session, ctx.now);
       return { ok: true, value: { session: toPublicSession(session, ctx), outcomes } };
+    },
+
+    // -----------------------------------------------------------------------
+    // Seat maps and the ancillary catalogue (public)
+    // -----------------------------------------------------------------------
+
+    seatMap(flightId: string, scenario?: Scenario): RetailingResult<SeatMap> {
+      const ctx = context(scenario);
+      const inventory = flights.current();
+      const instance = inventory.getInstance(flightId);
+      if (!instance) return fail(404, 'NOT_FOUND', 'There’s no seat map for this flight.');
+      return { ok: true, value: buildSeatMap(instance, { seed: inventory.seed, now: ctx.now }) };
+    },
+
+    ancillaryCatalogue() {
+      return {
+        data: ANCILLARIES.map(toPublicProduct),
+        meta: { catalogueVersion: ANCILLARY_CATALOGUE_VERSION },
+      };
+    },
+
+    ancillaryProduct(productId: string) {
+      const product = ANCILLARIES_BY_ID.get(productId);
+      return product ? toPublicProduct(product) : null;
+    },
+
+    // -----------------------------------------------------------------------
+    // Booking steps (private to the session)
+    // -----------------------------------------------------------------------
+
+    sessionSeatMap(
+      id: string,
+      token: string | undefined,
+      flightId: string,
+      scenario?: Scenario,
+    ): RetailingResult<SessionSeatMap> {
+      const ctx = context(scenario);
+      const found = authorize(id, token, ctx);
+      if (!found.ok) return found;
+      const session = found.value;
+      const trip = tripFor(session, ctx);
+      const located = findLeg(trip, flightId);
+      if (!located) return fail(404, 'NOT_FOUND', 'This flight isn’t part of your trip.');
+      const { leg, segment } = located;
+      return {
+        ok: true,
+        value: {
+          seatMap: seatMapFor(segment, session, ctx),
+          direction: leg.direction,
+          fare: { family: leg.family.code, cabin: leg.family.cabin },
+          currency: PRICING_CURRENCY,
+          pricing: seatPricing(leg, segment),
+          travellers: seatTravellers(session.booking, trip.slots),
+          assignments: publicSeats(session.booking, trip).filter(
+            (seat) => seat.flightId === flightId,
+          ),
+        },
+      };
+    },
+
+    sessionAncillaries(
+      id: string,
+      token: string | undefined,
+      scenario?: Scenario,
+    ): RetailingResult<SessionAncillaries> {
+      const ctx = context(scenario);
+      const found = authorize(id, token, ctx);
+      if (!found.ok) return found;
+      const trip = tripFor(found.value, ctx);
+      return {
+        ok: true,
+        value: {
+          currency: PRICING_CURRENCY,
+          offers: ancillaryOffers(trip),
+          allowances: baggageAllowances(trip, found.value.booking),
+          mealService: trip.legs.flatMap((leg) =>
+            leg.segments.map((segment) => mealServiceFor(segment, leg)),
+          ),
+          catalogueVersion: ANCILLARY_CATALOGUE_VERSION,
+        },
+      };
+    },
+
+    savePassengers(
+      id: string,
+      token: string | undefined,
+      request: { expectedVersion?: number; passengers: Traveller[]; contact: Contact },
+      scenario?: Scenario,
+    ) {
+      return mutateBooking(id, token, request.expectedVersion, scenario, (session, trip) => {
+        const blocked = requireFlights(trip);
+        if (blocked) return blocked;
+        const issues = travellerIssues(request.passengers, {
+          slots: trip.slots,
+          ...travelDates(trip),
+        });
+        if (issues.length > 0) {
+          const unknown = request.passengers.find(
+            (passenger) => !trip.slots.some((slot) => slot.id === passenger.id),
+          );
+          return {
+            ...fail(
+              422,
+              unknown ? 'TRAVELLER_MISSING' : 'PASSENGERS_INVALID',
+              issues[0]!.message,
+              issues[0]!.path.join('.'),
+            ),
+            issues: issues.map((issue) => ({ path: issue.path.join('.'), message: issue.message })),
+          };
+        }
+        const { booking } = session;
+        booking.passengers = request.passengers;
+        booking.contact = request.contact;
+        // A changed infant escort can make an exit row seat ineligible.
+        booking.notices = reconcileBooking(booking, trip);
+        return null;
+      });
+    },
+
+    updateSeats(
+      id: string,
+      token: string | undefined,
+      request: UpdateSeatsRequest,
+      scenario?: Scenario,
+    ) {
+      return mutateBooking(id, token, request.expectedVersion, scenario, (session, trip, ctx) => {
+        const blocked = requireTravellers(session, trip);
+        if (blocked) return blocked;
+        const { booking } = session;
+        const travellers = new Map(seatTravellers(booking, trip.slots).map((t) => [t.id, t]));
+        const seen = new Set<string>();
+        for (const [index, change] of request.assignments.entries()) {
+          const at = (field: string) => `assignments.${index}.${field}`;
+          const traveller = travellers.get(change.travellerId);
+          if (!traveller) {
+            return fail(
+              422,
+              'TRAVELLER_MISSING',
+              'This traveller isn’t part of your booking.',
+              at('travellerId'),
+            );
+          }
+          const located = findLeg(trip, change.flightId);
+          if (!located) {
+            return fail(
+              422,
+              'INVALID_SELECTION',
+              'This flight isn’t part of your trip.',
+              at('flightId'),
+            );
+          }
+          const key = `${change.travellerId}|${change.flightId}`;
+          if (seen.has(key)) {
+            return fail(
+              422,
+              'INVALID_SELECTION',
+              'Each traveller can have one seat per flight.',
+              at('seatId'),
+            );
+          }
+          seen.add(key);
+          booking.seats = booking.seats.filter(
+            (seat) =>
+              !(seat.travellerId === change.travellerId && seat.flightId === change.flightId),
+          );
+          if (change.seatId === null) continue;
+          const seat = seatOn(seatMapFor(located.segment, session, ctx), change.seatId);
+          if (!seat) {
+            return fail(
+              422,
+              'SEAT_INELIGIBLE',
+              `There’s no seat ${change.seatId} on this aircraft.`,
+              at('seatId'),
+            );
+          }
+          const problem = seatProblem(seat, {
+            fareCabin: located.leg.family.cabin,
+            traveller,
+            takenByOther: false,
+          });
+          if (problem === 'occupied' || problem === 'unavailable') {
+            return fail(
+              409,
+              'SEAT_UNAVAILABLE',
+              `Seat ${seat.id} is no longer available. Please choose another seat.`,
+              at('seatId'),
+            );
+          }
+          if (problem)
+            return fail(422, 'SEAT_INELIGIBLE', SEAT_PROBLEM_MESSAGES[problem], at('seatId'));
+          booking.seats.push({
+            travellerId: change.travellerId,
+            flightId: change.flightId,
+            seatId: seat.id,
+          });
+        }
+        // One traveller per seat, per flight, after every change is applied.
+        const taken = new Set<string>();
+        for (const seat of booking.seats) {
+          const key = `${seat.flightId}|${seat.seatId}`;
+          if (taken.has(key)) {
+            return fail(
+              409,
+              'SEAT_UNAVAILABLE',
+              `Someone else in your party already has seat ${seat.seatId}.`,
+            );
+          }
+          taken.add(key);
+        }
+        booking.notices = [];
+        return null;
+      });
+    },
+
+    updateAncillaries(
+      id: string,
+      token: string | undefined,
+      request: { expectedVersion?: number; changes: AncillaryChange[] },
+      scenario?: Scenario,
+    ) {
+      return mutateBooking(id, token, request.expectedVersion, scenario, (session, trip) => {
+        const blocked = requireTravellers(session, trip);
+        if (blocked) return blocked;
+        const { booking } = session;
+        if (!booking.progress.seats && !booking.progress.extras) {
+          return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Review your seats before adding extras.');
+        }
+        const offers = offerIndex(ancillaryOffers(trip));
+        const seen = new Set<string>();
+        for (const [index, change] of request.changes.entries()) {
+          const checked = checkAncillaryChange(change, index, trip, offers);
+          if (isFailure(checked)) return checked;
+          if (seen.has(checked.slot)) {
+            return fail(
+              422,
+              'INVALID_SELECTION',
+              'Choose one option per traveller for each service.',
+              `changes.${index}`,
+            );
+          }
+          seen.add(checked.slot);
+          booking.ancillaries = booking.ancillaries.filter(
+            (selection) => ancillarySlotId(selection) !== checked.slot,
+          );
+          const add = change.category === 'PRIORITY' ? change.selected : change.productId !== null;
+          if (add && change.productId) {
+            booking.ancillaries.push({
+              productId: change.productId,
+              category: change.category,
+              travellerId: change.travellerId,
+              direction: checked.direction,
+              flightId: checked.flightId,
+            });
+          }
+        }
+        booking.notices = [];
+        return null;
+      });
+    },
+
+    completeStep(
+      id: string,
+      token: string | undefined,
+      request: CompleteStepRequest,
+      scenario?: Scenario,
+    ) {
+      return mutateBooking(id, token, request.expectedVersion, scenario, (session, trip) => {
+        const blocked = requireTravellers(session, trip);
+        if (blocked) return blocked;
+        const { booking } = session;
+        if (request.step === 'extras' && !booking.progress.seats && !booking.progress.extras) {
+          return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Review your seats first.');
+        }
+        booking.progress[request.step] = true;
+        booking.notices = [];
+        return null;
+      });
+    },
+
+    /** The itemised quote and readiness, without re-pricing anything. */
+    review(
+      id: string,
+      token: string | undefined,
+      scenario?: Scenario,
+    ): RetailingResult<ReviewResponse['data']> {
+      const ctx = context(scenario);
+      const found = authorize(id, token, ctx);
+      if (!found.ok) return found;
+      const session = found.value;
+      const trip = tripFor(session, ctx);
+      if (!trip.complete) {
+        return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Choose your flights and fares first.');
+      }
+      const view = toPublicSession(session, ctx);
+      const review = publicReview(session);
+      const ready = review?.current === true && review.status === 'READY';
+      return {
+        ok: true,
+        value: {
+          session: view,
+          quote: buildQuote(trip, view.booking.seats, view.booking.ancillaries, ctx.now),
+          readiness: {
+            status: ready ? 'READY' : 'ACTION_REQUIRED',
+            issues: review?.current ? review.issues : bookingIssues(session.booking, trip),
+          },
+        },
+      };
+    },
+
+    /**
+     * The final pre-checkout check: re-price the offers, re-check every traveller, seat, and
+     * service against current availability and rules, rebuild the quote, and record the result.
+     * A seat taken meanwhile is released and the traveller is sent back to choose again.
+     */
+    validateBooking(
+      id: string,
+      token: string | undefined,
+      expectedVersion: number | undefined,
+      scenario?: Scenario,
+    ): RetailingResult<{ session: ShoppingSession; review: BookingReview; quote: Quote }> {
+      const ctx = context(scenario);
+      const found = authorize(id, token, ctx);
+      if (!found.ok) return found;
+      const session = found.value;
+      if (expectedVersion !== undefined && expectedVersion !== session.version) {
+        return fail(
+          409,
+          'SESSION_CONFLICT',
+          'Your trip was changed in another window or tab. We’ve loaded the latest version.',
+        );
+      }
+      if (!tripFor(session, ctx).complete) {
+        return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Choose your flights and fares first.');
+      }
+      const outcomes = repriceSelections(session, ctx, undefined);
+      const trip = tripFor(session, ctx);
+      const { booking } = session;
+      const notices: BookingNotice[] = [];
+      // What is unfinished as the traveller left it, then what this check finds.
+      const issues: ReviewIssue[] = bookingIssues(booking, trip);
+      for (const outcome of outcomes) {
+        if (outcome.outcome === 'REFRESHED') {
+          notices.push({
+            code: 'OFFER_REFRESHED',
+            message: `The price hold on your ${outcome.direction === 'outbound' ? 'departing' : 'return'} flight had ended, so we checked it again: the price is the same.`,
+          });
+        }
+      }
+      for (const notice of reconcileBooking(booking, trip)) {
+        notices.push(notice);
+        const seat = notice.code === 'SEAT_REMOVED' || notice.code === 'SEATS_RESET';
+        issues.push({
+          code: seat ? 'SEAT_INELIGIBLE' : 'ANCILLARY_UNAVAILABLE',
+          step: seat ? 'seats' : 'extras',
+          message: notice.message,
+          direction: null,
+          travellerId: null,
+          flightId: null,
+        });
+        if (seat) booking.progress.seats = false;
+      }
+      // Seats are provisional: check each one is still free right now.
+      booking.seats = booking.seats.filter((assignment) => {
+        const located = findLeg(trip, assignment.flightId);
+        const seat =
+          located && seatOn(seatMapFor(located.segment, session, ctx), assignment.seatId);
+        if (seat?.status === 'AVAILABLE') return true;
+        booking.progress.seats = false;
+        const flight = located
+          ? located.segment.schedule.flightNumber.replace(/^NV/, 'VEL ')
+          : 'your flight';
+        issues.push({
+          code: 'SEAT_UNAVAILABLE',
+          step: 'seats',
+          message: `Seat ${assignment.seatId} on ${flight} is no longer available for ${slotLabel(assignment.travellerId)}. Please choose another seat.`,
+          direction: located?.leg.direction ?? null,
+          travellerId: assignment.travellerId,
+          flightId: assignment.flightId,
+        });
+        return false;
+      });
+      touch(session, ctx.now);
+      const view = toPublicSession(session, ctx);
+      const quote = buildQuote(trip, view.booking.seats, view.booking.ancillaries, ctx.now);
+      booking.review = {
+        status: issues.length === 0 ? 'READY' : 'ACTION_REQUIRED',
+        checkedAt: ctx.now,
+        sessionVersion: session.version,
+        totalMinor: quote.totals.totalMinor,
+        issues,
+      };
+      booking.notices = notices;
+      const latest = toPublicSession(session, ctx);
+      return { ok: true, value: { session: latest, review: latest.booking.review!, quote } };
     },
 
     deleteSession(id: string, token: string | undefined): RetailingResult<null> {

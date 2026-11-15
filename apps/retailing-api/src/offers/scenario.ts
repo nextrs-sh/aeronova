@@ -8,6 +8,7 @@
  *   fresh offer costs more.
  * - `sold-out`: the flights of any offer checked in this request have no seats left.
  * - `session-expired`: this request runs after every shopping session's maximum lifetime.
+ * - `seat-taken`: the seats this session has chosen were just taken by other travellers.
  */
 export const SCENARIO_HEADER = 'x-velasia-scenario';
 
@@ -17,12 +18,15 @@ export interface Scenario {
   /** Demand bands added when pricing in this request. */
   demandShift: number;
   soldOut: boolean;
+  /** The session's chosen seats show as occupied (another traveller took them). */
+  seatTaken: boolean;
 }
 
 export const NO_SCENARIO: Scenario = Object.freeze({
   clockOffsetMs: 0,
   demandShift: 0,
   soldOut: false,
+  seatTaken: false,
 });
 
 export const SCENARIO_NAMES = [
@@ -30,6 +34,7 @@ export const SCENARIO_NAMES = [
   'price-increase',
   'sold-out',
   'session-expired',
+  'seat-taken',
 ] as const;
 export type ScenarioName = (typeof SCENARIO_NAMES)[number];
 
@@ -47,6 +52,8 @@ export function scenarioFor(
       return { ...NO_SCENARIO, soldOut: true };
     case 'session-expired':
       return { ...NO_SCENARIO, clockOffsetMs: sessionMaxMs + 60 * 60_000 };
+    case 'seat-taken':
+      return { ...NO_SCENARIO, seatTaken: true };
   }
 }
 

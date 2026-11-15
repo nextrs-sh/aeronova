@@ -9,7 +9,8 @@ import { SCENARIO_HEADER, parseScenarioName, scenarioFor, type Scenario } from '
  * - Latency (`RETAILING_API_LATENCY_MS`) applies to `/v1/flights*` and `/v1/offers*` when set.
  * - Faults apply only when `RETAILING_API_FAULTS=enabled`, per request, via
  *   the `x-velasia-fault` header: `delay=<ms>`, `timeout`, `unavailable`,
- *   `empty`, or `malformed`.
+ *   `empty`, `malformed`, or `slow-commit` (a mutation is applied, then its answer is held for
+ *   the timeout, as if the response were lost).
  * - Retailing scenarios (offer expiry, price change, sell-out, session expiry) apply under the
  *   same switch, via `x-velasia-scenario` (see `offers/scenario.ts`).
  */
@@ -20,7 +21,9 @@ export type Fault =
   | { kind: 'timeout' }
   | { kind: 'unavailable' }
   | { kind: 'empty' }
-  | { kind: 'malformed' };
+  | { kind: 'malformed' }
+  /** Mutations only: apply the change, then hold the response (an answer lost in transit). */
+  | { kind: 'slow-commit' };
 
 export interface FaultOptions {
   enabled: boolean;
@@ -52,7 +55,8 @@ export function parseFault(header: string | string[] | undefined): Fault | null 
     value === 'timeout' ||
     value === 'unavailable' ||
     value === 'empty' ||
-    value === 'malformed'
+    value === 'malformed' ||
+    value === 'slow-commit'
   ) {
     return { kind: value };
   }
@@ -62,8 +66,9 @@ export function parseFault(header: string | string[] | undefined): Fault | null 
 function wait(ms: number, request: FastifyRequest): Promise<void> {
   return new Promise((resolve) => {
     const timer = setTimeout(resolve, ms);
-    // Stop waiting once the client has given up.
-    request.raw.once('close', () => {
+    // Stop waiting once the client has given up. (The request stream itself emits \`close\` as
+    // soon as a body has been read, so listen on the connection.)
+    request.raw.socket?.once('close', () => {
       clearTimeout(timer);
       resolve();
     });
@@ -100,6 +105,13 @@ export function registerFaultInjection(
 
     const fault = parseFault(request.headers[FAULT_HEADER]);
     if (!fault) return;
+    if (fault.kind === 'slow-commit') {
+      // Reads answer normally, so the storefront can find out what was saved.
+      if (request.method === 'GET') return;
+      reply.header('x-velasia-fault-applied', fault.kind);
+      reply.header('x-velasia-slow-commit', '1');
+      return;
+    }
     reply.header('x-velasia-fault-applied', fault.kind);
     switch (fault.kind) {
       case 'delay':
@@ -125,7 +137,12 @@ export function registerFaultInjection(
     }
   });
 
-  app.addHook('onSend', async (_request, reply, payload) => {
+  app.addHook('onSend', async (request, reply, payload) => {
+    if (reply.getHeader('x-velasia-slow-commit') === '1') {
+      reply.removeHeader('x-velasia-slow-commit');
+      await wait(options.timeoutMs, request);
+      return payload;
+    }
     if (reply.getHeader('x-velasia-malformed') !== '1') return payload;
     reply.removeHeader('x-velasia-malformed');
     return JSON.stringify({ data: { legs: 'unexpected' }, meta: null });

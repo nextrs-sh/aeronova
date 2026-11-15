@@ -51,6 +51,8 @@ export interface PricingContext {
   demandShift: number;
   /** Simulated sell-out of the selected flights (test scenarios only). */
   soldOut: boolean;
+  /** Simulated: the session's chosen seats were taken by others (test scenarios only). */
+  seatTaken?: boolean;
 }
 
 /** An offer as the API keeps it. Times are epoch milliseconds. */

@@ -11,10 +11,10 @@ import { parseInput } from '../http';
 import type { RetailingService } from '../offers/retailing-service';
 import { sendResult } from './results';
 
-const sessionParamsSchema = z.object({ id: shoppingSessionIdSchema });
+export const sessionParamsSchema = z.object({ id: shoppingSessionIdSchema });
 
 /** Sessions are authorised by the secret token returned at creation, as a bearer token. */
-function bearerToken(request: FastifyRequest): string | undefined {
+export function bearerToken(request: FastifyRequest): string | undefined {
   const match = /^Bearer ([A-Za-z0-9_-]{43})$/.exec(request.headers.authorization ?? '');
   return match?.[1];
 }

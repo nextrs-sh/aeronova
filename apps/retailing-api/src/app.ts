@@ -5,6 +5,7 @@ import { registerFaultInjection } from './faults';
 import { sendError } from './http';
 import { airlineRoutes } from './routes/airline';
 import { airportRoutes } from './routes/airports';
+import { bookingRoutes } from './routes/booking';
 import { destinationRoutes } from './routes/destinations';
 import { flightRoutes } from './routes/flights';
 import { healthRoutes } from './routes/health';
@@ -15,7 +16,7 @@ import { createRetailingService, DEFAULT_RETAILING_CONFIG } from './offers/retai
 import { createCatalog } from './services/catalog';
 import { createFlightService } from './services/flights';
 
-export const API_VERSION = '0.3.0';
+export const API_VERSION = '0.4.0';
 
 export interface BuildAppOptions extends FastifyServerOptions {
   /** Defaults are deterministic apart from "today", which follows the system clock unless pinned. */
@@ -55,6 +56,7 @@ export function buildApp({ config = {}, ...options }: BuildAppOptions = {}): Fas
   app.register(networkRoutes, { flights });
   app.register(offerRoutes, { retailing });
   app.register(shoppingRoutes, { retailing });
+  app.register(bookingRoutes, { retailing });
 
   app.setNotFoundHandler((request, reply) =>
     sendError(reply, 404, 'NOT_FOUND', `Route ${request.method} ${request.url} not found.`),
