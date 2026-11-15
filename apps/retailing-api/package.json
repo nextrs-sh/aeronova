@@ -13,21 +13,26 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "db:reset": "tsx scripts/db-reset.ts"
+    "db:reset": "tsx scripts/db-reset.ts",
+    "db:tool": "tsx src/tools/db-tool-cli.ts",
+    "build": "node scripts/build.mjs",
+    "start:prod": "node dist/server.mjs"
   },
   "dependencies": {
-    "@velasia/contracts": "workspace:*",
     "@node-rs/argon2": "catalog:",
     "@taladb/node": "catalog:",
+    "@velasia/contracts": "workspace:*",
+    "@velasia/observability": "workspace:*",
     "fastify": "catalog:",
     "taladb": "catalog:",
-    "tsx": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@velasia/config": "workspace:*",
     "@types/node": "catalog:",
+    "@velasia/config": "workspace:*",
+    "esbuild": "catalog:",
     "eslint": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:"

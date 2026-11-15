@@ -26,11 +26,13 @@ catalog:
   # API
   fastify: 5.12.8
   # Persistence (retailing API only)
-  taladb: 0.13.0
-  '@taladb/node': 0.13.0
+  taladb: 0.13.1
+  '@taladb/node': 0.13.1
   # Password hashing for demo accounts (Argon2id), retailing API only
   '@node-rs/argon2': 2.2.2
   tsx: 4.23.15
+  # Bundles the retailing API for its production image (Milestone 7)
+  esbuild: 0.28.2
   # Tooling
   turbo: 2.11.11
   typescript: 6.0.3

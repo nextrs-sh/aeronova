@@ -25,8 +25,8 @@ catalogs:
       specifier: 4.3.5
       version: 4.3.5
     '@taladb/node':
-      specifier: 0.13.0
-      version: 0.13.0
+      specifier: 0.13.1
+      version: 0.13.1
     '@testing-library/dom':
       specifier: 10.4.2
       version: 10.4.2
@@ -60,6 +60,9 @@ catalogs:
     clsx:
       specifier: 2.1.1
       version: 2.1.1
+    esbuild:
+      specifier: 0.28.2
+      version: 0.28.2
     eslint:
       specifier: 9.39.5
       version: 9.39.5
@@ -109,8 +112,8 @@ catalogs:
       specifier: 4.3.5
       version: 4.3.5
     taladb:
-      specifier: 0.13.0
-      version: 0.13.0
+      specifier: 0.13.1
+      version: 0.13.1
     tsx:
       specifier: 4.23.15
       version: 4.23.15
@@ -169,19 +172,19 @@ importers:
         version: 2.2.2
       '@taladb/node':
         specifier: 'catalog:'
-        version: 0.13.0
+        version: 0.13.1
       '@velasia/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@velasia/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       fastify:
         specifier: 'catalog:'
         version: 5.12.8
       taladb:
         specifier: 'catalog:'
-        version: 0.13.0(@taladb/node@0.13.0)
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.15
+        version: 0.13.1(@taladb/node@0.13.1)
       zod:
         specifier: 'catalog:'
         version: 4.6.7
@@ -192,9 +195,15 @@ importers:
       '@velasia/config':
         specifier: workspace:*
         version: link:../../packages/config
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.28.2
       eslint:
         specifier: 'catalog:'
         version: 9.39.5(jiti@2.7.0)
+      tsx:
+        specifier: 'catalog:'
+        version: 4.23.15
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -213,6 +222,9 @@ importers:
       '@velasia/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@velasia/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@velasia/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -322,6 +334,27 @@ importers:
       zod:
         specifier: 'catalog:'
         version: 4.6.7
+    devDependencies:
+      '@types/node':
+        specifier: 'catalog:'
+        version: 22.20.5
+      '@velasia/config':
+        specifier: workspace:*
+        version: link:../config
+      eslint:
+        specifier: 'catalog:'
+        version: 9.39.5(jiti@2.7.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.3
+      vite:
+        specifier: 'catalog:'
+        version: 8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)
+      vitest:
+        specifier: 'catalog:'
+        version: 5.1.0(@types/node@22.20.5)(jsdom@31.0.1)(vite@8.3.8(@types/node@22.20.5)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
+
+  packages/observability:
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -2036,8 +2069,8 @@ packages:
   '@tailwindcss/postcss@4.3.5':
     resolution: {integrity: sha512-FAV37Tlx9wBiT/hkfgVD0Q6CWsP2oUX3lf28nrfjW8+ksILjnpuFulUqWDfNR4/ZiEHHDRBX8DUTzD1Rys687A==}
 
-  '@taladb/node@0.13.0':
-    resolution: {integrity: sha512-1bnbqRIWwlTWOQke1YDavH/BTjInIT42vxoxdglQRKNlyBDu3nPW9RMPrlRA285A3ZTLuRZzdqvIF6prMSn2dA==}
+  '@taladb/node@0.13.1':
+    resolution: {integrity: sha512-KZJSMITjJoJxnZwE5c0wYsOLMt0U38gpSkTw8D2vqsi1Lm0aqfcC8OV53RNIob4uC1AiioH2iavCaTJhxZbCbg==}
     engines: {bun: '>=1.0', node: '>=18'}
 
   '@testing-library/dom@10.4.2':
@@ -3937,12 +3970,12 @@ packages:
   tailwindcss@4.3.5:
     resolution: {integrity: sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==}
 
-  taladb@0.13.0:
-    resolution: {integrity: sha512-b3GJIbtNGsS1Hsk80/zM+XF4CwjHQI9NGzcsHabXrSPS2rrqRdBVCdGetM6HC5bO03A4AdZu3YF+XWYUAM9jnQ==}
+  taladb@0.13.1:
+    resolution: {integrity: sha512-hZADf+2KF9NJbT7VuVzyVL7uekAdib6uLI44SDVJUjhBLM/zAAJUwsYRliS5dOeA61Vv3rBpNsAjKCxd12O7tA==}
     engines: {node: '>=18'}
     peerDependencies:
-      '@taladb/node': 0.13.0
-      '@taladb/web': 0.13.0
+      '@taladb/node': 0.13.1
+      '@taladb/web': 0.13.1
     peerDependenciesMeta:
       '@taladb/node':
         optional: true
@@ -5717,7 +5750,7 @@ snapshots:
       postcss: 8.5.33
       tailwindcss: 4.3.5
 
-  '@taladb/node@0.13.0': {}
+  '@taladb/node@0.13.1': {}
 
   '@testing-library/dom@10.4.2':
     dependencies:
@@ -7836,11 +7869,11 @@ snapshots:
 
   tailwindcss@4.3.5: {}
 
-  taladb@0.13.0(@taladb/node@0.13.0):
+  taladb@0.13.1(@taladb/node@0.13.1):
     dependencies:
       js-yaml: 4.3.2
     optionalDependencies:
-      '@taladb/node': 0.13.0
+      '@taladb/node': 0.13.1
 
   tapable@2.3.4: {}
 
