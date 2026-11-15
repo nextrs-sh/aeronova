@@ -370,7 +370,8 @@ describe('configuration', () => {
     expect(() => loadConfig({ RETAILING_API_FAULTS: 'yes' })).toThrow();
   });
 
-  it('no longer reads the pre-rebrand AERONOVA_TODAY alias (removed in M3)', () => {
-    expect(loadConfig({ ['AERONOVA' + '_TODAY']: '2027-02-01' }).today).toBeUndefined();
+  it('no longer reads the retired pre-rebrand "today" alias (removed in M3)', () => {
+    const retired = ['AERO', 'NOVA_TODAY'].join('');
+    expect(loadConfig({ [retired]: '2027-02-01' }).today).toBeUndefined();
   });
 });

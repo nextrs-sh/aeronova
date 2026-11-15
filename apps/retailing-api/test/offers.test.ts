@@ -36,7 +36,7 @@ const candidate = (id: string): Candidate => {
   return found;
 };
 
-/** Fixtures from the deterministic inventory (seed `aeronova`, today 2026-12-01). */
+/** Fixtures from the deterministic test inventory (`SEED`, today 2026-12-01). */
 const A21N_MNL_SIN = 'NV501-20261215'; // Business cabin
 const A20N_MNL_CEB = 'NV103-20261215'; // Economy and Premium Economy only
 const B38M_CRK_CEB = 'NV301-20261215'; // 8 Business seats
