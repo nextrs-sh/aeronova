@@ -9,6 +9,8 @@
  * - `sold-out`: the flights of any offer checked in this request have no seats left.
  * - `session-expired`: this request runs after every shopping session's maximum lifetime.
  * - `seat-taken`: the seats this session has chosen were just taken by other travellers.
+ * - `hold-expired`: this request runs just after a checkout seat hold would have ended (and
+ *   before offers expire). Orders read or paid in it expire for real: it is a test switch.
  */
 export const SCENARIO_HEADER = 'x-velasia-scenario';
 
@@ -35,12 +37,17 @@ export const SCENARIO_NAMES = [
   'sold-out',
   'session-expired',
   'seat-taken',
+  'hold-expired',
 ] as const;
 export type ScenarioName = (typeof SCENARIO_NAMES)[number];
 
 export function scenarioFor(
   name: ScenarioName,
-  { offerValidityMs, sessionMaxMs }: { offerValidityMs: number; sessionMaxMs: number },
+  {
+    offerValidityMs,
+    sessionMaxMs,
+    holdMs,
+  }: { offerValidityMs: number; sessionMaxMs: number; holdMs: number },
 ): Scenario {
   const pastOfferValidity = offerValidityMs + 60_000;
   switch (name) {
@@ -54,6 +61,8 @@ export function scenarioFor(
       return { ...NO_SCENARIO, clockOffsetMs: sessionMaxMs + 60 * 60_000 };
     case 'seat-taken':
       return { ...NO_SCENARIO, seatTaken: true };
+    case 'hold-expired':
+      return { ...NO_SCENARIO, clockOffsetMs: holdMs + 60_000 };
   }
 }
 

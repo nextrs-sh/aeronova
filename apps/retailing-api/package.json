@@ -12,11 +12,14 @@
     "start": "tsx src/server.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:reset": "tsx scripts/db-reset.ts"
   },
   "dependencies": {
     "@velasia/contracts": "workspace:*",
+    "@taladb/node": "catalog:",
     "fastify": "catalog:",
+    "taladb": "catalog:",
     "tsx": "catalog:",
     "zod": "catalog:"
   },

@@ -1,4 +1,5 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { CRASH_HEADER, parseCrashPoint, type CrashPoint } from './crash';
 import { sendError } from './http';
 import { SCENARIO_HEADER, parseScenarioName, scenarioFor, type Scenario } from './offers/scenario';
 
@@ -29,12 +30,15 @@ export interface FaultOptions {
   enabled: boolean;
   latency?: { minMs: number; maxMs: number };
   timeoutMs: number;
+  /** Honour `x-velasia-crash` (see `crash.ts`). Needs `enabled` as well. */
+  crashTests?: boolean;
 }
 
 /** Durations the retailing scenarios are derived from. */
 export interface ScenarioTimings {
   offerValidityMs: number;
   sessionMaxMs: number;
+  holdMs: number;
 }
 
 declare module 'fastify' {
@@ -43,6 +47,8 @@ declare module 'fastify' {
     simulateEmpty: boolean;
     /** Retailing scenario for this request (see `offers/scenario.ts`); `null` for none. */
     scenario: Scenario | null;
+    /** Test-only crash point for this request (see `crash.ts`); `null` for none. */
+    crashPoint: CrashPoint | null;
   }
 }
 
@@ -83,8 +89,12 @@ export function registerFaultInjection(
 ): void {
   app.decorateRequest('simulateEmpty', false);
   app.decorateRequest('scenario', null);
+  app.decorateRequest('crashPoint', null);
   if (!options.enabled && !options.latency) return;
   if (options.enabled) app.log.warn('fault injection is ENABLED (x-velasia-fault header honoured)');
+  const crashTests = options.enabled && options.crashTests === true;
+  if (crashTests)
+    app.log.warn('crash tests are ENABLED (x-velasia-crash header kills the process)');
 
   app.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/v1/')) return;
@@ -96,6 +106,7 @@ export function registerFaultInjection(
       await wait(minMs + Math.random() * (maxMs - minMs), request);
     }
     if (!options.enabled) return;
+    if (crashTests) request.crashPoint = parseCrashPoint(request.headers[CRASH_HEADER]);
 
     const scenario = parseScenarioName(request.headers[SCENARIO_HEADER]);
     if (scenario) {

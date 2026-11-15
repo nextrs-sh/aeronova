@@ -12,6 +12,7 @@ import { AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { AIRPORTS_BY_CODE } from '../fixtures/airports';
 import { ROTATIONS } from '../fixtures/network';
 import { hashToUnit } from './hash';
+import type { AllocationLedger } from './ledger';
 import { buildSchedule, type ScheduledFlight } from './schedule';
 
 export interface InventoryOptions {
@@ -21,6 +22,8 @@ export interface InventoryOptions {
   seed: string;
   /** Days of dated flights to publish, starting at the reference date. */
   horizonDays: number;
+  /** Seats held or committed by orders (Milestone 5). Without it, only seeded demand counts. */
+  ledger?: AllocationLedger;
 }
 
 export interface CabinInventory {
@@ -44,6 +47,8 @@ export interface FlightInstance {
   cabins: CabinInventory[];
   /** Whole days between the reference date and departure. */
   daysToDeparture: number;
+  /** Seats taken by orders, on top of the seeded `sold` counts. */
+  ledger?: AllocationLedger;
 }
 
 const MINUTE_MS = 60_000;
@@ -79,8 +84,10 @@ export class Inventory {
   private readonly departuresByAirportDate = new Map<string, FlightInstance[]>();
   private readonly instancesByRoute = new Map<string, FlightInstance[]>();
   private readonly routeIds: ReadonlySet<string>;
+  private readonly ledger?: AllocationLedger;
 
-  constructor({ referenceDate, seed, horizonDays }: InventoryOptions) {
+  constructor({ referenceDate, seed, horizonDays, ledger }: InventoryOptions) {
+    this.ledger = ledger;
     this.referenceDate = referenceDate;
     this.seed = seed;
     this.scheduleEndDate = addDays(referenceDate, horizonDays - 1);
@@ -184,6 +191,7 @@ export class Inventory {
       status: unit('ops') < CANCELLATION_RATE ? 'cancelled' : 'scheduled',
       cabins,
       daysToDeparture,
+      ledger: this.ledger,
     };
   }
 }
@@ -195,10 +203,16 @@ export function cabinInventory(
   return instance.cabins.find((entry) => entry.cabin === cabin);
 }
 
+/**
+ * Seats that can still be sold: capacity minus seeded demand minus seats held or committed by
+ * orders. Never negative (seeded demand grows as departure nears and is not a real order).
+ */
 export function seatsAvailable(instance: FlightInstance, cabin: CabinClass): number {
   if (instance.status !== 'scheduled') return 0;
   const entry = cabinInventory(instance, cabin);
-  return entry ? entry.capacity - entry.sold : 0;
+  if (!entry) return 0;
+  const ordered = instance.ledger?.seatsTaken(instance.id, cabin) ?? 0;
+  return Math.max(0, entry.capacity - entry.sold - ordered);
 }
 
 function buildRoutes(schedule: readonly ScheduledFlight[]): NetworkRoute[] {

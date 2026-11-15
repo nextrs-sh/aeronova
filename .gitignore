@@ -160,3 +160,7 @@ coverage/
 next-env.d.ts
 .DS_Store
 .env*.local
+
+# Retailing API TalaDB files (orders). Never commit; reset with `pnpm --filter @velasia/retailing-api db:reset`.
+apps/retailing-api/data/
+*.db
