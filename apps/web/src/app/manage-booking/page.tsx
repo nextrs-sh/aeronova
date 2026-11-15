@@ -52,7 +52,7 @@ export default function ManageBookingPage() {
         <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map(({ icon: Icon, title, description }) => (
             <li key={title} className="rounded-card bg-surface p-6">
-              <Icon className="size-7 text-gold-700" aria-hidden="true" />
+              <Icon className="size-7 text-primary" aria-hidden="true" />
               <h2 className="mt-4 text-lg font-bold text-ink">{title}</h2>
               <p className="mt-2 text-sm leading-relaxed text-ink-muted">{description}</p>
             </li>

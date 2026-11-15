@@ -115,7 +115,7 @@ export function TripPanel({ session }: { session: ShoppingSession }) {
       className="hidden h-fit rounded-[1.5rem] border border-line bg-white p-5 shadow-card lg:sticky lg:top-24 lg:block"
       data-testid="trip-panel"
     >
-      <p className="text-xs font-bold tracking-[0.14em] text-gold-800 uppercase">Your trip</p>
+      <p className="text-xs font-bold tracking-[0.14em] text-primary uppercase">Your trip</p>
       <h2 id="trip-panel-heading" className="mt-1 mb-4 font-display text-xl font-bold text-ink">
         {session.search.origin} → {session.search.destination}
         {session.search.tripType === 'round-trip' ? ' and back' : ''}
@@ -134,7 +134,7 @@ export function TripPanelCompact({ session }: { session: ShoppingSession }) {
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-[1.25rem] p-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
         <span className="min-w-0">
-          <span className="block text-xs font-bold tracking-[0.14em] text-gold-800 uppercase">
+          <span className="block text-xs font-bold tracking-[0.14em] text-primary uppercase">
             Trip summary
           </span>
           <span className="block truncate text-sm font-semibold text-ink">

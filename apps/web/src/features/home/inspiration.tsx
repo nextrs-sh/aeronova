@@ -57,14 +57,14 @@ export function Inspiration() {
                     className="object-cover transition-transform duration-700 ease-[var(--ease-soft)] group-hover:scale-[1.04]"
                   />
                 </div>
-                <p className="mt-5 text-xs font-bold tracking-[0.16em] text-gold-700 uppercase">
+                <p className="mt-5 text-xs font-bold tracking-[0.16em] text-primary uppercase">
                   {story.kicker}
                 </p>
-                <h3 className="mt-2 text-xl font-bold text-ink group-hover:text-navy-700">
+                <h3 className="mt-2 text-xl font-bold text-ink group-hover:text-primary">
                   {story.title}
                 </h3>
                 <p className="mt-2 leading-relaxed text-ink-muted">{story.description}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-navy-700">
+                <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-primary">
                   {story.cta}
                   <ArrowUpRight className="size-4" aria-hidden="true" />
                 </span>

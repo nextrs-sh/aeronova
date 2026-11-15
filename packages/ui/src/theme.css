@@ -21,11 +21,31 @@
   --color-navy-950: #101e38;
 
   /*
-   * Brand gold, for selective emphasis. 400 = Warm Gold.
-   * 300–400: text and accents on navy (≥ 7.9:1 on navy-900/950).
-   * 600: focus rings and non-text marks (≥ 3:1 on both white and navy-950).
-   * 700–800: gold text on light surfaces (≥ 5.5:1 on white and gold-50).
-   * Never set gold-200–500 text on a light surface.
+   * Velasia Crimson, the primary brand colour. 600 = Velasia Crimson.
+   * 600–800: buttons, links, selected states (white text ≥ 6.5:1; ≥ 6:1 as text on white,
+   *          Soft White, and crimson-50).
+   * 500: focus rings (≥ 3.3:1 on white, Soft White, crimson-50, and navy-900/950).
+   * 400: the logo blade and crimson marks on navy (≥ 5.5:1 on navy-950).
+   * 200: crimson text and accents on navy (≥ 9:1 on navy-900/950).
+   * Never set crimson-200–500 text on a light surface. Never fill large areas with crimson.
+   */
+  --color-crimson-50: #fff4f3;
+  --color-crimson-100: #fde8e8;
+  --color-crimson-200: #f0c5c9;
+  --color-crimson-300: #ec9ca5;
+  --color-crimson-400: #e8707d;
+  --color-crimson-500: #dc5566;
+  --color-crimson-600: #b42332;
+  --color-crimson-700: #961e2b;
+  --color-crimson-800: #851827;
+  --color-crimson-900: #6b1420;
+  --color-crimson-950: #450b13;
+
+  /*
+   * Gold is no longer a brand colour. It is kept only as the semantic "attention" palette:
+   * price changes, holds and timers, layovers, fees, notices, and the Preferred seat class.
+   * 700–800: text on light surfaces (≥ 5.5:1 on white and gold-50).
+   * Never use gold for primary actions, navigation, or selected states.
    */
   --color-gold-50: #fdf8ef;
   --color-gold-100: #faedd5;
@@ -38,19 +58,41 @@
   --color-gold-800: #6e4614;
   --color-gold-900: #553611;
 
+  /* Brand primary (semantic). Components use these rather than the crimson scale directly. */
+  --color-primary: var(--color-crimson-600); /* #B42332 */
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: var(--color-crimson-700); /* #961E2B */
+  --color-primary-active: var(--color-crimson-800); /* #851827 */
+  --color-primary-subtle: var(--color-crimson-50); /* #FFF4F3 */
+  --color-primary-border: var(--color-crimson-200); /* #F0C5C9 */
+  /* Primary on navy surfaces: small text (eyebrows) and large text, marks, the horizon line. */
+  --color-primary-on-dark: var(--color-crimson-200); /* ≥ 9:1 on navy-900/950 */
+  --color-primary-accent-on-dark: var(--color-crimson-400); /* ≥ 4.7:1 on navy-900/950 */
+
   /* Semantic surfaces and text */
-  --color-canvas: #ffffff;
-  --color-surface: #f8fafc; /* Soft White */
+  --color-canvas: #ffffff; /* Background */
+  --color-surface: #f8fafc; /* Surface (Soft White) */
   --color-surface-strong: #eef2f7;
-  --color-ink: #101e38;
+  --color-ink: #243047; /* Foreground — 13.2:1 on white */
   --color-ink-muted: #475569;
-  --color-ink-subtle: #64748b; /* Cool Gray — 4.76:1 on white, 4.55:1 on surface */
-  --color-line: #e2e8f0;
+  --color-ink-subtle: #64748b; /* Muted foreground (Cool Gray) — 4.76:1 on white, 4.55:1 on surface */
+  --color-line: #e2e8f0; /* Border */
   --color-line-strong: #cbd5e1;
-  --color-focus: #b47a2a;
-  --color-danger: #b42318;
-  --color-danger-surface: #fef3f2;
+  --color-focus: var(--color-crimson-500); /* Ring */
+  /* Error red-orange: deliberately warmer than Velasia Crimson so errors never read as brand. */
+  --color-danger: #c0360f; /* 5.56:1 on white, 5.04:1 on danger-surface */
+  --color-danger-surface: #fff1ec;
   --color-success: #067647;
+
+  /* Aliases for the conventional semantic token names. */
+  --color-background: var(--color-canvas);
+  --color-foreground: var(--color-ink);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-ink-subtle);
+  --color-border: var(--color-line);
+  --color-ring: var(--color-focus);
+  --color-accent: var(--color-primary-subtle);
+  --color-accent-foreground: var(--color-primary);
 
   /* Shape and depth */
   --radius-card: 1.25rem;

@@ -142,9 +142,7 @@ export async function TripSummary({ search, state, airports }: TripSummaryProps)
         className="h-fit space-y-5 rounded-[1.5rem] border border-line bg-white p-5 shadow-card lg:sticky lg:top-24"
       >
         <div>
-          <p className="text-xs font-bold tracking-[0.14em] text-gold-800 uppercase">
-            Trip summary
-          </p>
+          <p className="text-xs font-bold tracking-[0.14em] text-primary uppercase">Trip summary</p>
           <h2 id="summary-heading" className="mt-1 font-display text-xl font-bold text-ink">
             {cityOf(airports, search.origin)} to {cityOf(airports, search.destination)}
           </h2>
@@ -424,7 +422,7 @@ function SelectionCard({
       </div>
 
       <details className="mt-4 rounded-xl border border-line">
-        <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-navy-700 hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus">
+        <summary className="cursor-pointer rounded-xl px-3 py-2 text-sm font-semibold text-primary hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus">
           Price breakdown<span className="sr-only"> for the {label.toLowerCase()} flight</span>
         </summary>
         <div className="border-t border-line p-3">
@@ -435,13 +433,13 @@ function SelectionCard({
       <p className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm">
         <Link
           href={changeFareHref(search, links, direction, offer.itineraryId)}
-          className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+          className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
         >
           Change fare<span className="sr-only"> for the {label.toLowerCase()} flight</span>
         </Link>
         <Link
           href={changeHref(search, resultsState, direction)}
-          className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+          className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
         >
           Change flight<span className="sr-only"> ({label.toLowerCase()})</span>
         </Link>

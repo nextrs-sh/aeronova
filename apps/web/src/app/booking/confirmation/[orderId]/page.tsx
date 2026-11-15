@@ -73,7 +73,7 @@ function Confirmed({ order, airports }: { order: Order; airports: AirportNames }
           <div className="min-w-0">
             <Logo tone="inverse" className="h-8 print:hidden" />
             <Logo className="hidden h-8 print:block" />
-            <p className="mt-6 flex items-center gap-2 text-sm font-semibold text-gold-300 print:text-ink">
+            <p className="mt-6 flex items-center gap-2 text-sm font-semibold text-primary-on-dark print:text-ink">
               <CheckCircle2 className="size-5" aria-hidden="true" />
               Paid · simulated payment
             </p>
@@ -86,7 +86,7 @@ function Confirmed({ order, airports }: { order: Order; airports: AirportNames }
             </p>
           </div>
           <div className="rounded-2xl bg-white/10 p-5 text-left print:border print:border-line print:bg-white">
-            <p className="text-xs font-semibold tracking-[0.14em] text-gold-200 uppercase print:text-ink-muted">
+            <p className="text-xs font-semibold tracking-[0.14em] text-primary-on-dark uppercase print:text-ink-muted">
               Booking reference
             </p>
             <p

@@ -30,7 +30,7 @@ export function SectionHeading({
           <p
             className={cn(
               'text-xs font-bold tracking-[0.16em] uppercase',
-              inverse ? 'text-gold-300' : 'text-gold-700',
+              inverse ? 'text-primary-on-dark' : 'text-primary',
             )}
           >
             {eyebrow}

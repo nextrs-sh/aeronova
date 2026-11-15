@@ -208,7 +208,7 @@ export function AirportCombobox({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={onRetry}
-              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-navy-700 hover:bg-surface"
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-semibold text-primary hover:bg-surface"
             >
               <RotateCw className="size-4" aria-hidden="true" />
               Retry
@@ -244,7 +244,7 @@ export function AirportCombobox({
               <span
                 className={cn(
                   'flex size-9 shrink-0 items-center justify-center rounded-full',
-                  airport.hub ? 'bg-gold-50 text-gold-800' : 'bg-navy-50 text-navy-600',
+                  airport.hub ? 'bg-primary-subtle text-primary' : 'bg-navy-50 text-navy-600',
                 )}
                 aria-hidden="true"
               >

@@ -84,13 +84,13 @@ export async function SelectedOffer({
         <p className="flex gap-4 text-sm">
           <Link
             href={changeFareHref(search, state, 'outbound', offer.itineraryId)}
-            className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+            className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
           >
             Change fare<span className="sr-only"> for the departing flight</span>
           </Link>
           <Link
             href={changeHref(search, state, 'outbound')}
-            className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+            className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
           >
             Change flight<span className="sr-only"> (departing)</span>
           </Link>

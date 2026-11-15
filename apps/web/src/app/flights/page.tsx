@@ -115,7 +115,7 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
       <div className="bg-navy-950 text-white">
         <Container className="flex flex-wrap pt-8 pb-8 sm:pt-10 lg:pb-10">
           <div className="w-full">
-            <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
+            <p className="text-xs font-bold tracking-[0.16em] text-primary-on-dark uppercase">
               Book flights
             </p>
             <h1 className="sr-only">
@@ -248,7 +248,7 @@ function Shell({
     <>
       <div className="bg-navy-950 text-white">
         <Container className="pt-12 pb-28 sm:pt-14 lg:pb-32">
-          <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
+          <p className="text-xs font-bold tracking-[0.16em] text-primary-on-dark uppercase">
             Book flights
           </p>
           <h1 className="mt-2 text-4xl font-bold sm:text-5xl">{title}</h1>

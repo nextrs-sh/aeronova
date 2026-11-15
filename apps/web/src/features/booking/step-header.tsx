@@ -17,7 +17,7 @@ export function StepHeader({
   return (
     <div className="bg-navy-950 text-white">
       <Container className="py-8 sm:py-10">
-        <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
+        <p className="text-xs font-bold tracking-[0.16em] text-primary-on-dark uppercase">
           Book your trip · Step {step} of 4
         </p>
         <h1 className="mt-2 text-3xl font-bold sm:text-4xl">{title}</h1>

@@ -8,14 +8,15 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        // Gold is the brand's selective emphasis: reserve `primary` for the one key action per view.
-        primary: 'bg-gold-400 text-navy-950 shadow-sm hover:bg-gold-500',
-        secondary: 'bg-navy-900 text-white shadow-sm hover:bg-navy-800',
+        // Velasia Crimson: reserve `primary` for the one key action per view.
+        primary:
+          'bg-primary text-primary-foreground shadow-sm hover:bg-primary-hover active:bg-primary-active',
+        secondary: 'bg-navy-900 text-white shadow-sm hover:bg-navy-800 active:bg-navy-950',
         outline:
           'border border-line-strong bg-white text-ink hover:border-navy-300 hover:bg-surface',
         ghost: 'text-ink hover:bg-surface',
         inverse: 'bg-white text-navy-900 shadow-sm hover:bg-navy-50',
-        link: 'h-auto rounded-none px-0 text-navy-700 underline-offset-4 hover:underline',
+        link: 'h-auto rounded-none px-0 text-primary underline-offset-4 hover:text-primary-hover hover:underline',
       },
       size: {
         sm: 'h-9 px-4 text-sm',

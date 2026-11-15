@@ -63,7 +63,7 @@ function SaveStatus({ status }: { status: ReturnType<typeof useAutosave>['status
 }
 
 const optionClass =
-  'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors has-[:checked]:border-navy-900 has-[:checked]:bg-navy-50 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus motion-reduce:transition-none';
+  'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary-subtle has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus motion-reduce:transition-none';
 
 function PriceTag({ option, currency }: { option: ExtraOption; currency: string }) {
   return (
@@ -115,7 +115,7 @@ export function BaggageChoice({
             name={name}
             checked={value === null}
             onChange={() => change(null)}
-            className="size-4 accent-navy-900"
+            className="size-4 accent-primary"
           />
           <span className="flex-1 text-sm text-ink">No extra baggage</span>
         </label>
@@ -126,7 +126,7 @@ export function BaggageChoice({
               name={name}
               checked={value === option.productId}
               onChange={() => change(option.productId)}
-              className="size-4 accent-navy-900"
+              className="size-4 accent-primary"
             />
             <span className="flex-1 text-sm text-ink">{option.name}</span>
             <PriceTag option={option} currency={currency} />
@@ -186,7 +186,7 @@ export function MealChoice({
             name={name}
             checked={value === null}
             onChange={() => change(null)}
-            className="size-4 accent-navy-900"
+            className="size-4 accent-primary"
           />
           <span className="flex-1 text-sm text-ink">{noneLabel}</span>
         </label>
@@ -197,7 +197,7 @@ export function MealChoice({
               name={name}
               checked={value === option.productId}
               onChange={() => change(option.productId)}
-              className="size-4 accent-navy-900"
+              className="size-4 accent-primary"
             />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-ink">{option.name}</span>
@@ -247,7 +247,7 @@ export function PriorityChoice({
               type="checkbox"
               checked={value.includes(option.productId)}
               onChange={(event) => toggle(option.productId, event.target.checked)}
-              className="size-4 accent-navy-900"
+              className="size-4 accent-primary"
             />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold text-ink">{option.name}</span>

@@ -81,7 +81,7 @@ export default async function DestinationPage({ params }: PageProps<'/destinatio
           <ul className="mt-6 grid gap-4 sm:grid-cols-3">
             {destination.highlights.map((highlight, index) => (
               <li key={highlight.title} className="rounded-card bg-surface p-5">
-                <span className="font-display text-sm font-bold text-gold-700">0{index + 1}</span>
+                <span className="font-display text-sm font-bold text-primary">0{index + 1}</span>
                 <h3 className="mt-2 text-lg font-bold text-ink">{highlight.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-ink-muted">
                   {highlight.description}
@@ -161,7 +161,7 @@ function DestinationHero({ destination }: { destination: Destination }) {
             </li>
           </ol>
         </nav>
-        <p className="mt-6 text-sm font-semibold tracking-[0.16em] text-gold-300 uppercase">
+        <p className="mt-6 text-sm font-semibold tracking-[0.16em] text-primary-on-dark uppercase">
           {destination.country} · {REGION_LABELS[destination.region]}
         </p>
         <h1 className="mt-2 text-5xl font-extrabold sm:text-6xl lg:text-7xl">{destination.name}</h1>

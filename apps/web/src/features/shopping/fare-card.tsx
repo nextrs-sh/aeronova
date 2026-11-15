@@ -67,12 +67,12 @@ export function FareCard({
       className={cn(
         'flex flex-col rounded-[1.5rem] border p-5',
         offer ? 'bg-white shadow-card' : 'border-dashed border-line-strong bg-surface',
-        isCurrent ? 'border-navy-700 ring-2 ring-navy-700' : offer && 'border-line',
+        isCurrent ? 'border-primary ring-2 ring-primary' : offer && 'border-line',
       )}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-bold tracking-[0.14em] text-gold-800 uppercase">
+          <p className="text-xs font-bold tracking-[0.14em] text-primary uppercase">
             {CABIN_LABELS[family.cabin]}
           </p>
           <h3 id={headingId} className="mt-1 font-display text-xl font-bold text-ink">
@@ -80,7 +80,7 @@ export function FareCard({
           </h3>
         </div>
         {isCurrent ? (
-          <Badge tone="navy" className="shrink-0">
+          <Badge tone="primary" className="shrink-0">
             <Check aria-hidden="true" />
             Your choice
           </Badge>
@@ -133,7 +133,7 @@ export function FareCard({
             ))}
           </ul>
           <details className="group mt-5 rounded-xl border border-line">
-            <summary className="cursor-pointer list-none rounded-xl px-3 py-2 text-sm font-semibold text-navy-700 hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
+            <summary className="cursor-pointer list-none rounded-xl px-3 py-2 text-sm font-semibold text-primary hover:bg-surface focus-visible:outline-2 focus-visible:outline-focus [&::-webkit-details-marker]:hidden">
               Price breakdown<span className="sr-only"> for {family.name}</span>
             </summary>
             <div className="border-t border-line p-3">

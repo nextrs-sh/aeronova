@@ -38,7 +38,7 @@ export default function AboutPage() {
             used under open licences; see{' '}
             <Link
               href="/credits"
-              className="font-semibold text-navy-700 underline underline-offset-4"
+              className="font-semibold text-primary underline underline-offset-4 hover:text-primary-hover"
             >
               photo credits
             </Link>

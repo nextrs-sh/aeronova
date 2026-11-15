@@ -36,7 +36,7 @@ export function Pagination({
           aria-label={`Page ${number}`}
           className={cn(
             item,
-            number === page ? 'bg-navy-900 text-white' : 'text-ink hover:bg-surface',
+            number === page ? 'bg-primary text-primary-foreground' : 'text-ink hover:bg-surface',
           )}
         >
           {number}

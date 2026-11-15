@@ -264,25 +264,18 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
                 className={cn(
                   'flex min-w-0 items-center justify-between gap-3 rounded-2xl border p-3 text-left transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus',
                   active
-                    ? 'border-navy-900 bg-navy-950 text-white'
+                    ? 'border-primary bg-primary-subtle ring-1 ring-primary'
                     : 'border-line bg-white hover:bg-surface',
                 )}
                 data-testid={`flight-tab-${candidate.flightId}`}
               >
                 <span className="min-w-0">
-                  <span
-                    className={cn(
-                      'block text-xs font-semibold',
-                      active ? 'text-gold-300' : 'text-gold-800',
-                    )}
-                  >
+                  <span className={cn('block text-xs font-semibold', 'text-primary')}>
                     {candidate.directionLabel} · {candidate.flightNumber}
                   </span>
                   <span className="block truncate font-semibold">{candidate.route}</span>
                 </span>
-                <span
-                  className={cn('shrink-0 text-xs', active ? 'text-navy-100' : 'text-ink-muted')}
-                >
+                <span className={cn('shrink-0 text-xs', 'text-ink-muted')}>
                   {chosen} of {seatable.length} seats
                 </span>
               </button>
@@ -317,7 +310,7 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
                     <div
                       className={cn(
                         'flex items-center gap-2 rounded-2xl border p-2 pl-3',
-                        active ? 'border-navy-900 ring-1 ring-navy-900' : 'border-line',
+                        active ? 'border-primary ring-1 ring-primary' : 'border-line',
                       )}
                     >
                       <button
@@ -485,7 +478,7 @@ type SeatLook = 'available' | 'ineligible' | 'mine' | 'companion' | 'occupied' |
 const LOOK: Record<SeatLook, string> = {
   available: '',
   ineligible: 'border-line bg-surface-strong/60 text-ink-subtle',
-  mine: 'border-navy-900 bg-navy-900 text-white',
+  mine: 'border-primary bg-primary text-primary-foreground',
   companion: 'border-navy-600 bg-navy-600 text-white',
   occupied: 'border-line-strong bg-surface-strong text-ink-subtle',
   unavailable: 'border-line-strong bg-surface-strong text-ink-subtle',
@@ -685,7 +678,7 @@ function SeatGrid({
                           seat.cabin === 'business' ? 'h-11' : 'h-9',
                           look === 'available' ? CATEGORY_LOOK[seat.category] : LOOK[look],
                           disabled && 'cursor-not-allowed',
-                          detailSeatId === seat.id && 'ring-2 ring-gold-500 ring-offset-1',
+                          detailSeatId === seat.id && 'ring-2 ring-primary ring-offset-1',
                         )}
                       >
                         <SeatGlyph seat={seat} look={look} ordinal={companionOrdinal(seat.id)} />

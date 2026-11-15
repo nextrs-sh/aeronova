@@ -3,7 +3,7 @@
 
 /** Leading wing blade of the symbol (64-unit grid). */
 export const SYMBOL_LEAD = 'M5 10H19Q23.5 30 33.5 46.5L29.5 54Q16 33 5 10Z';
-/** Trailing wing blade of the symbol, the gold accent (64-unit grid). */
+/** Trailing wing blade of the symbol, the crimson accent (64-unit grid). */
 export const SYMBOL_TRAIL = 'M34.5 54Q42.5 29 60 5Q51.5 30.5 41.5 54Z';
 /** Tight bounds of the symbol inside its 64-unit grid. */
 export const SYMBOL_BOX = { x: 5, y: 5, width: 55, height: 49 } as const;

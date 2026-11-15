@@ -9,6 +9,8 @@ export const badgeVariants = cva(
       tone: {
         neutral: 'bg-surface text-ink-muted ring-1 ring-line ring-inset',
         navy: 'bg-navy-50 text-navy-700 ring-1 ring-navy-100 ring-inset',
+        primary: 'bg-primary-subtle text-primary ring-1 ring-primary-border ring-inset',
+        // Semantic attention (price changes, holds), not brand emphasis.
         gold: 'bg-gold-50 text-gold-800 ring-1 ring-gold-200 ring-inset',
         inverse: 'bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-sm ring-inset',
       },

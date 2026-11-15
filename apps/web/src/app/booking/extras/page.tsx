@@ -186,7 +186,7 @@ function ExtrasSections({
           const checked = serviceFor(selection.offer.services, 'CHECKED_BAGGAGE');
           return (
             <div key={selection.direction} className="space-y-5">
-              <h3 className="text-sm font-bold tracking-wide text-gold-800 uppercase">
+              <h3 className="text-sm font-bold tracking-wide text-primary uppercase">
                 {directionLabel(selection.direction)} · {selection.offer.itinerary.origin} →{' '}
                 {selection.offer.itinerary.destination} · {names(selection.offer.family).name}
               </h3>
@@ -250,7 +250,7 @@ function ExtrasSections({
           if (!service || service.service === 'snack-only') {
             return (
               <div key={segment.id} data-testid={`meal-service-${segment.id}`}>
-                <h3 className="text-sm font-bold tracking-wide text-gold-800 uppercase">
+                <h3 className="text-sm font-bold tracking-wide text-primary uppercase">
                   {heading}
                 </h3>
                 <p className="mt-1 text-sm text-ink-muted">
@@ -262,7 +262,7 @@ function ExtrasSections({
           return (
             <div key={segment.id} className="space-y-5" data-testid={`meal-service-${segment.id}`}>
               <div>
-                <h3 className="text-sm font-bold tracking-wide text-gold-800 uppercase">
+                <h3 className="text-sm font-bold tracking-wide text-primary uppercase">
                   {heading}
                 </h3>
                 <p className="mt-1 text-sm text-ink-muted">{service.note}</p>
@@ -312,7 +312,7 @@ function ExtrasSections({
           if (offered.length === 0) {
             return (
               <div key={selection.direction}>
-                <h3 className="text-sm font-bold tracking-wide text-gold-800 uppercase">
+                <h3 className="text-sm font-bold tracking-wide text-primary uppercase">
                   {heading}
                 </h3>
                 <p
@@ -331,7 +331,7 @@ function ExtrasSections({
           }
           return (
             <div key={selection.direction} className="space-y-5">
-              <h3 className="text-sm font-bold tracking-wide text-gold-800 uppercase">{heading}</h3>
+              <h3 className="text-sm font-bold tracking-wide text-primary uppercase">{heading}</h3>
               {seated.map((slot) => {
                 const current = chosen(
                   'PRIORITY',

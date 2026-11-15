@@ -231,7 +231,7 @@ function ReadinessPanel({ data }: { data: ReviewResponse['data'] }) {
                         />
                         <Link
                           href={tripSummaryHref(session)}
-                          className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+                          className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
                         >
                           Choose another fare
                         </Link>
@@ -239,7 +239,7 @@ function ReadinessPanel({ data }: { data: ReviewResponse['data'] }) {
                     ) : (
                       <Link
                         href={issueHref(issue, session)}
-                        className="mt-1 inline-block font-semibold text-navy-700 underline-offset-4 hover:underline"
+                        className="mt-1 inline-block font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
                       >
                         {ISSUE_LINK[issue.step]}
                       </Link>

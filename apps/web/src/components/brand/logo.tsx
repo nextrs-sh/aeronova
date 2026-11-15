@@ -17,10 +17,10 @@ import {
 type Tone = 'default' | 'inverse';
 
 const COLORS: Record<Tone, { lead: string; trail: string; name: string; sub: string }> = {
-  // On light surfaces: navy with the deeper gold blade.
-  default: { lead: '#101E38', trail: '#C48A3C', name: '#101E38', sub: '#172B49' },
-  // On navy or dark imagery: white with Warm Gold.
-  inverse: { lead: '#FFFFFF', trail: '#EFB86A', name: '#FFFFFF', sub: '#EFB86A' },
+  // On light surfaces: navy with the Velasia Crimson blade.
+  default: { lead: '#101E38', trail: '#B42332', name: '#101E38', sub: '#172B49' },
+  // On navy or dark imagery: white with the lighter crimson-400.
+  inverse: { lead: '#FFFFFF', trail: '#E8707D', name: '#FFFFFF', sub: '#E8707D' },
 };
 
 interface LogoMarkProps {

@@ -12,10 +12,10 @@ async function CopyrightYear() {
 export function SiteFooter() {
   return (
     <footer className="relative bg-navy-950 text-navy-100">
-      {/* A thin gold horizon: the brand's single accent line. */}
+      {/* A thin crimson horizon: the brand's single accent line. */}
       <div
         aria-hidden="true"
-        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold-400/70 to-transparent"
+        className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary-accent-on-dark/70 to-transparent"
       />
       <div className="mx-auto grid max-w-7xl gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.4fr_2fr] lg:px-8">
         <div className="max-w-sm">

@@ -29,7 +29,7 @@ export function MobileNav() {
                   href={item.href}
                   onNavigate={close}
                   className="flex items-center justify-between rounded-xl px-3 py-3.5 text-base font-semibold text-ink hover:bg-surface"
-                  activeClassName="bg-surface text-navy-950 shadow-[inset_3px_0_0_var(--color-gold-600)]"
+                  activeClassName="bg-surface text-navy-950 shadow-[inset_3px_0_0_var(--color-primary)]"
                 >
                   {item.label}
                   <ChevronRight className="size-5 text-ink-subtle" aria-hidden="true" />
@@ -45,7 +45,7 @@ export function MobileNav() {
           <Link
             href="/flights"
             onClick={close}
-            className="relative mt-4 inline-flex h-10 items-center rounded-full bg-gold-400 px-4 text-sm font-semibold text-navy-950 hover:bg-gold-500"
+            className="relative mt-4 inline-flex h-10 items-center rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-hover active:bg-primary-active"
           >
             Search flights
           </Link>

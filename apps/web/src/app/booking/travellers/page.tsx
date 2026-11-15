@@ -86,7 +86,7 @@ async function TravellersStep() {
           Need to change who’s travelling?{' '}
           <Link
             href={'/flights' as Route}
-            className="font-semibold text-navy-700 underline-offset-4 hover:underline"
+            className="font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
           >
             Start a new search
           </Link>{' '}
