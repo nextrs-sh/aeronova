@@ -1,5 +1,8 @@
 # Milestone 2 report: Flight inventory, dynamic search & retailing API
 
+> **Historical record.** This milestone was delivered when the project was called AeroNova. The
+> airline is now Velasia Airways; see [MILESTONE-2.5-REBRANDING.md](MILESTONE-2.5-REBRANDING.md).
+
 Branch `feat/m2-flight-inventory-search`, based on `main` after Milestone 1 (PR #1) was merged.
 Runtime: official Next.js 16.4 on Node.js. No NextRS, no database, no TalaDB, no real airline
 APIs.
