@@ -27,8 +27,7 @@ export function getServerEnv(): ServerEnv {
     RETAILING_API_URL: process.env.RETAILING_API_URL || undefined,
     SITE_URL: process.env.SITE_URL || undefined,
     RETAILING_API_TIMEOUT_MS: process.env.RETAILING_API_TIMEOUT_MS || undefined,
-    // `AERONOVA_TODAY` is the deprecated pre-rebrand name, still honoured for existing setups.
-    VELASIA_TODAY: process.env.VELASIA_TODAY || process.env.AERONOVA_TODAY || undefined,
+    VELASIA_TODAY: process.env.VELASIA_TODAY || undefined,
     RETAILING_API_FORWARD_FAULTS: process.env.RETAILING_API_FORWARD_FAULTS || undefined,
   });
 }
