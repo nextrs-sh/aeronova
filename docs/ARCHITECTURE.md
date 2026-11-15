@@ -20,7 +20,7 @@ the airline's retailing API, and three small shared packages.
                                                                                                          POST /v1/checkout/{validate,prepare}, GET /v1/payments/options
                                                                                                          GET /v1/orders/:id, /v1/orders/reference/:ref, …/payment-status
                                                                                                          POST /v1/orders/:id/payment-attempts
-                                                                                                           └─▶ TalaDB file (orders, payment_provider) — API only
+                                                                                                           └─▶ TalaDB file (orders, providers, accounts, shopping sessions) — API only
                                        ▲                                ▲
                          packages/ui (tokens, primitives)   packages/contracts (Zod)
 ```
@@ -429,8 +429,126 @@ would turn 404s into 200s); `/flights` has a segment `loading.tsx` because it ne
 `RETAILING_API_URL` if it is healthy. Otherwise, for a local URL, it starts a temporary API
 instance for the build and stops it afterwards.
 
+## Deployment model (M7)
+
+```text
+ Browser ─▶ velasia-proxy (nginx) ─▶ velasia-web (Next.js standalone) ─▶ velasia-api (Fastify) ─▶ TalaDB file
+            public :8080             edge + internal networks            internal network only      one volume
+```
+
+- **One storefront, one API.** The Compose deployment runs one replica of each. The API
+  embeds TalaDB and is the database's **only writer**. TalaDB's exclusive file lock and a
+  fixed container name prevent a second one.
+  - **What the guarantees rely on:** the M5/M6 guarantees (the serialized writer,
+    compare-and-set order revisions, the allocation ledger rebuilt from orders, and
+    provider-first reconciliation) all depend on this single writer.
+  - **Not a scaling story:** persisting shopping sessions (below) does **not** make the API
+    horizontally scalable. More API replicas would need a different storage and coordination
+    design, verified on its own.
+- **Process lifecycle.**
+  - **Startup:** validate the environment, open TalaDB, run migrations, check the schema
+    record, verify indexes, rebuild the ledger, reconcile orders and servicing, restore
+    shopping sessions. Only then is the API ready.
+  - **SIGTERM:** fail readiness, close the listener, finish in-flight requests with
+    `Connection: close`, drain the serialized writer, flush sessions, close TalaDB, exit 0.
+    The shutdown is bounded by `SHUTDOWN_TIMEOUT_MS`.
+- **Schema compatibility.** `velasia_meta` records the writing build's schema and the oldest
+  compatible one. An older build refuses a newer, incompatible file (DEPLOYMENT.md,
+  "Rollback").
+- **Images.** The API runs an esbuild bundle (`dist/server.mjs`) with plain `node`, plus the
+  native TalaDB and Argon2 bindings, linux/amd64 only. The storefront runs
+  `.next/standalone/apps/web/server.js`, the same server as `next start`. Both run as non-root
+  on read-only root filesystems.
+
+## Durable shopping sessions (M7)
+
+M3–M6 kept shopping sessions in memory, so an API restart lost every trip in progress. Since
+M7 they are in TalaDB (`shopping_sessions`, migration 3), and memory is a cache of it:
+
+- **Mutations stay synchronous** on the in-memory session, so a read-check-write never
+  interleaves with another request, as before. The store marks changed sessions dirty.
+  `SessionWriter` writes their current state as a **group commit**: one `insertMany` of new
+  versions tagged with a write sequence, then one `deleteMany` of the versions they replace.
+  A crash between the two leaves duplicates, and the reader keeps the highest sequence.
+- **Durability modes** (`SHOPPING_SESSION_DURABILITY`):
+  - `batched` (default) flushes every second and at shutdown. A crash can lose at most the
+    last second of shopping changes, never an order or payment.
+  - `sync` answers a mutating request only after its change is committed.
+- **Why batched is the default:** on the reference machine (7200 rpm disk), one TalaDB commit
+  costs 60–170 ms. A commit per session change made every booking step take ≈400 ms under
+  load. A batched group commit costs the same 60–90 ms for one session or fifty.
+- **What is and isn't persisted:**
+  - **Restored at startup:** unexpired sessions (newest 5,000), with their token hash,
+    version, selections, embedded selected offers, travellers, seats, extras, and review.
+  - **Not persisted:** offers that were shown but not selected. Each search request would
+    otherwise write dozens; after a restart the fare page simply prices them again.
+- **Retention:** sessions are deleted 30 minutes after expiry and when the memory cap evicts
+  them. Traveller details entered while shopping therefore leave the database within hours.
+
+## Observability (M7)
+
+- **`@velasia/observability`:** a dependency-free Prometheus registry (counter, gauge,
+  histogram, cardinality guard), process and event-loop metrics, and request-id validation.
+- **API:** metrics are listed in OPERATIONS.md. Collections are wrapped to time every read and
+  write, and the serialized writer reports wait and hold times. Logs are pino JSON with
+  redaction, one line per request with the route template, and business events.
+- **Storefront:** JSON logs with codes only, upstream-call metrics by bounded operation label,
+  `instrumentation.ts` (startup validation, `onRequestError`), and `/api/internal/*` health
+  and metrics.
+- **Proxy:** JSON access log with request time and upstream time per path; `X-Request-ID`
+  minted for every request and passed through.
+
+## Rendering and cache inventory (M7)
+
+From `next build` (unchanged by M7 apart from the internal routes):
+
+| Route                                                                                       | Class                                | Caching                                 | Personal data             |
+| ------------------------------------------------------------------------------------------- | ------------------------------------ | --------------------------------------- | ------------------------- |
+| `/`, `/destinations`, `/destinations/[slug]` (12)                                           | Static (`use cache`, revalidate 1 h) | `s-maxage=3600, stale-while-revalidate` | none                      |
+| `/about`, `/help`, `/credits`, `/manage-booking` (lookup form)                              | Static                               | public                                  | none                      |
+| `/flights` (search, fare comparison, trip summary)                                          | Partial prerender + streaming        | dynamic part `private, no-store`        | shopping session (cookie) |
+| `/booking/travellers`, `/seats`, `/extras`, `/review`, `/checkout`                          | Partial prerender + streaming        | `private, no-cache, no-store`           | traveller details         |
+| `/booking/confirmation/[orderId]`                                                           | Partial prerender                    | private                                 | order (guest cookie)      |
+| `/manage-booking/[orderId]` (+ `/change-flight`, `/seats`, `/extras`, `/cancel`)            | Partial prerender, authenticated     | private                                 | order (guest or account)  |
+| `/account`, `/account/trips`, `/account/travellers`, `/account/settings`, sign-in, register | Partial prerender, authenticated     | private                                 | account                   |
+| `/api/aircraft`, `/api/fare-families`, `/api/ancillaries`                                   | Static route handlers                | public                                  | none                      |
+| `/api/airports`, `/api/destinations`, `/api/routes`                                         | Dynamic, cacheable                   | public `s-maxage`                       | none                      |
+| `/api/flights*`, `/api/offers*`                                                             | Dynamic                              | `private, no-store`                     | none (live prices)        |
+| `/api/internal/*` (M7)                                                                      | Dynamic                              | `no-store`                              | none; hidden by the proxy |
+
+- **Static shells:** no static shell contains personal data. `use cache` is used only for
+  public catalogue content (`lib/content.ts`, the footer).
+- **Request-scoped data:** personal data is read through cookies in request-time segments.
+  Per-request deduplication uses React's `cache`, never `use cache`.
+- **Invalidation:** none is needed. Catalogue data is deterministic, and nothing calls
+  `revalidateTag`.
+- **Cross-user isolation:** verified in E2E with two browsers for guests and for accounts
+  (M6), and by the Docker journey after an API restart.
+- **Shared caches:** nginx caches nothing, and every personal response is `private, no-store`.
+
+## Multi-instance evaluation (M7)
+
+What two storefront replicas behind the one API would need:
+
+| Concern                           | Today                                            | Needed for 2+ web replicas                                                                                                          |
+| --------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Same build artifact               | One image                                        | Run the same image everywhere.                                                                                                      |
+| Server Actions encryption key     | Generated per build, embedded in the image       | Same image, or `NEXT_SERVER_ACTIONS_ENCRYPTION_KEY` as a build secret for every build.                                              |
+| Deployment id / version skew      | `VELASIA_DEPLOYMENT_ID` build argument           | Set per build; route by deployment during rollouts.                                                                                 |
+| Cookies and sessions              | Opaque tokens validated by the API               | Already instance-independent (no web-side session state).                                                                           |
+| `use cache` entries               | In-memory per instance (default `cacheHandlers`) | Deterministic public data only, so each instance's copy is identical. A shared `cacheHandlers.remote` isn't needed for correctness. |
+| ISR / page cache (`cacheHandler`) | In-memory (`isrFlushToDisk: false`)              | Same as above. Pages revalidate on a timer, and no tag invalidation is used.                                                        |
+| Cache-tag invalidation            | Not used                                         | If ever used: `cacheHandlers` with `refreshTags()` over shared storage.                                                             |
+| Streaming, Server Actions         | Stateless per request                            | Any instance can serve any request (with the same key).                                                                             |
+
+**Decision:** M7 deploys **one** web instance, the simplest correct setup. Because every
+cached entry is deterministic public content and nothing is invalidated by tag, a second
+replica of the same image would be consistent in principle. That setup has **not** been
+deployed or certified: no shared cache, no rollout tooling, no multi-replica test. No Redis
+or other service was added to claim it.
+
 ## Out of scope so far
 
-No authentication or accounts, no order servicing (change, cancel, refund), no ticketing, and no
-NextRS integration (M8). Offers and shopping sessions are still in memory in one API process;
-orders are durable in TalaDB, owned by that single process. Payments are simulated.
+No ticketing, no real payments or email, and no NextRS integration (M8). One API process owns
+the TalaDB file; multi-writer or replicated storage is not planned. Payments and refunds are
+simulated.

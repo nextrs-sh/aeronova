@@ -38,13 +38,16 @@ ticket, and no money ever moves.
 | 4         | Traveller details, seat maps, ancillaries, booking review     | ✅ Done        |
 | 5         | Checkout, durable orders (TalaDB), simulated payments         | ✅ Done        |
 | 6         | Manage Booking, order servicing, demo accounts, My Trips      | ✅ Done        |
-| 7         | Production hardening, Docker, observability                   | Planned        |
+| 7         | Production hardening, Docker, observability, Node.js baseline | ✅ Done        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
 [M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
 [M2.5](docs/MILESTONE-2.5-REBRANDING.md), [M3](docs/MILESTONE-3-REPORT.md),
-[M4](docs/MILESTONE-4-REPORT.md), [M5](docs/MILESTONE-5-REPORT.md). M1 and M2 were delivered under the project's former
+[M4](docs/MILESTONE-4-REPORT.md), [M5](docs/MILESTONE-5-REPORT.md), [M6](docs/MILESTONE-6-REPORT.md),
+[M7](docs/MILESTONE-7-REPORT.md). Operating it: [DEPLOYMENT](docs/DEPLOYMENT.md),
+[OPERATIONS](docs/OPERATIONS.md), [SECURITY](docs/SECURITY.md); performance reference:
+[benchmarks/node-baseline](benchmarks/node-baseline/README.md). M1 and M2 were delivered under the project's former
 working name, AeroNova; their reports are kept as written.
 
 **What works today:** search a fictional network of 21 airports and 54 routes, and get real
@@ -234,9 +237,9 @@ temporary files.
 
 `@taladb/node` 0.13 ships native binaries for Apple silicon Macs, Linux x64, and Windows x64.
 **Intel Macs** have none yet: build it once from the matching tag
-(`git clone --depth 1 --branch v0.13.0 https://github.com/taladb/taladb && cd taladb &&
+(`git clone --depth 1 --branch v0.13.1 https://github.com/taladb/taladb && cd taladb &&
 cargo build --release -p taladb-node`), then copy `target/release/libtaladb_node.dylib` to
-`node_modules/.pnpm/@taladb+node@0.13.0/node_modules/@taladb/node/taladb-node.darwin-x64.node`
+`node_modules/.pnpm/@taladb+node@0.13.1/node_modules/@taladb/node/taladb-node.darwin-x64.node`
 (repeat after a fresh install).
 
 | Command                                         | What it does                                                       |
@@ -256,6 +259,22 @@ repeatable prices and seats, set `VELASIA_TODAY=2026-12-01` for both the API and
 storefront.
 
 First E2E run: `pnpm exec playwright install chromium`.
+
+## Production mode with Docker (Milestone 7)
+
+```bash
+cp .env.production.example .env.production   # optional; defaults work for local use
+docker compose up --build -d --wait           # or: pnpm docker:build && pnpm docker:up
+pnpm docker:smoke                             # 15 checks from outside and inside the stack
+open http://localhost:8080
+```
+
+Three containers: an nginx proxy (the only published port, `127.0.0.1:8080`), the Next.js
+standalone server, and the retailing API with its TalaDB volume on an internal network. All run
+as non-root on read-only root filesystems. linux/amd64 only: TalaDB 0.13.1 ships no Linux arm64
+binary. Backups: `pnpm docker:backup` (a cold, verified copy; the API pauses for seconds).
+Everything else — configuration, TLS, restore, rollback, troubleshooting — is in
+[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## Screenshots
 
