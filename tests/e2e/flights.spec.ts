@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';
 import {
   chooseAirport,
+  chooseFare,
   expect,
   manilaDate,
   simulateApiFault,
@@ -113,7 +114,7 @@ test.describe('flight results', () => {
     await expect(dialog).toContainText('All times are local to each airport.');
     await expect(dialog.getByText('Your cabin').first()).toBeVisible(); // loaded via /api/flights/[id]
     await expect(dialog).toContainText('Passenger service charge');
-    await expect(dialog.getByRole('link', { name: /^Select/ })).toBeVisible();
+    await expect(dialog.getByRole('link', { name: /^View fares/ })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
   });
@@ -135,65 +136,61 @@ test.describe('round trips', () => {
     await expect(page.getByRole('heading', { name: 'Choose your departing flight' })).toBeVisible();
     const outbound = cards(page).filter({ hasText: '13:10' });
     await expect(outbound).toContainText(/total for 2 adults/);
-    await outbound.getByRole('link', { name: /Select departure/ }).click();
+    await chooseFare(page, outbound, 'Light');
     await expect(page).toHaveURL(/out=NV533-20261210/);
 
     await expect(page.getByTestId('selected-outbound')).toContainText('13:10');
+    await expect(page.getByTestId('selected-outbound')).toContainText('Velasia Light');
     await expect(page.getByRole('heading', { name: 'Choose your return flight' })).toBeVisible();
     await expect(cards(page).first()).toContainText('HKG');
-    await cards(page)
-      .filter({ hasText: '16:35' })
-      .getByRole('link', { name: /Select return/ })
-      .click();
+    await chooseFare(page, cards(page).filter({ hasText: '16:35' }), 'Light');
     await expect(page).toHaveURL(/out=NV533-20261210&ret=NV534-20261214/);
 
-    const review = page.getByTestId('trip-review');
-    await expect(review).toContainText('Departing');
-    await expect(review).toContainText('Returning');
-    const legTotals = await review
-      .locator('article p:has-text("indicative, all passengers")')
-      .allTextContents();
-    const sum = legTotals
-      .map((t) => Number(t.replace(/indicative.*/, '').replace(/[^\d]/g, '')))
-      .reduce((a, b) => a + b, 0);
+    const summary = page.getByTestId('trip-summary');
+    await expect(summary.getByTestId('selection-outbound')).toContainText('Departing');
+    await expect(summary.getByTestId('selection-inbound')).toContainText('Return');
+    const legTotals = await Promise.all(
+      ['outbound', 'inbound'].map(async (direction) =>
+        Number(
+          (await page.getByTestId(`leg-total-${direction}`).textContent())!.replace(/[^\d]/g, ''),
+        ),
+      ),
+    );
     const total = Number(
       (await page.getByTestId('trip-total').textContent())!.replace(/[^\d]/g, ''),
     );
-    expect(total).toBe(sum);
+    expect(total).toBe(legTotals[0]! + legTotals[1]!);
 
-    await page.getByRole('link', { name: /Continue to fare options/ }).click();
-    await expect(page).toHaveURL(/\/flights\/fares\?/);
-    await expect(page.getByText('Preview · coming in the next release')).toBeVisible();
-    await expect(page.getByText(/Nothing has been reserved/)).toBeVisible();
+    await page.getByRole('button', { name: 'Continue to traveller details' }).click();
+    await expect(page).toHaveURL(/\/booking\/travellers$/);
+    await expect(page.getByTestId('no-booking-notice')).toContainText('No booking has been made');
   });
 
   test('browser back and forward keep the search and selections', async ({ page }) => {
     await page.goto(ROUND_HKG);
     await page.getByLabel('Sort by').selectOption('price_asc');
     await expect(page).toHaveURL(/sort=price_asc/);
-    await cards(page)
-      .first()
-      .getByRole('link', { name: /Select departure/ })
-      .click();
+    await chooseFare(page, cards(page).first(), 'Light');
     await expect(page.getByTestId('selected-outbound')).toBeVisible();
-    await cards(page)
-      .first()
-      .getByRole('link', { name: /Select return/ })
-      .click();
-    await expect(page.getByTestId('trip-review')).toBeVisible();
+    await chooseFare(page, cards(page).first(), 'Light');
+    await expect(page.getByTestId('trip-summary')).toBeVisible();
 
     await page.goBack();
+    await expect(page.getByRole('heading', { name: 'Choose your return fare' })).toBeVisible();
     await expect(page.getByTestId('selected-outbound')).toBeVisible();
+    await page.goBack();
     await expect(page.getByRole('heading', { name: 'Choose your return flight' })).toBeVisible();
     await expect(page).toHaveURL(/sort=price_asc/);
 
+    await page.goBack();
+    await expect(page.getByRole('heading', { name: 'Choose your departing fare' })).toBeVisible();
     await page.goBack();
     await expect(page.getByRole('heading', { name: 'Choose your departing flight' })).toBeVisible();
     await expect(page.getByLabel('Sort by')).toHaveValue('price_asc');
     await expect(page.getByTestId('search-summary')).toContainText('2 Adults');
 
     await page.goForward();
-    await expect(page.getByTestId('selected-outbound')).toBeVisible();
+    await expect(page.getByTestId('fare-cards')).toBeVisible();
   });
 });
 
@@ -345,15 +342,15 @@ test.describe('accessibility', () => {
     await page.keyboard.press('Escape');
     await expect(details).toBeFocused();
 
-    const select = cards(page)
+    const viewFares = cards(page)
       .first()
-      .getByRole('link', { name: /^Select/ });
-    await select.focus();
+      .getByRole('link', { name: /^View fares/ });
+    await viewFares.focus();
     await page.keyboard.press('Enter');
-    await expect(page.getByTestId('trip-review')).toBeVisible();
+    await expect(page.getByTestId('fare-cards')).toBeVisible();
   });
 
-  test('results, details, and review have no serious axe violations', async ({ page }) => {
+  test('results and details have no serious axe violations', async ({ page }) => {
     const scan = async () => {
       const { violations } = await new AxeBuilder({ page })
         .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -370,10 +367,6 @@ test.describe('accessibility', () => {
       .getByRole('button', { name: /Details/ })
       .click();
     await expect(page.getByText('Your cabin').first()).toBeVisible();
-    expect(await scan()).toEqual([]);
-    await page.keyboard.press('Escape');
-    await page.goto(`${ROUND_HKG}&out=NV533-20261210&ret=NV534-20261214`);
-    await expect(page.getByTestId('trip-review')).toBeVisible();
     expect(await scan()).toEqual([]);
   });
 });
@@ -428,7 +421,7 @@ test.describe('mobile', () => {
     ]) {
       await page.goto(path);
       await expect(
-        page.getByTestId('flight-card').or(page.getByTestId('trip-review')).first(),
+        page.getByTestId('flight-card').or(page.getByTestId('trip-recovery')).first(),
       ).toBeVisible();
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,

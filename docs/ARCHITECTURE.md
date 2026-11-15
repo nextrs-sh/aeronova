@@ -4,28 +4,31 @@ Velasia Airways is a pnpm + Turborepo monorepo: a Next.js storefront, an indepen
 the airline's retailing API, and three small shared packages.
 
 ```text
-                    ┌──────────────────────── apps/web (Next.js) ─────────────────────────┐
- Browser ──HTML────▶│ Server Components ─┬▶ lib/content.ts ('use cache': airports,        │
-   │  (streamed)    │                    │   destinations, routes, aircraft)             │
-   │                │                    └▶ features/flights/data.ts (live, no-store)    │
-   │                │                          └─▶ lib/retailing-api/client.ts ──fetch───┼──▶ apps/retailing-api (Fastify)
-   │ Axios (fetch)  │ Route Handlers  /api/airports, /api/destinations, /api/flights,    │      GET /health, /v1/airline
-   └──GET /api/*───▶│   /api/flights/[id], /api/routes, /api/aircraft                    │      GET /v1/airports, /v1/destinations[/:slug]
-                    │   └─▶ lib/retailing-api/client.ts ────────────────────────fetch────┼──▶   GET /v1/flights, /v1/flights/calendar
-                    └─────────────────────────────────────────────────────────────────────┘      GET /v1/flights/:id[/availability]
-                                       ▲                                ▲                         GET /v1/routes, /v1/aircraft
+                    ┌──────────────────────── apps/web (Next.js) ──────────────────────────┐
+ Browser ──HTML────▶│ Server Components ─┬▶ lib/content.ts ('use cache': airports,         │
+   │  (streamed)    │                    │   destinations, routes, aircraft, fare families)│
+   │                │                    ├▶ features/flights/data.ts (live, no-store)     │
+   │                │                    └▶ features/shopping/data.ts (offers + session,  │
+   │                │                         no-store; session from HTTP-only cookie)    │
+   │ Server Actions │ features/shopping/actions.ts: select · check/continue · clear      │      apps/retailing-api (Fastify)
+   ├──POST─────────▶│   └─▶ lib/retailing-api/client.ts (server-only) ──────fetch────────┼──▶   GET /health, /v1/airline, /v1/airports
+   │ Axios (fetch)  │ Route Handlers  /api/airports, /api/destinations, /api/flights,     │      GET /v1/destinations[/:slug], /v1/routes, /v1/aircraft
+   └──GET /api/*───▶│   /api/flights/[id], /api/routes, /api/aircraft,                    │      GET /v1/flights, /v1/flights/calendar, /v1/flights/:id[/availability]
+                    │   /api/fare-families, /api/offers, /api/offers/[offerId]            │      GET /v1/fare-families, /v1/offers, /v1/offers/:id[/price]
+                    └──────────────────────────────────────────────────────────────────────┘      POST/GET/DELETE /v1/shopping-sessions[/:id][/select|/reprice]
+                                       ▲                                ▲
                          packages/ui (tokens, primitives)   packages/contracts (Zod)
 ```
 
 ## Packages
 
-| Package              | Responsibility                                                                                                                                        |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`           | Storefront. Feature folders (`features/search`, `features/destinations`, `features/home`, `features/flights`), app shell in `components/layout`.      |
-| `apps/retailing-api` | Fastify service: `routes/` (HTTP + validation), `inventory/` (schedule + seats), `pricing/`, `search/`, `serialization.ts`, `services/`, `faults.ts`. |
-| `packages/contracts` | Zod schemas and types for airports, destinations, network, flights, and errors, plus pure rules: search validation, time zones, URL codecs.           |
-| `packages/ui`        | Tailwind 4 `@theme` tokens (navy, gold, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                 |
-| `packages/config`    | Shared `tsconfig` bases and the ESLint flat config.                                                                                                   |
+| Package              | Responsibility                                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `apps/web`           | Storefront. Feature folders (`features/search`, `features/destinations`, `features/home`, `features/flights`, `features/shopping`), app shell in `components/layout`.                                  |
+| `apps/retailing-api` | Fastify service: `routes/` (HTTP + validation), `inventory/` (schedule + seats), `pricing/`, `search/`, `offers/` (engine, sessions, stores, scenarios), `serialization.ts`, `services/`, `faults.ts`. |
+| `packages/contracts` | Zod schemas and types for airports, destinations, network, flights, offers, shopping sessions, and errors, plus pure rules: search validation, time zones, URL codecs.                                 |
+| `packages/ui`        | Tailwind 4 `@theme` tokens (navy, gold, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                                                                  |
+| `packages/config`    | Shared `tsconfig` bases and the ESLint flat config.                                                                                                                                                    |
 
 Internal packages ship TypeScript source (Turborepo "just-in-time" packages). Next.js compiles
 them via `transpilePackages`; the API runs through `tsx`. The API has no separate build step —
@@ -88,9 +91,11 @@ a stable tie-break on the itinerary id, which keeps pages consistent.
 
 ## Pricing boundary
 
-Indicative prices exist only in `apps/retailing-api/src/pricing/pricing.ts`. The storefront
-formats them; it never calculates, adjusts, or caches them. Amounts are integer minor units
-with an explicit `currency`, and every price is typed `kind: 'indicative'`.
+Prices exist only in the retailing API: indicative search prices in `pricing/pricing.ts`, offer
+prices in `offers/offer-engine.ts`, both built on one per-passenger rule
+(`pricePassengerType`). The storefront formats them; it never calculates, adjusts, or caches
+them, and no Server Action or form carries a price. Amounts are integer minor units with an
+explicit `currency`.
 
 - **Fare:** the distance band sets a fixed amount plus a per-km rate. That is multiplied by the
   cabin (1 / 1.7 / 3.2), advance purchase (0.85–1.45), demand band (0.92–1.25, from the projected
@@ -99,10 +104,76 @@ with an explicit `currency`, and every price is typed `kind: 'indicative'`.
 - **Mandatory charges (simulated):** a passenger service charge per departure (₱250 domestic,
   ₱950 international), a fuel surcharge by band, and 12% VAT on domestic fares.
 - **Displayed figures:** "From" is `perAdultMinor` (fare plus charges for one adult).
-  `totalMinor` covers the whole party. A round-trip total is the sum of the two API-priced
-  directions. There are no offer IDs, holds, or guarantees; those arrive with M3 offers.
+  `totalMinor` covers the whole party. The Light offer is priced exactly at the indicative
+  price, so "From" on a result card is a fare the traveller can actually choose.
+- **Offers (M3)** add a fare-family component and are itemised per passenger type; see
+  [Offers and shopping](#offers-and-shopping-m3).
 - Destination "from" fares are derived from the same engine: the lowest sellable direct economy
   fare over the horizon. Marketing copy can't promise a price that search can't find.
+
+## Offers and shopping (M3)
+
+**Domain.** Flight inventory (instances) → itinerary (one direction, one or two flights) →
+fare family (a product: cabin, typed services, price component; `fixtures/fare-families.ts`)
+→ **offer** (itinerary × family × party, priced, `expiresAt`, inventory and pricing versions,
+opaque `off_…` id) → **selection** (an offer chosen for a direction in a shopping session) →
+order (M4, not built). Offers never reserve seats.
+
+**Offer generation** (`GET /v1/offers`): resolve the itinerary from inventory; evaluate each
+family in order (cabin on every flight, seats for the seated party, sales open); create and
+store an offer for each eligible family and report the rest with a reason. Requests for the
+same itinerary and party within 60 s reuse the stored offers. Offers are immutable; their
+status (`AVAILABLE`, `EXPIRED`, `UNAVAILABLE`) is derived when read.
+
+**Pricing** per flight and passenger type: base fare (the M2 segment fare, connection discount),
+fare-family component `round10(base × rate + fixed[band])`, both scaled by the passenger share
+and rounded, then passenger service charge, fuel surcharge, and domestic VAT on their sum.
+Totals are sums of integers; an invariant check rejects negatives and mismatched components.
+Formula, rates, and examples: [MILESTONE-3-REPORT.md](MILESTONE-3-REPORT.md#pricing-model-and-examples).
+
+**Sessions** (`offers/retailing-service.ts`). Created for one validated search; the API returns
+an opaque id and a 256-bit token once, stores only the token's SHA-256, and requires
+`Authorization: Bearer` on every call (a wrong token is indistinguishable from an unknown
+session). Sliding expiry of 30 minutes, at most 3 hours; expired sessions are remembered for 30
+minutes so callers get `SESSION_EXPIRED`. Every operation is synchronous — read, check, write
+with no `await` — so concurrent requests can't interleave inside an update; `version` counts
+changes. Rules on select: the offer must match the session's route, date, direction, and party;
+not be expired; still be sellable; and a return must leave at least 2 hours after the chosen
+departure lands (changing the departure clears only a return that no longer fits). Reprice:
+valid offers are validated at their price; expired ones are replaced by a fresh offer when the
+price is unchanged, or held as `pendingOffer` (`PRICE_CHANGED`) until the traveller accepts.
+
+**Memory bounds.** Offers (20,000) and sessions (5,000) live in `BoundedStore`: size caps with
+least-recently-written eviction and lazy sweeping of expired entries. One API process only:
+multi-instance coordination and durable storage are not supported in M3.
+
+**Storefront.** The guest's session lives in the `velasia-shopping` cookie (`<id>.<token>`,
+HTTP-only, `SameSite=Lax`, `Secure` on HTTPS). Only Server Actions write it; nothing accepts a
+session id from the browser. `features/shopping/actions.ts`:
+
+| Action                 | Input (schema-parsed)           | Does                                                                                                     |
+| ---------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `selectOfferAction`    | `query`, `direction`, `offerId` | Re-validates the search from `query`; reuses or creates the session; selects; redirects to the next step |
+| `checkSelectionAction` | `query`, `intent`               | Reprices; `continue` redirects to `/booking/travellers` only if everything is unchanged and valid        |
+| `clearSelectionAction` | `query`                         | Deletes the session and the cookie; back to results                                                      |
+
+Selecting a different family, a different flight, and accepting a changed price are all
+`selectOfferAction` with another offer id. Failures return a discriminated union with a
+specific code and safe message; stale offers also call `refresh()` so fresh prices render next
+to the explanation. Upstream bodies are never returned.
+
+**Steps.** The URL stays the source of truth for the search and the step (`out`, `ret`, and
+`fares=<itinerary being compared>`); the session is the source of truth for which offers were
+chosen and what they cost. Results → `fares=` (fare step) → `out=` (return results with the
+chosen departure) → `fares=` → `out=&ret=` (trip summary). Back, forward, and refresh re-render
+from the URL and the session; if the session is gone, the summary offers a way back instead of
+pretending.
+
+**Scenarios.** With `RETAILING_API_FAULTS=enabled`, `x-velasia-scenario` (forwarded from the
+`velasia-scenario` cookie only with `RETAILING_API_FORWARD_FAULTS=enabled`) runs a request 16
+minutes ahead (`offer-expired`), also one demand band higher (`price-increase`), with the
+selection's flights sold out (`sold-out`), or after every session's lifetime
+(`session-expired`).
 
 ## Search request flow
 
@@ -116,7 +187,9 @@ with an explicit `currency`, and every price is typed `kind: 'indicative'`.
    - the **date strip** (`GET /v1/flights/calendar`): the lowest fare for ±3 days;
    - the **results** (`GET /v1/flights?…&leg=outbound|inbound[&outboundId]`): filters, sort, and
      cards;
-   - in the review step, both selected itineraries (`GET /v1/flights/:id`) in parallel.
+   - in the fare step, the itinerary's offers, the guest's session, and the fare family
+     catalogue in parallel; in the trip summary, the session alone (offers embed their
+     itinerary).
 4. Filter and sort controls call `router.replace` inside a transition, with `useOptimistic` for
    instant feedback. Old results stay on screen, dimmed, until the server responds. A new date,
    direction, or page changes the boundary's `key`, which shows the skeleton instead.
@@ -147,10 +220,11 @@ with an explicit `currency`, and every price is typed `kind: 'indicative'`.
 ## Server and client boundaries in `/flights`
 
 Server: the page, summary, steps, date strip, result cards, pagination, empty and error states,
-selected flight, review, and fare preview. Client leaves: `EditSearch` (inline panel on desktop,
+fare step, selected departure, and trip summary. Client leaves: `EditSearch` (inline panel on desktop,
 bottom sheet below `lg`, wrapping the M1 `SearchWidget`), `ResultsNavigationProvider` and
 `PendingRegion`, `FilterPanel`, `ResultsToolbar` (sort plus the mobile filter sheet),
-`FlightDetails` (side panel or bottom sheet), and `RetryButton`. Itinerary display parts
+`FlightDetails` (side panel or bottom sheet), `RetryButton`, and the shopping controls
+(`SelectFareForm`, `CompareFares`, `TripActions`, `OfferValidity`). Itinerary display parts
 (`itinerary-parts.tsx`) are hook-free and render on both sides. Each card passes its own
 itinerary (plain JSON) to its details panel; the full inventory never reaches the browser.
 
@@ -190,21 +264,23 @@ is reported at once.
 
 Cache Components is enabled with Partial Prefetching. From `next build`:
 
-| Route                                               | Strategy                                                                                                             |
-| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `/`                                                 | Static. Destination content via `use cache` (revalidate 1h, expire 1d).                                              |
-| `/destinations`                                     | Static, same cache profile. Search/filter is a client component over the prerendered list.                           |
-| `/destinations/[slug]`                              | 12 pages prerendered by `generateStaticParams`. `ensureStatic = 'navigation'` makes unknown slugs return a real 404. |
-| `/flights`                                          | Partial prerender: static shell; search, date strip, and results streamed per request in separate `<Suspense>`.      |
-| `/flights/fares`                                    | Partial prerender: fare-selection preview for the chosen flights (no prices for fare families yet).                  |
-| `/help`, `/manage-booking`, `/about`, `/credits`    | Static.                                                                                                              |
-| `/api/airports`, `/api/destinations`, `/api/routes` | Dynamic Route Handlers with `public, max-age=300, s-maxage=3600, stale-while-revalidate=86400`.                      |
-| `/api/aircraft`                                     | Prerendered from the cached fleet (same public cache headers).                                                       |
-| `/api/flights`, `/api/flights/[id]`                 | Dynamic; `private, no-store` (live inventory and prices).                                                            |
-| `/sitemap.xml`, `/robots.txt`                       | Static (sitemap cached with destination data).                                                                       |
+| Route                                                                       | Strategy                                                                                                             |
+| --------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/`                                                                         | Static. Destination content via `use cache` (revalidate 1h, expire 1d).                                              |
+| `/destinations`                                                             | Static, same cache profile. Search/filter is a client component over the prerendered list.                           |
+| `/destinations/[slug]`                                                      | 12 pages prerendered by `generateStaticParams`. `ensureStatic = 'navigation'` makes unknown slugs return a real 404. |
+| `/flights`                                                                  | Partial prerender: static shell; search, date strip, and results streamed per request in separate `<Suspense>`.      |
+| `/flights` (`fares=`, summary)                                              | Same page: the fare step and the trip summary stream behind their own `<Suspense>`; session and offers are no-store. |
+| `/booking/travellers`                                                       | Partial prerender: static shell; the validated trip (from the session cookie) streams per request.                   |
+| `/help`, `/manage-booking`, `/about`, `/credits`                            | Static.                                                                                                              |
+| `/api/airports`, `/api/destinations`, `/api/routes`                         | Dynamic Route Handlers with `public, max-age=300, s-maxage=3600, stale-while-revalidate=86400`.                      |
+| `/api/aircraft`, `/api/fare-families`                                       | Prerendered from cached content (same public cache headers).                                                         |
+| `/api/flights`, `/api/flights/[id]`, `/api/offers`, `/api/offers/[offerId]` | Dynamic; `private, no-store` (live inventory, offers, and prices).                                                   |
+| `/sitemap.xml`, `/robots.txt`                                               | Static (sitemap cached with destination data).                                                                       |
 
 Client components are leaves: header nav links and the mobile sheet, the search widget and its
-fields, the destination explorer, and the error boundary. There is no root `loading.tsx` (it
+fields, the destination explorer, the error boundaries, and the shopping controls (fare select
+forms, the comparison toggle, trip actions, the price-hold note). There is no root `loading.tsx` (it
 would turn 404s into 200s); `/flights` has a segment `loading.tsx` because it never calls
 `notFound()`.
 
@@ -214,7 +290,6 @@ instance for the build and stops it afterwards.
 
 ## Out of scope so far
 
-There is no database (TalaDB is planned for orders, inventory holds, and simulated payments in
-M4), no Server Actions (no mutations exist yet), no authentication, and no NextRS integration
-(M8). Prices are indicative, not offers: there are no offer IDs, fare families, or price
-guarantees until M3.
+There is no database (TalaDB is planned for orders, holds, and shared sessions in M4), no
+authentication, no orders, holds, ancillary purchases, or payments, and no NextRS integration
+(M8). Offers and shopping sessions are in-memory in a single API process.

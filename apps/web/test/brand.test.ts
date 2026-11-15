@@ -104,22 +104,21 @@ const LEGACY_BRAND = /aero\s*-?\s*nova/i;
 const ALLOWED: { file: string; pattern: RegExp; why: string }[] = [
   {
     file: '.env.example',
-    pattern: /INVENTORY_SEED=aeronova|old AERONOVA_TODAY/,
-    why: 'seed / alias',
+    pattern: /INVENTORY_SEED=aeronova/,
+    why: 'stable seed',
   },
   { file: 'apps/retailing-api/src/app.ts', pattern: /seed: 'aeronova'/, why: 'stable seed' },
   {
     file: 'apps/retailing-api/src/config.ts',
-    pattern: /default\('aeronova'\)|AERONOVA_TODAY/,
-    why: 'stable seed; deprecated env alias',
+    pattern: /default\('aeronova'\)/,
+    why: 'stable seed',
   },
   { file: 'apps/retailing-api/test/helpers.ts', pattern: /'aeronova'/, why: 'stable seed' },
   {
     file: 'apps/retailing-api/test/flights-api.test.ts',
-    pattern: /'aeronova'|AERONOVA_TODAY/,
-    why: 'stable seed; alias test',
+    pattern: /'aeronova'/,
+    why: 'stable seed',
   },
-  { file: 'apps/web/src/lib/env.ts', pattern: /AERONOVA_TODAY/, why: 'deprecated env alias' },
   { file: 'apps/web/test/brand.test.ts', pattern: /./, why: 'this guard' },
 ];
 

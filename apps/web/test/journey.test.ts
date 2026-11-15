@@ -1,11 +1,14 @@
 import { parseResultsParams, type FlightSearch, type ResultsState } from '@velasia/contracts';
 import { describe, expect, it } from 'vitest';
 import {
+  afterSelectionHref,
+  backToResultsHref,
+  changeFareHref,
   changeHref,
   dateHref,
   faresHref,
   journeyStage,
-  selectHref,
+  summaryHref,
 } from '@/features/flights/journey';
 
 const search: FlightSearch = {
@@ -37,24 +40,51 @@ describe('journey steps', () => {
     ).toBe('review');
   });
 
-  it('selecting a departure resets filters and paging but keeps the sort', () => {
-    const next = parseResultsParams(
-      params(selectHref(search, filtered, 'outbound', 'NV501-20261215')),
-    ).state;
-    expect(next).toEqual({
+  it('opens the fare comparison over the current results, and returns to them', () => {
+    const fares = faresHref(search, filtered, 'NV501-20261215');
+    const state = parseResultsParams(params(fares)).state;
+    expect(state).toEqual({ ...filtered, faresId: 'NV501-20261215' });
+    expect(journeyStage(search, state)).toBe('outbound');
+    expect(parseResultsParams(params(backToResultsHref(search, state))).state).toEqual(filtered);
+
+    const inbound = { ...filtered, outboundId: 'NV501-20261215' };
+    const returnFares = parseResultsParams(params(faresHref(search, inbound, 'NV502-20261220')));
+    expect(returnFares.state).toMatchObject({
+      outboundId: 'NV501-20261215',
+      faresId: 'NV502-20261220',
+    });
+    expect(journeyStage(search, returnFares.state)).toBe('inbound');
+  });
+
+  it('after choosing a fare, goes to the return flights or the trip summary', () => {
+    const next = (chosen: { outbound?: string; inbound?: string }, trip = search) =>
+      parseResultsParams(params(afterSelectionHref(trip, 'price_asc', chosen))).state;
+    expect(next({ outbound: 'NV501-20261215' })).toEqual({
       outboundId: 'NV501-20261215',
       filters: { departureWindows: [], aircraft: [] },
       sort: 'price_asc',
       page: 1,
     });
+    expect(next({ outbound: 'NV501-20261215', inbound: 'NV502-20261220' })).toMatchObject({
+      outboundId: 'NV501-20261215',
+      inboundId: 'NV502-20261220',
+    });
+    const oneWay = { ...search, tripType: 'one-way' as const, returnDate: undefined };
+    expect(journeyStage(oneWay, next({ outbound: 'NV501-20261215' }, oneWay))).toBe('review');
+    expect(params(summaryHref(oneWay, 'departure_asc', 'a', 'b')).has('ret')).toBe(false);
   });
 
-  it('selecting a return keeps the departure', () => {
-    const state = { ...filtered, outboundId: 'NV501-20261215' };
-    const next = parseResultsParams(
-      params(selectHref(search, state, 'inbound', 'NV502-20261220')),
-    ).state;
-    expect(next).toMatchObject({ outboundId: 'NV501-20261215', inboundId: 'NV502-20261220' });
+  it('changes a chosen fare without losing the other direction', () => {
+    const state = { ...filtered, outboundId: 'NV501-20261215', inboundId: 'NV502-20261220' };
+    const out = parseResultsParams(
+      params(changeFareHref(search, state, 'outbound', 'NV501-20261215')),
+    );
+    expect(out.state).toMatchObject({ faresId: 'NV501-20261215' });
+    expect(out.state.outboundId).toBeUndefined();
+    const back = parseResultsParams(
+      params(changeFareHref(search, state, 'inbound', 'NV502-20261220')),
+    );
+    expect(back.state).toMatchObject({ outboundId: 'NV501-20261215', faresId: 'NV502-20261220' });
   });
 
   it('changing the departure date clears the departure choice; changing the return keeps it', () => {
@@ -68,13 +98,9 @@ describe('journey steps', () => {
     expect(back.get('out')).toBe('NV501-20261215');
   });
 
-  it('builds change and fare-preview links', () => {
+  it('builds change links', () => {
     const state = { ...filtered, outboundId: 'NV501-20261215', inboundId: 'NV502-20261220' };
     expect(params(changeHref(search, state, 'outbound')).has('out')).toBe(false);
     expect(params(changeHref(search, state, 'inbound')).get('out')).toBe('NV501-20261215');
-    const fares = faresHref(search, state);
-    expect(fares).toMatch(/^\/flights\/fares\?/);
-    expect(params(fares).get('ret')).toBe('NV502-20261220');
-    expect(params(fares).has('stops')).toBe(false);
   });
 });

@@ -1,4 +1,4 @@
-import { minorToMajor, type Money } from '@velasia/contracts';
+import { AIRLINE_TIME_ZONE, minorToMajor, toZonedDateTime, type Money } from '@velasia/contracts';
 
 const LOCALE = 'en-PH';
 
@@ -60,4 +60,16 @@ export function formatShortDate(iso: string): string {
   })
     .format(new Date(Date.UTC(y, m - 1, d)))
     .replace(',', '');
+}
+
+/** A price difference with an explicit sign: `+₱1,560`, `−₱200`, or `₱0`. */
+export function formatMinorDifference(differenceMinor: number, currency: string): string {
+  if (differenceMinor === 0) return formatMinor(0, currency);
+  const sign = differenceMinor > 0 ? '+' : '−';
+  return `${sign}${formatMinor(Math.abs(differenceMinor), currency)}`;
+}
+
+/** `2026-12-01T02:15:00Z` → `10:15` in the airline's time zone (Manila), for validity times. */
+export function formatAirlineTime(instant: string): string {
+  return toZonedDateTime(new Date(instant), AIRLINE_TIME_ZONE).time;
 }

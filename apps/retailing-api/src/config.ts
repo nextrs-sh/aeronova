@@ -1,5 +1,6 @@
 import { isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
+import { DEFAULT_RETAILING_CONFIG, type RetailingConfig } from './offers/retailing-service';
 
 const latencySchema = z
   .string()
@@ -12,8 +13,6 @@ const latencySchema = z
 const envSchema = z.object({
   /** Pin "today" (airline time zone) for deterministic demos and tests. */
   VELASIA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
-  /** Deprecated pre-rebrand name for `VELASIA_TODAY`, still honoured so local setups keep working. */
-  AERONOVA_TODAY: z.string().refine(isIsoDate, 'Use YYYY-MM-DD.').optional(),
   /**
    * Seed for simulated demand. The default intentionally keeps its pre-rebrand value: changing it
    * would reshuffle every deterministic seat count and price, which the rebrand must not do.
@@ -26,6 +25,8 @@ const envSchema = z.object({
   RETAILING_API_LATENCY_MS: latencySchema.optional(),
   /** How long a simulated `timeout` fault holds the response. */
   RETAILING_API_FAULT_TIMEOUT_MS: z.coerce.number().int().min(100).max(120_000).default(15_000),
+  /** How long an offer can be selected, in minutes. */
+  OFFER_VALIDITY_MINUTES: z.coerce.number().int().min(1).max(120).default(15),
 });
 
 export interface ApiConfig {
@@ -36,6 +37,7 @@ export interface ApiConfig {
     latency?: { minMs: number; maxMs: number };
     timeoutMs: number;
   };
+  retailing: RetailingConfig;
 }
 
 /** The only place the API reads `process.env`. Invalid values fail at startup. */
@@ -44,12 +46,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== '')),
   );
   return {
-    today: parsed.VELASIA_TODAY ?? parsed.AERONOVA_TODAY,
+    today: parsed.VELASIA_TODAY,
     inventory: { seed: parsed.INVENTORY_SEED, horizonDays: parsed.INVENTORY_HORIZON_DAYS },
     faults: {
       enabled: parsed.RETAILING_API_FAULTS === 'enabled',
       latency: parsed.RETAILING_API_LATENCY_MS,
       timeoutMs: parsed.RETAILING_API_FAULT_TIMEOUT_MS,
+    },
+    retailing: {
+      ...DEFAULT_RETAILING_CONFIG,
+      offerValidityMs: parsed.OFFER_VALIDITY_MINUTES * 60_000,
     },
   };
 }

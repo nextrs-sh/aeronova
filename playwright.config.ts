@@ -14,6 +14,9 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
+  // Server Action round trips (API call + redirect render) under parallel load on a laptop
+  // occasionally passed 5 s; their median is far lower (see MILESTONE-3-REPORT.md).
+  expect: { timeout: 10_000 },
   use: {
     baseURL,
     trace: 'retain-on-failure',

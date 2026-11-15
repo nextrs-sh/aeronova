@@ -1,4 +1,4 @@
-import { test as base, expect, type Page } from '@playwright/test';
+import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { BASE_URL, E2E_TODAY } from './constants';
 
 /**
@@ -19,6 +19,33 @@ export function manilaDate(days = 0): string {
   return new Date(Date.parse(`${E2E_TODAY}T00:00:00Z`) + days * 86_400_000)
     .toISOString()
     .slice(0, 10);
+}
+
+/** Open the fare comparison from a result card, then choose a fare family. */
+export async function chooseFare(
+  page: Page,
+  card: Locator,
+  family: 'Light' | 'Classic' | 'Flex' | 'Business',
+) {
+  await card.getByRole('link', { name: /View fares/ }).click();
+  await expect(page.getByTestId('fare-cards')).toBeVisible();
+  await selectFamily(page, family);
+}
+
+/** Choose a fare family on the fare comparison that is already open. */
+export async function selectFamily(page: Page, family: 'Light' | 'Classic' | 'Flex' | 'Business') {
+  const card = page.locator(`[data-testid="fare-card"][data-family="${family.toUpperCase()}"]`);
+  await card.getByRole('button', { name: new RegExp(`^(Select|Continue with) ${family}`) }).click();
+}
+
+/** Run a deterministic retailing scenario for this browser context (test-only). */
+export async function simulateScenario(
+  page: Page,
+  scenario: 'offer-expired' | 'price-increase' | 'sold-out' | 'session-expired' | null,
+) {
+  const context = page.context();
+  if (scenario === null) await context.clearCookies({ name: 'velasia-scenario' });
+  else await context.addCookies([{ name: 'velasia-scenario', value: scenario, url: BASE_URL }]);
 }
 
 /** Simulate a retailing API failure for this browser context (test-only fault injection). */

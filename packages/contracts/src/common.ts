@@ -39,6 +39,18 @@ export const apiErrorCodeSchema = z.enum([
   /** The retailing API did not answer within the storefront's time budget. */
   'UPSTREAM_TIMEOUT',
   'INTERNAL_ERROR',
+  /** No offer with this id (never existed, or long gone). */
+  'OFFER_NOT_FOUND',
+  /** The offer's validity ended; ask for a fresh offer. */
+  'OFFER_EXPIRED',
+  /** The offer's flights can no longer be sold for this party. */
+  'OFFER_UNAVAILABLE',
+  /** The offer doesn't fit the session: wrong route, date, direction, passengers, or timing. */
+  'INVALID_SELECTION',
+  /** No session with this id and token. Deliberately the same answer for a wrong token. */
+  'SESSION_NOT_FOUND',
+  /** The session's lifetime ended. */
+  'SESSION_EXPIRED',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

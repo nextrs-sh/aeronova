@@ -147,7 +147,7 @@ describe('GET /v1/destinations/:slug', () => {
 
 describe('unknown routes', () => {
   it('use the error envelope', async () => {
-    const response = await get('/v1/offers');
+    const response = await get('/v1/orders');
     expect(response.statusCode).toBe(404);
     expect(apiErrorSchema.parse(response.json()).error.code).toBe('NOT_FOUND');
   });

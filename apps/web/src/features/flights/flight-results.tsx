@@ -12,7 +12,7 @@ import { searchLeg } from './data';
 import { FilterPanel } from './filter-panel';
 import { FlightCard } from './flight-card';
 import { type AirportNames } from './itinerary-parts';
-import { legDate, legRoute, resultsHref, selectHref } from './journey';
+import { faresHref, legDate, legRoute, resultsHref } from './journey';
 import { Pagination } from './pagination';
 import { EmptyResults, ResultsError } from './results-states';
 import { PendingRegion, ResultsNavigationProvider } from './results-navigation';
@@ -24,12 +24,6 @@ interface FlightResultsProps {
   direction: JourneyDirection;
   airports: AirportNames;
 }
-
-const SELECT_LABELS: Record<JourneyDirection | 'one-way', string> = {
-  outbound: 'Select departure',
-  inbound: 'Select return',
-  'one-way': 'Select',
-};
 
 /**
  * Results for one direction, fetched from the retailing API at request time
@@ -44,7 +38,6 @@ export async function FlightResults({ search, state, direction, airports }: Flig
   const { meta } = result.data;
   const { summary } = leg;
   const query = serializeResultsState(state, serializeFlightSearch(search)).toString();
-  const selectLabel = SELECT_LABELS[search.tripType === 'one-way' ? 'one-way' : direction];
 
   if (summary.emptyReason && summary.emptyReason !== 'filtered-out') {
     const { origin, destination } = legRoute(search, direction);
@@ -126,8 +119,7 @@ export async function FlightResults({ search, state, direction, airports }: Flig
                         itinerary={itinerary}
                         passengers={search.passengers}
                         airports={airports}
-                        selectHref={selectHref(search, state, direction, itinerary.id)}
-                        selectLabel={selectLabel}
+                        faresHref={faresHref(search, state, itinerary.id)}
                       />
                     </li>
                   ))}

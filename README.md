@@ -13,13 +13,14 @@ dynamic offers, booking journeys, and modern Offer & Order retailing.
 
 Velasia Airways is a modern, full-service airline headquartered (fictionally) in the
 Philippines, flying across Southeast Asia and to selected international destinations, priced in
-PHP. **Flight discovery and search are built today**; offers, booking, and order management are
-planned milestones (see [status](#milestone-status)).
+PHP. **Flight search and offer shopping are built today**: compare fare families, choose offers
+for each direction, and review a server-priced trip summary. Traveller details, orders, and
+payment are planned milestones (see [status](#milestone-status)).
 
 > Velasia Airways is not a real airline. It does not operate flights, sell tickets, or process
 > payments, and it holds no IATA or ICAO airline designator: flight numbers such as `VEL 501`
 > are a display convention for this demo. Airports and cities are real; the route network,
-> schedules, and fares are invented. Any price shown is labelled as illustrative or indicative.
+> schedules, fares, fare rules, and allowances are invented. Nothing on the site is a booking.
 
 ![Velasia Airways homepage](docs/screenshots/home-desktop.jpg)
 
@@ -30,23 +31,29 @@ planned milestones (see [status](#milestone-status)).
 | 1         | Monorepo foundation, premium storefront, search, destinations | ✅ Done        |
 | 2         | Flight inventory, dynamic search, indicative pricing          | ✅ Done        |
 | 2.5       | Velasia Airways rebrand: identity, design system, API, docs   | ✅ Done        |
-| 3–7       | Offers & bundles → checkout → orders → accounts → ops         | Planned        |
+| 3         | Dynamic offers, fare families, shopping sessions              | ✅ Done        |
+| 4–7       | Passengers & orders → order management → accounts → ops       | Planned        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
 [M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
-[M2.5](docs/MILESTONE-2.5-REBRANDING.md). M1 and M2 were delivered under the project's former
+[M2.5](docs/MILESTONE-2.5-REBRANDING.md), [M3](docs/MILESTONE-3-REPORT.md). M1 and M2 were delivered under the project's former
 working name, AeroNova; their reports are kept as written.
 
 **What works today:** search a fictional network of 21 airports and 54 routes, and get real
 results from the Fastify retailing API. Results come from deterministic schedules and seat
 inventory, with direct and one-stop itineraries and indicative prices that include simulated
 taxes. One-way and round trips step through choosing a departing flight, a return flight, and a
-review with a transparent total. You can filter by stops, departure time, price, and aircraft;
+fare choice for each, and a trip summary. You can filter by stops, departure time, price, and aircraft;
 sort; browse nearby dates with their lowest fares; and open flight details with per-cabin seat
 availability. Results stream into a server-rendered `/flights` page, and every empty and error
-state is explained. There are also destination guides, help pages, and a clearly labelled
-fare-selection preview. Nothing on the site books a flight.
+state is explained. "View fares" opens offers from the retailing API for that flight — Velasia
+Light, Classic, Flex, and Business where the aircraft has a Business cabin — with what each
+includes, a full comparison, and an itemised price for the whole party. Choices are kept in a
+server-side shopping session, re-validated before you continue, and never re-priced without
+your say. There are also destination guides and help pages. Nothing on the site books a flight.
+
+![Fare comparison](docs/screenshots/fares-desktop.jpg)
 
 ## Flight search
 
@@ -59,12 +66,39 @@ fare-selection preview. Nothing on the site books a flight.
   connections go through Manila or Cebu, with minimum and maximum connection times. Every
   empty result carries a reason: `no-route`, `cabin-not-offered`, `beyond-schedule`,
   `no-flights-on-date`, `insufficient-seats`, or `filtered-out`.
-- **Pricing.** Indicative only, calculated by the API in integer minor units (PHP centavos).
-  It depends on distance band, cabin, days to departure, demand band, weekday, season, and time
-  of day, and adds simulated passenger service charges, fuel surcharges, and domestic VAT.
-  Offers and fare families arrive in M3.
+- **Pricing.** Calculated by the API in integer minor units (PHP centavos). It depends on
+  distance band, cabin, days to departure, demand band, weekday, season, and time of day, and
+  adds simulated passenger service charges, fuel surcharges, and domestic VAT. Search shows an
+  indicative "From" price, which is exactly the Light offer.
 - **Network conditions.** Opt-in latency and per-request faults (`delay`, `timeout`,
   `unavailable`, `empty`, `malformed`) for testing the storefront against a failing service.
+
+## Offers and fare families
+
+- **Fare families.** Light (cabin bag only), Classic (20 kg bag, seat choice, cheaper changes),
+  Flex (30 kg bag, preferred seats, no change or refund fees, priority), and Business (Business
+  cabin, 2 × 32 kg, lounge). Each is a typed set of services; all rules are fictional.
+- **Offers.** `GET /v1/offers?itineraryId=…` prices every family that can be sold on that flight
+  for your party and explains the rest (no Business cabin, not enough seats). Offers have opaque
+  ids, a 15-minute validity, and an itemised price: base fare, fare-family component, each tax
+  and fee, and included services at no extra charge.
+- **Shopping session.** Server Actions select, change, and accept offers in a session held by
+  the API and tied to your browser by an HTTP-only cookie. "Continue" re-validates every offer;
+  an expired one is refreshed (and you're told), a changed price waits for you to accept it, and
+  an unsellable flight is flagged while your other choice is kept.
+- **Comparison.** Fare cards show the total for everyone and key inclusions; "Compare all
+  features" opens a matrix (a table on desktop, lists on phones) with every condition spelled out.
+- **Boundary.** "Continue to traveller details" leads to a page that collects nothing: traveller
+  details, orders, and payment arrive in Milestone 4.
+
+## Mock retailing API
+
+`apps/retailing-api` is an independent Fastify service with no database: deterministic inventory
+from fixtures, a seeded demand model, offers and shopping sessions in bounded memory. The full
+endpoint list is in [ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
+[M3 report](docs/MILESTONE-3-REPORT.md#api-endpoint-changes). For testing, it can simulate
+latency, failures (`x-velasia-fault`), and retailing scenarios (`x-velasia-scenario`:
+`offer-expired`, `price-increase`, `sold-out`, `session-expired`), all off by default.
 
 ## Brand
 
@@ -119,7 +153,8 @@ No API keys, paid services, or databases are needed. Configuration is optional; 
 | `pnpm test:e2e`  | Build, then run Playwright (desktop + mobile) on ports 3200/4210   |
 | `pnpm format`    | Prettier                                                           |
 
-To try slow responses locally, run the API with `RETAILING_API_LATENCY_MS=300-1200`. For
+To try slow responses locally, run the API with `RETAILING_API_LATENCY_MS=300-1200`. Offers stay
+valid for `OFFER_VALIDITY_MINUTES` (default 15). For
 repeatable prices and seats, set `VELASIA_TODAY=2026-12-01` for both the API and the
 storefront.
 
@@ -131,9 +166,17 @@ First E2E run: `pnpm exec playwright install chromium`.
 | --------------------------------------------------------------- | -------------------------------------------------------------- |
 | ![Flight results](docs/screenshots/flights-results-desktop.jpg) | ![Flight details](docs/screenshots/flight-details-desktop.jpg) |
 
-| Round-trip review                                        | API unavailable                                            |
+| Trip summary (round trip, two families)                    | Price change awaiting acceptance                             |
+| ---------------------------------------------------------- | ------------------------------------------------------------ |
+| ![Trip summary](docs/screenshots/trip-summary-desktop.jpg) | ![Price changed](docs/screenshots/price-changed-desktop.jpg) |
+
+| Fare comparison matrix                                   | API unavailable                                            |
 | -------------------------------------------------------- | ---------------------------------------------------------- |
-| ![Trip review](docs/screenshots/trip-review-desktop.jpg) | ![Error state](docs/screenshots/results-error-desktop.jpg) |
+| ![Fare matrix](docs/screenshots/fare-matrix-desktop.jpg) | ![Error state](docs/screenshots/results-error-desktop.jpg) |
+
+| Mobile fares                                       | Mobile trip summary                                              |
+| -------------------------------------------------- | ---------------------------------------------------------------- |
+| ![Mobile fares](docs/screenshots/fares-mobile.jpg) | ![Mobile trip summary](docs/screenshots/trip-summary-mobile.jpg) |
 
 | Mobile results                                         | Mobile filters                                         | Mobile edit search                                             |
 | ------------------------------------------------------ | ------------------------------------------------------ | -------------------------------------------------------------- |

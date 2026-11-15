@@ -27,6 +27,9 @@ import { formatDuration, formatDurationLong, formatMinor, formatShortDate } from
 /** Airport names for display, keyed by code. Plain data so it can cross to the client. */
 export type AirportNames = Record<string, { city: string; name: string }>;
 
+/** An itinerary with or without its indicative price (offers carry their own price). */
+type ItineraryShape = Omit<Itinerary, 'price'>;
+
 export function cityOf(airports: AirportNames, code: string): string {
   return airports[code]?.city ?? code;
 }
@@ -44,7 +47,8 @@ export function AirlineMark({
         <LogoMark tone="inverse" className="h-3.5" />
       </span>
       <span className="font-semibold text-ink">{airline.shortName}</span>
-      <span className="text-ink-subtle">{flightNumbers.map(formatFlightNumber).join(' · ')}</span>
+      {/* ink-muted, not ink-subtle: this also sits on tinted (navy-50) panels. */}
+      <span className="text-ink-muted">{flightNumbers.map(formatFlightNumber).join(' · ')}</span>
     </span>
   );
 }
@@ -72,7 +76,7 @@ export function FlightTimes({
   airports,
   size = 'lg',
 }: {
-  itinerary: Itinerary;
+  itinerary: ItineraryShape;
   airports: AirportNames;
   size?: 'lg' | 'md';
 }) {
@@ -186,7 +190,7 @@ export function ItineraryTimeline({
   itinerary,
   airports,
 }: {
-  itinerary: Itinerary;
+  itinerary: ItineraryShape;
   airports: AirportNames;
 }) {
   return (

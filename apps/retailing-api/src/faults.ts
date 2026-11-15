@@ -1,14 +1,17 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { sendError } from './http';
+import { SCENARIO_HEADER, parseScenarioName, scenarioFor, type Scenario } from './offers/scenario';
 
 /**
  * Simulated network conditions, so the storefront can be tested against a
  * genuinely separate service that is slow or failing. Off by default.
  *
- * - Latency (`RETAILING_API_LATENCY_MS`) applies to `/v1/flights*` when set.
+ * - Latency (`RETAILING_API_LATENCY_MS`) applies to `/v1/flights*` and `/v1/offers*` when set.
  * - Faults apply only when `RETAILING_API_FAULTS=enabled`, per request, via
  *   the `x-velasia-fault` header: `delay=<ms>`, `timeout`, `unavailable`,
  *   `empty`, or `malformed`.
+ * - Retailing scenarios (offer expiry, price change, sell-out, session expiry) apply under the
+ *   same switch, via `x-velasia-scenario` (see `offers/scenario.ts`).
  */
 export const FAULT_HEADER = 'x-velasia-fault';
 
@@ -25,10 +28,18 @@ export interface FaultOptions {
   timeoutMs: number;
 }
 
+/** Durations the retailing scenarios are derived from. */
+export interface ScenarioTimings {
+  offerValidityMs: number;
+  sessionMaxMs: number;
+}
+
 declare module 'fastify' {
   interface FastifyRequest {
     /** Set when an `empty` fault asks routes to answer with no results. */
     simulateEmpty: boolean;
+    /** Retailing scenario for this request (see `offers/scenario.ts`); `null` for none. */
+    scenario: Scenario | null;
   }
 }
 
@@ -60,18 +71,32 @@ function wait(ms: number, request: FastifyRequest): Promise<void> {
 }
 
 /** Adds the hooks directly to the root instance so they cover every route. */
-export function registerFaultInjection(app: FastifyInstance, options: FaultOptions): void {
+export function registerFaultInjection(
+  app: FastifyInstance,
+  options: FaultOptions,
+  timings: ScenarioTimings,
+): void {
   app.decorateRequest('simulateEmpty', false);
+  app.decorateRequest('scenario', null);
   if (!options.enabled && !options.latency) return;
   if (options.enabled) app.log.warn('fault injection is ENABLED (x-velasia-fault header honoured)');
 
   app.addHook('onRequest', async (request, reply) => {
     if (!request.url.startsWith('/v1/')) return;
-    if (options.latency && request.url.startsWith('/v1/flights')) {
+    if (
+      options.latency &&
+      (request.url.startsWith('/v1/flights') || request.url.startsWith('/v1/offers'))
+    ) {
       const { minMs, maxMs } = options.latency;
       await wait(minMs + Math.random() * (maxMs - minMs), request);
     }
     if (!options.enabled) return;
+
+    const scenario = parseScenarioName(request.headers[SCENARIO_HEADER]);
+    if (scenario) {
+      request.scenario = scenarioFor(scenario, timings);
+      reply.header('x-velasia-scenario-applied', scenario);
+    }
 
     const fault = parseFault(request.headers[FAULT_HEADER]);
     if (!fault) return;
