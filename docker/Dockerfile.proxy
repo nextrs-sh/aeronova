@@ -18,6 +18,10 @@ ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx/conf.d \
     VELASIA_RATE_LIMIT_BURST=100 \
     VELASIA_POST_RATE_LIMIT_RPS=10 \
     VELASIA_POST_RATE_LIMIT_BURST=30
+# Security updates for the base image's Alpine packages, then back to the unprivileged user.
+USER root
+RUN apk upgrade --no-cache
+USER 101
 COPY docker/proxy/nginx.conf /etc/nginx/nginx.conf
 COPY docker/proxy/templates/ /etc/nginx/templates/
 COPY docker/proxy/05-velasia-dirs.sh /docker-entrypoint.d/05-velasia-dirs.sh
