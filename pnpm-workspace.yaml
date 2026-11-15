@@ -1,0 +1,56 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Exact pins. Bump deliberately; the lockfile is committed.
+catalog:
+  # Framework
+  next: 16.4.6
+  react: 19.3.1
+  react-dom: 19.3.1
+  # Styling & UI
+  tailwindcss: 4.3.5
+  '@tailwindcss/postcss': 4.3.5
+  radix-ui: 1.8.1
+  lucide-react: 1.73.0
+  class-variance-authority: 0.7.1
+  clsx: 2.1.1
+  tailwind-merge: 3.7.0
+  # State, forms, data
+  zustand: 5.1.0
+  react-hook-form: 7.92.0
+  '@hookform/resolvers': 7.0.6
+  axios: 1.21.1
+  zod: 4.6.7
+  server-only: 0.0.1
+  # API
+  fastify: 5.12.8
+  tsx: 4.23.15
+  # Tooling
+  turbo: 2.11.11
+  typescript: 6.0.3
+  '@types/node': 22.20.5
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  eslint: 9.39.5
+  '@eslint/js': 9.39.5
+  eslint-config-next: 16.4.6
+  typescript-eslint: 8.72.2
+  globals: 17.14.0
+  prettier: 3.10.1
+  prettier-plugin-tailwindcss: 0.8.1
+  # Testing
+  vitest: 5.1.0
+  vite: 8.3.8
+  '@vitejs/plugin-react': 6.3.0
+  jsdom: 31.0.1
+  '@testing-library/react': 16.3.3
+  '@testing-library/user-event': 14.6.10
+  '@testing-library/jest-dom': 7.0.1
+  '@testing-library/dom': 10.4.2
+  '@playwright/test': 1.65.1
+  '@axe-core/playwright': 4.14.0
+
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
