@@ -8,3 +8,5 @@ export * from './search';
 export * from './network';
 export * from './flights';
 export * from './flight-results';
+export * from './offers';
+export * from './shopping';
