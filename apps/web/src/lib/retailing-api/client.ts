@@ -1,5 +1,14 @@
 import 'server-only';
 import {
+  createSessionResponseSchema,
+  fareFamiliesResponseSchema,
+  offerPriceCheckResponseSchema,
+  offerResponseSchema,
+  offerSearchQueryToParams,
+  offerSearchResponseSchema,
+  repriceResponseSchema,
+  selectOfferResponseSchema,
+  shoppingSessionResponseSchema,
   aircraftListResponseSchema,
   airportListResponseSchema,
   apiErrorSchema,
@@ -13,7 +22,19 @@ import {
   itineraryQueryToParams,
   itineraryResponseSchema,
   routeListResponseSchema,
+  type CreateSessionResponse,
+  type FareFamiliesResponse,
+  type FlightSearch,
+  type JourneyDirection,
+  type OfferPriceCheckResponse,
+  type OfferResponse,
+  type OfferSearchQuery,
+  type OfferSearchResponse,
+  type RepriceResponse,
+  type SelectOfferResponse,
+  type ShoppingSession,
   type Aircraft,
+  type ApiErrorCode,
   type Airport,
   type ApiErrorIssue,
   type AvailabilityResponse,
@@ -52,10 +73,16 @@ export class RetailingApiError extends Error {
     readonly status?: number,
     /** For `rejected`: the API's own (safe, user-facing) validation messages. */
     readonly issues?: ApiErrorIssue[],
-    options?: ErrorOptions,
+    options?: ErrorOptions & {
+      /** The API's own error code, e.g. `OFFER_EXPIRED`, when it answered with one. */
+      code?: ApiErrorCode;
+    },
   ) {
     super(message, options);
+    this.code = options?.code;
   }
+
+  readonly code?: ApiErrorCode;
 }
 
 interface RequestOptions {
@@ -63,19 +90,31 @@ interface RequestOptions {
   allowNotFound?: boolean;
   /** Forward test fault-injection hints. Only for uncached, request-time calls. */
   live?: boolean;
+  method?: 'GET' | 'POST' | 'DELETE';
+  /** JSON request body. */
+  body?: unknown;
+  /** Shopping session token, sent as a bearer token. */
+  token?: string;
 }
 
 async function getJson<T extends z.ZodType>(
   path: string,
   schema: T,
-  { allowNotFound = false, live = false }: RequestOptions = {},
+  { allowNotFound = false, live = false, method = 'GET', body, token }: RequestOptions = {},
 ): Promise<z.output<T> | null> {
   const env = getServerEnv();
   const url = new URL(path, env.RETAILING_API_URL);
   let response: Response;
   try {
     response = await fetch(url, {
-      headers: { accept: 'application/json', ...(live ? await faultHeaders() : {}) },
+      method,
+      headers: {
+        accept: 'application/json',
+        ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+        ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(live ? await faultHeaders() : {}),
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       // Live inventory must never be served from a cache.
       cache: 'no-store',
       signal: AbortSignal.timeout(env.RETAILING_API_TIMEOUT_MS),
@@ -94,17 +133,21 @@ async function getJson<T extends z.ZodType>(
   }
 
   if (allowNotFound && (response.status === 404 || response.status === 400)) return null;
+  if (response.status === 204) return null;
   if (!response.ok) {
-    const body = apiErrorSchema.safeParse(await response.json().catch(() => undefined));
+    const error = apiErrorSchema.safeParse(await response.json().catch(() => undefined));
+    const code = error.success ? error.data.error.code : undefined;
     if (response.status === 404) {
-      throw new RetailingApiError(`Not found: ${url.pathname}`, 'not-found', 404);
+      // Never echo the path: it can carry a session id.
+      throw new RetailingApiError('Not found', 'not-found', 404, undefined, { code });
     }
-    if (response.status < 500 && body.success) {
+    if (response.status < 500 && error.success) {
       throw new RetailingApiError(
-        body.data.error.message,
+        error.data.error.message,
         'rejected',
         response.status,
-        body.data.error.issues,
+        error.data.error.issues,
+        { code },
       );
     }
     throw new RetailingApiError(
@@ -214,5 +257,79 @@ export const retailingApi = {
   async getFareCalendar(query: FareCalendarQuery): Promise<FareCalendarResponse> {
     const path = withQuery('/v1/flights/calendar', fareCalendarQueryToParams(query));
     return (await getJson(path, fareCalendarResponseSchema, { live: true }))!;
+  },
+
+  // -------------------------------------------------------------------------
+  // Offers (live, never cached)
+  // -------------------------------------------------------------------------
+
+  async getFareFamilies(): Promise<FareFamiliesResponse> {
+    return (await getJson('/v1/fare-families', fareFamiliesResponseSchema))!;
+  },
+
+  /** Priced offers for one itinerary. Throws `not-found` when the itinerary doesn't exist. */
+  async searchOffers(query: OfferSearchQuery): Promise<OfferSearchResponse> {
+    const path = withQuery('/v1/offers', offerSearchQueryToParams(query));
+    return (await getJson(path, offerSearchResponseSchema, { live: true }))!;
+  },
+
+  async getOffer(offerId: string): Promise<OfferResponse> {
+    const path = `/v1/offers/${encodeURIComponent(offerId)}`;
+    return (await getJson(path, offerResponseSchema, { live: true }))!;
+  },
+
+  async checkOfferPrice(offerId: string): Promise<OfferPriceCheckResponse> {
+    const path = `/v1/offers/${encodeURIComponent(offerId)}/price`;
+    return (await getJson(path, offerPriceCheckResponseSchema, { live: true }))!;
+  },
+
+  // -------------------------------------------------------------------------
+  // Shopping sessions. Callers pass the session's secret token; it comes from an
+  // HTTP-only cookie and never from the browser.
+  // -------------------------------------------------------------------------
+
+  async createSession(search: FlightSearch): Promise<CreateSessionResponse['data']> {
+    const body = await getJson('/v1/shopping-sessions', createSessionResponseSchema, {
+      method: 'POST',
+      body: { search },
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async getSession(id: string, token: string): Promise<ShoppingSession> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}`;
+    return (await getJson(path, shoppingSessionResponseSchema, { token, live: true }))!.data;
+  },
+
+  async selectOffer(
+    id: string,
+    token: string,
+    request: { direction: JourneyDirection; offerId: string },
+  ): Promise<SelectOfferResponse['data']> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/select`;
+    const body = await getJson(path, selectOfferResponseSchema, {
+      method: 'POST',
+      body: request,
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async repriceSession(id: string, token: string): Promise<RepriceResponse['data']> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/reprice`;
+    const body = await getJson(path, repriceResponseSchema, {
+      method: 'POST',
+      body: {},
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async deleteSession(id: string, token: string): Promise<void> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}`;
+    await getJson(path, shoppingSessionResponseSchema, { method: 'DELETE', token, live: true });
   },
 };

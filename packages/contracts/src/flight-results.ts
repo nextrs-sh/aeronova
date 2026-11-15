@@ -21,6 +21,8 @@ import { serializeFlightSearch, type FlightSearch, type SearchParamsInput } from
 export const RESULTS_PARAM_KEYS = {
   outboundId: 'out',
   inboundId: 'ret',
+  /** The itinerary whose fare families are being compared in the current step. */
+  faresId: 'fares',
   maxStops: 'stops',
   departureWindows: 'times',
   /** Whole currency units (pesos) per adult — friendlier in a URL than minor units. */
@@ -41,6 +43,8 @@ export interface ResultsFilters {
 export interface ResultsState {
   outboundId?: string;
   inboundId?: string;
+  /** Comparing fares for this itinerary (in the direction of the current step). */
+  faresId?: string;
   filters: ResultsFilters;
   sort: FlightSort;
   page: number;
@@ -76,7 +80,7 @@ export function parseResultsParams(params: SearchParamsInput): ParsedResultsStat
     page: 1,
   };
 
-  for (const key of ['outboundId', 'inboundId'] as const) {
+  for (const key of ['outboundId', 'inboundId', 'faresId'] as const) {
     const value = read(params, K[key]);
     if (value === undefined || value === '') continue;
     if (itineraryIdSchema.safeParse(value).success) state[key] = value;
@@ -138,6 +142,7 @@ export function serializeResultsState(state: ResultsState, into = new URLSearchP
   const K = RESULTS_PARAM_KEYS;
   if (state.outboundId) into.set(K.outboundId, state.outboundId);
   if (state.outboundId && state.inboundId) into.set(K.inboundId, state.inboundId);
+  if (state.faresId) into.set(K.faresId, state.faresId);
   const { filters } = state;
   if (filters.maxStops !== undefined) into.set(K.maxStops, String(filters.maxStops));
   if (filters.departureWindows.length > 0) {

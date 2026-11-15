@@ -1,5 +1,11 @@
 import 'server-only';
-import type { Aircraft, Airport, Destination, NetworkRoute } from '@velasia/contracts';
+import type {
+  Aircraft,
+  Airport,
+  Destination,
+  FareFamiliesResponse,
+  NetworkRoute,
+} from '@velasia/contracts';
 import { cacheLife, cacheTag } from 'next/cache';
 import { RetailingApiError, retailingApi } from './retailing-api/client';
 
@@ -45,6 +51,17 @@ export async function getAircraft(): Promise<Aircraft[]> {
   cacheLife('hours');
   cacheTag('network');
   return retailingApi.listAircraft();
+}
+
+/**
+ * Fare family descriptions: public product content, the same for every traveller, so it is
+ * cached like the network. Prices never come from here — only from live offers.
+ */
+export async function getFareFamilies(): Promise<FareFamiliesResponse> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('fare-families');
+  return retailingApi.getFareFamilies();
 }
 
 export type ContentResult<T> = { ok: true; data: T } | { ok: false };
