@@ -13,9 +13,11 @@ dynamic offers, booking journeys, and modern Offer & Order retailing.
 
 Velasia Airways is a modern, full-service airline headquartered (fictionally) in the
 Philippines, flying across Southeast Asia and to selected international destinations, priced in
-PHP. **Flight search and offer shopping are built today**: compare fare families, choose offers
-for each direction, and review a server-priced trip summary. Traveller details, orders, and
-payment are planned milestones (see [status](#milestone-status)).
+PHP. **Flight search, offer shopping, and the pre-checkout booking flow are built today**:
+compare fare families, choose offers for each direction, enter traveller details, choose seats
+on aircraft-specific seat maps, add baggage, meals, and priority services, and review a
+server-validated pre-checkout quote. Checkout, orders, and payment are planned milestones (see
+[status](#milestone-status)); nothing is ever booked or charged.
 
 > Velasia Airways is not a real airline. It does not operate flights, sell tickets, or process
 > payments, and it holds no IATA or ICAO airline designator: flight numbers such as `VEL 501`
@@ -32,12 +34,14 @@ payment are planned milestones (see [status](#milestone-status)).
 | 2         | Flight inventory, dynamic search, indicative pricing          | ✅ Done        |
 | 2.5       | Velasia Airways rebrand: identity, design system, API, docs   | ✅ Done        |
 | 3         | Dynamic offers, fare families, shopping sessions              | ✅ Done        |
-| 4–7       | Passengers & orders → order management → accounts → ops       | Planned        |
+| 4         | Traveller details, seat maps, ancillaries, booking review     | ✅ Done        |
+| 5–7       | Checkout & orders → order servicing → accounts & operations   | Planned        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
 [M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
-[M2.5](docs/MILESTONE-2.5-REBRANDING.md), [M3](docs/MILESTONE-3-REPORT.md). M1 and M2 were delivered under the project's former
+[M2.5](docs/MILESTONE-2.5-REBRANDING.md), [M3](docs/MILESTONE-3-REPORT.md),
+[M4](docs/MILESTONE-4-REPORT.md). M1 and M2 were delivered under the project's former
 working name, AeroNova; their reports are kept as written.
 
 **What works today:** search a fictional network of 21 airports and 54 routes, and get real
@@ -88,8 +92,26 @@ your say. There are also destination guides and help pages. Nothing on the site 
   an unsellable flight is flagged while your other choice is kept.
 - **Comparison.** Fare cards show the total for everyone and key inclusions; "Compare all
   features" opens a matrix (a table on desktop, lists on phones) with every condition spelled out.
-- **Boundary.** "Continue to traveller details" leads to a page that collects nothing: traveller
-  details, orders, and payment arrive in Milestone 4.
+- **Next.** "Continue to traveller details" starts the booking steps below.
+
+## Booking: travellers, seats, extras, review
+
+- **Travellers** (`/booking/travellers`). One card per priced passenger (Adult 1, Child 1,
+  Infant 1…), validated inline with the same Zod schema the API applies: names, dates of birth
+  against the travel dates, nationality, lap infants with their own adult, and contact details.
+  The party can't change here: offers are priced for it. Use made-up details only.
+- **Seats** (`/booking/seats`). A seat map per flight, built from each aircraft's own layout
+  (A320neo, A321neo, 737-8, A330-900) with availability that matches the inventory. Seats show
+  their category (standard, preferred, extra legroom, Business), price for your fare, or
+  "Included with your fare"; exit rows are for adults without an infant. Fully keyboard
+  operable; optional (unchosen seats are assigned free at check-in) and **provisional**: a seat
+  is checked again at review and only held at checkout (a later milestone).
+- **Extras** (`/booking/extras`). Extra checked baggage per traveller and direction on top of
+  the fare's allowance, meals per flight (none on flights under 90 minutes; complimentary in
+  Business), and priority services (never sold to fares that include them). Saved as you choose.
+- **Review** (`/booking/review`). Itinerary, travellers, seats, extras, and an itemised quote. A
+  final check re-prices the offers and re-checks every seat and service; "Continue to checkout"
+  appears only when it passes, and leads to a clearly labelled preview that creates nothing.
 
 ## Mock retailing API
 
@@ -97,8 +119,10 @@ your say. There are also destination guides and help pages. Nothing on the site 
 from fixtures, a seeded demand model, offers and shopping sessions in bounded memory. The full
 endpoint list is in [ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
 [M3 report](docs/MILESTONE-3-REPORT.md#api-endpoint-changes). For testing, it can simulate
-latency, failures (`x-velasia-fault`), and retailing scenarios (`x-velasia-scenario`:
-`offer-expired`, `price-increase`, `sold-out`, `session-expired`), all off by default.
+latency, failures (`x-velasia-fault`, including `slow-commit` for an answer lost after a change),
+and retailing scenarios (`x-velasia-scenario`: `offer-expired`, `price-increase`, `sold-out`,
+`session-expired`, `seat-taken`), all off by default. M4's endpoints are listed in the
+[M4 report](docs/MILESTONE-4-REPORT.md#api-endpoints).
 
 ## Brand
 
@@ -161,6 +185,14 @@ storefront.
 First E2E run: `pnpm exec playwright install chromium`.
 
 ## Screenshots
+
+| Seat selection (A321neo)                                      | Booking review                                                 |
+| ------------------------------------------------------------- | -------------------------------------------------------------- |
+| ![Seat selection](docs/screenshots/booking-seats-desktop.jpg) | ![Booking review](docs/screenshots/booking-review-desktop.jpg) |
+
+| Traveller details with validation                                             | Travel extras                                                 |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| ![Traveller form](docs/screenshots/booking-travellers-validation-desktop.jpg) | ![Travel extras](docs/screenshots/booking-extras-desktop.jpg) |
 
 | Flight results                                                  | Flight details                                                 |
 | --------------------------------------------------------------- | -------------------------------------------------------------- |

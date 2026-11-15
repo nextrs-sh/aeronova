@@ -10,3 +10,7 @@ export * from './flights';
 export * from './flight-results';
 export * from './offers';
 export * from './shopping';
+export * from './travellers';
+export * from './seatmaps';
+export * from './ancillaries';
+export * from './booking';

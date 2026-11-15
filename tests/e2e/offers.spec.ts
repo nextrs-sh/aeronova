@@ -128,11 +128,9 @@ test.describe('fare families and offers', () => {
 
     // 20. Nothing was booked or paid for.
     await page.getByRole('button', { name: 'Continue to traveller details' }).click();
-    await expect(page.getByTestId('no-booking-notice')).toContainText(
-      'No booking has been made, no seats are reserved, and nothing has been charged',
-    );
-    expect(await amount(page.getByTestId('confirmed-total'))).toBe(flex);
-    await expect(page.getByRole('textbox')).toHaveCount(0);
+    // M4: the next step collects traveller details; the trip total carries over unchanged.
+    await expect(page.getByTestId('traveller-form')).toBeVisible();
+    expect(await amount(page.getByTestId('booking-total').filter({ visible: true }))).toBe(flex);
     expect(requests.filter((url) => /order|payment|checkout/i.test(url))).toEqual([]);
 
     // 19. No hydration or runtime errors along the way.

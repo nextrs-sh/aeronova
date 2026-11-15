@@ -163,7 +163,15 @@ test.describe('round trips', () => {
 
     await page.getByRole('button', { name: 'Continue to traveller details' }).click();
     await expect(page).toHaveURL(/\/booking\/travellers$/);
-    await expect(page.getByTestId('no-booking-notice')).toContainText('No booking has been made');
+    await expect(page.getByTestId('traveller-form')).toBeVisible();
+    expect(
+      Number(
+        (await page.getByTestId('booking-total').filter({ visible: true }).textContent())!.replace(
+          /[^\d]/g,
+          '',
+        ),
+      ),
+    ).toBe(total);
   });
 
   test('browser back and forward keep the search and selections', async ({ page }) => {

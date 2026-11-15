@@ -1,6 +1,7 @@
 import 'server-only';
 import type {
   Aircraft,
+  AncillaryCatalogueResponse,
   Airport,
   Destination,
   FareFamiliesResponse,
@@ -62,6 +63,17 @@ export async function getFareFamilies(): Promise<FareFamiliesResponse> {
   cacheLife('hours');
   cacheTag('fare-families');
   return retailingApi.getFareFamilies();
+}
+
+/**
+ * Service descriptions and list prices (bags, meals, priority): public catalogue content.
+ * What a guest actually pays for their fare comes from their session, never from here.
+ */
+export async function getAncillaryCatalogue(): Promise<AncillaryCatalogueResponse> {
+  'use cache';
+  cacheLife('hours');
+  cacheTag('ancillaries');
+  return retailingApi.getAncillaryCatalogue();
 }
 
 export type ContentResult<T> = { ok: true; data: T } | { ok: false };

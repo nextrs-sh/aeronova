@@ -41,7 +41,8 @@ export async function selectFamily(page: Page, family: 'Light' | 'Classic' | 'Fl
 /** Run a deterministic retailing scenario for this browser context (test-only). */
 export async function simulateScenario(
   page: Page,
-  scenario: 'offer-expired' | 'price-increase' | 'sold-out' | 'session-expired' | null,
+  scenario:
+    'offer-expired' | 'price-increase' | 'sold-out' | 'session-expired' | 'seat-taken' | null,
 ) {
   const context = page.context();
   if (scenario === null) await context.clearCookies({ name: 'velasia-scenario' });
@@ -51,7 +52,7 @@ export async function simulateScenario(
 /** Simulate a retailing API failure for this browser context (test-only fault injection). */
 export async function simulateApiFault(
   page: Page,
-  fault: 'unavailable' | 'timeout' | 'empty' | 'malformed' | null,
+  fault: 'unavailable' | 'timeout' | 'empty' | 'malformed' | 'slow-commit' | null,
 ) {
   const context = page.context();
   if (fault === null) await context.clearCookies({ name: 'velasia-fault' });

@@ -54,7 +54,7 @@ export function JourneySteps({ stage, roundTrip }: { stage: JourneyStage; roundT
         })}
       </ol>
       <p className="hidden text-xs text-ink-subtle sm:ml-auto sm:block">
-        Then: traveller details · payment <span className="font-semibold">(coming soon)</span>
+        Then: travellers · seats · extras · review
       </p>
     </div>
   );
