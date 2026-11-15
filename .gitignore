@@ -164,3 +164,6 @@ next-env.d.ts
 # Retailing API TalaDB files (orders). Never commit; reset with `pnpm --filter @velasia/retailing-api db:reset`.
 apps/retailing-api/data/
 *.db
+
+# Project documentation and screenshots are kept out of version control.
+docs/

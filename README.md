@@ -37,7 +37,8 @@ ticket, and no money ever moves.
 | 3         | Dynamic offers, fare families, shopping sessions              | ✅ Done        |
 | 4         | Traveller details, seat maps, ancillaries, booking review     | ✅ Done        |
 | 5         | Checkout, durable orders (TalaDB), simulated payments         | ✅ Done        |
-| 6–7       | Order servicing & accounts → production hardening             | Planned        |
+| 6         | Manage Booking, order servicing, demo accounts, My Trips      | ✅ Done        |
+| 7         | Production hardening, Docker, observability                   | Planned        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
@@ -137,6 +138,36 @@ your say. There are also destination guides and help pages. Nothing on the site 
 
 The consistency design, recovery protocol, and test evidence are in the
 [M5 report](docs/MILESTONE-5-REPORT.md).
+
+## Manage Booking, servicing, and accounts (Milestone 6)
+
+- **Manage Booking** (`/manage-booking`, `/manage-booking/[orderId]`). The booking as it is now
+  — itinerary, fare, travellers, seats, bags, meals, payments and refunds — with only the
+  actions it really allows (each disabled action says why), a print view, and a full history.
+  It opens for the browser that booked it or the account it was added to; a booking reference
+  only finds a booking you already have access to, and never reveals anything on its own.
+- **Change flight.** Pick a date, compare every replacement flight with its full price (new
+  fare, your current fare, paid seats and meals you leave, and the fare's change fee), review
+  old and new side by side, and confirm. More to pay is a simulated payment; less is refunded
+  (Flex, Business) or kept as travel credit (Light, Classic). Your original seats stay booked
+  until the replacement is paid for; a declined payment changes nothing. Light changes close
+  24 hours before departure, Classic 3 hours, Flex and Business 1 hour (fictional rules).
+- **Seats and services after booking.** The aircraft's own seat map; what you already paid
+  for a seat or a service counts towards a new one, and nothing your fare includes is charged.
+  Extra bags, meals (and upgrades), and priority services until 3 hours (meals 24 hours) before
+  departure.
+- **Cancel.** What you paid, what comes back, and what is kept, line by line, before an explicit
+  confirmation. Seats are released at once; the simulated refund is tracked separately
+  (processing → refunded, or failed with a retry).
+- **Demo accounts** (`/account`). Register, sign in and out, My Trips (upcoming, past,
+  cancelled, needs attention), saved travellers you can pick in the booking form, and settings.
+  Bookings made as a guest are added to an account only when you choose to, from the browser
+  that made them. Demo accounts have no email verification or password reset, and registration
+  is off in production unless `ACCOUNT_REGISTRATION=enabled`.
+
+Every change is priced, validated, and written by the retailing API (TalaDB, one document per
+order, compare-and-set with the order revision, idempotency keys); recovery after a crash
+finishes undecided payments and refunds without ever inventing a success.
 
 ## Mock retailing API
 
