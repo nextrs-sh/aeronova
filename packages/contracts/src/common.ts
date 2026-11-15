@@ -51,6 +51,24 @@ export const apiErrorCodeSchema = z.enum([
   'SESSION_NOT_FOUND',
   /** The session's lifetime ended. */
   'SESSION_EXPIRED',
+  /** The session changed since the caller last read it (`expectedVersion`); reload and retry. */
+  'SESSION_CONFLICT',
+  /** A booking step was used before the steps it depends on. */
+  'BOOKING_STEP_UNAVAILABLE',
+  /** Traveller details break a rule (ages, names, slots, infant escorts). */
+  'PASSENGERS_INVALID',
+  /** A traveller id that isn't part of this booking. */
+  'TRAVELLER_MISSING',
+  /** The seat is taken or blocked on this flight. */
+  'SEAT_UNAVAILABLE',
+  /** The seat exists but this traveller can't have it with this fare (cabin, exit row, infant). */
+  'SEAT_INELIGIBLE',
+  /** The service isn't sold for this traveller, flight, or fare (or the fare already includes it). */
+  'ANCILLARY_UNAVAILABLE',
+  /** Quantities other than one are not sold. */
+  'INVALID_QUANTITY',
+  /** The price changed since the traveller last saw it; they must accept it first. */
+  'PRICE_CHANGED',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

@@ -2,6 +2,14 @@ import { z } from 'zod';
 import { currencyCodeSchema, iataCodeSchema, minorAmountSchema } from './common';
 import { isIsoDate } from './dates';
 import { journeyDirectionSchema, type JourneyDirection } from './flights';
+import {
+  bookingReviewSchema,
+  bookingSchema,
+  extrasTotalsSchema,
+  quoteSchema,
+  reviewIssueSchema,
+  reviewStatusSchema,
+} from './booking';
 import { fareFamilyCodeSchema, offerIdSchema, offerSchema } from './offers';
 import { cabinClassSchema, tripTypeSchema, type FlightSearch } from './search';
 
@@ -105,13 +113,22 @@ export const sessionSummarySchema = z.object({
   complete: z.boolean(),
   /** Complete, every selection is `VALIDATED`, and none has expired. */
   readyToContinue: z.boolean(),
-  /** Sum of the selected offers. There are no per-booking charges, so nothing is counted twice. */
+  /**
+   * The whole trip: the selected offers plus chosen seats and services. There are no
+   * per-booking charges, so nothing is counted twice.
+   */
   totalMinor: minorAmountSchema,
+  /** Sum of the selected offers alone. */
+  flightsTotalMinor: minorAmountSchema,
+  /** `baseFare + fareFamily + taxes + extras = totalMinor`. */
   totals: z.object({
     baseFareMinor: minorAmountSchema,
     fareFamilyMinor: minorAmountSchema,
     taxesMinor: minorAmountSchema,
+    extrasMinor: minorAmountSchema,
   }),
+  /** Seats, baggage, meals, and priority, as chosen in the booking steps. */
+  extras: extrasTotalsSchema,
   /** The earliest expiry among the selected offers. */
   offersExpireAt: z.iso.datetime().nullable(),
 });
@@ -125,6 +142,8 @@ export const shoppingSessionSchema = z.object({
     inbound: selectionSchema.nullable(),
   }),
   summary: sessionSummarySchema,
+  /** Traveller details, seats, services, and review (Milestone 4). */
+  booking: bookingSchema,
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   /** Sliding expiry: extended by each change, up to a maximum lifetime. */
@@ -203,3 +222,28 @@ export function sameSearch(a: FlightSearch, b: FlightSearch): boolean {
     a.cabin === b.cabin
   );
 }
+
+// ---------------------------------------------------------------------------
+// Booking steps (Milestone 4)
+// ---------------------------------------------------------------------------
+
+/** `GET /v1/shopping-sessions/:id/review`: the itemised quote and what still needs doing. */
+export const reviewResponseSchema = z.object({
+  data: z.object({
+    session: shoppingSessionSchema,
+    quote: quoteSchema,
+    /** Readiness from the session as it is, without re-pricing (see `POST …/validate`). */
+    readiness: z.object({ status: reviewStatusSchema, issues: z.array(reviewIssueSchema) }),
+  }),
+});
+export type ReviewResponse = z.infer<typeof reviewResponseSchema>;
+
+/** `POST /v1/shopping-sessions/:id/validate`: re-price and re-check everything, then record it. */
+export const validateBookingResponseSchema = z.object({
+  data: z.object({
+    session: shoppingSessionSchema,
+    review: bookingReviewSchema,
+    quote: quoteSchema,
+  }),
+});
+export type ValidateBookingResponse = z.infer<typeof validateBookingResponseSchema>;
