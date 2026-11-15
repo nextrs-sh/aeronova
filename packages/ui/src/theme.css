@@ -1,0 +1,96 @@
+/*
+ * AeroNova design tokens for Tailwind CSS 4.
+ * Import after `tailwindcss` in the app stylesheet.
+ */
+@theme {
+  /* Typography — font variables are provided by next/font in the app layout. */
+  --font-sans: var(--font-text), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: var(--font-heading), var(--font-text), ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand: deep navy */
+  --color-navy-50: #eef3fb;
+  --color-navy-100: #dae4f4;
+  --color-navy-200: #b6c8e7;
+  --color-navy-300: #87a1d0;
+  --color-navy-400: #5676b0;
+  --color-navy-500: #34548f;
+  --color-navy-600: #243f74;
+  --color-navy-700: #1a315d;
+  --color-navy-800: #122447;
+  --color-navy-900: #0b1834;
+  --color-navy-950: #060e21;
+
+  /* Accent: restrained ember orange. 600+ meets AA for text on white and surface. */
+  --color-ember-50: #fff5ee;
+  --color-ember-100: #ffe6d5;
+  --color-ember-200: #ffc8a3;
+  --color-ember-300: #fea56b;
+  --color-ember-400: #f9843b;
+  --color-ember-500: #ee6a1f;
+  --color-ember-600: #b5430b;
+  --color-ember-700: #963709;
+  --color-ember-800: #78300d;
+
+  /* Semantic surfaces and text */
+  --color-canvas: #ffffff;
+  --color-surface: #f5f7fb;
+  --color-surface-strong: #eaeff6;
+  --color-ink: #0b1834;
+  --color-ink-muted: #4a5875;
+  --color-ink-subtle: #5d6a84;
+  --color-line: #e1e7ef;
+  --color-line-strong: #c9d3e0;
+  --color-focus: #b5430b;
+  --color-danger: #b42318;
+  --color-danger-surface: #fef3f2;
+  --color-success: #067647;
+
+  /* Shape and depth */
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(11 24 52 / 0.04), 0 10px 30px -12px rgb(11 24 52 / 0.14);
+  --shadow-float: 0 30px 60px -24px rgb(6 14 33 / 0.38), 0 2px 6px rgb(6 14 33 / 0.06);
+
+  /* Motion */
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-in-fade: in-fade 180ms var(--ease-soft);
+  --animate-in-pop: in-pop 180ms var(--ease-soft);
+  --animate-in-slide: in-slide 260ms var(--ease-soft);
+  --animate-rise: rise 700ms var(--ease-soft) both;
+
+  @keyframes in-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes in-pop {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes in-slide {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
