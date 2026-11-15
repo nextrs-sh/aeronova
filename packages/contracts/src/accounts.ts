@@ -48,8 +48,14 @@ export const accountEmailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(ACCOUNT_RULES.passwordMinLength, `Use at least ${ACCOUNT_RULES.passwordMinLength} characters.`)
-  .max(ACCOUNT_RULES.passwordMaxLength, `Use at most ${ACCOUNT_RULES.passwordMaxLength} characters.`);
+  .min(
+    ACCOUNT_RULES.passwordMinLength,
+    `Use at least ${ACCOUNT_RULES.passwordMinLength} characters.`,
+  )
+  .max(
+    ACCOUNT_RULES.passwordMaxLength,
+    `Use at most ${ACCOUNT_RULES.passwordMaxLength} characters.`,
+  );
 
 export const registerRequestSchema = z
   .object({
@@ -139,7 +145,10 @@ export const savedTravellerSchema = z.object({
 export type SavedTraveller = z.infer<typeof savedTravellerSchema>;
 
 export const createTravellerRequestSchema = z
-  .object({ idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/), traveller: savedTravellerInputSchema })
+  .object({
+    idempotencyKey: z.string().regex(/^[A-Za-z0-9_-]{16,64}$/),
+    traveller: savedTravellerInputSchema,
+  })
   .strict();
 export const updateTravellerRequestSchema = z
   .object({ expectedRevision: z.number().int().positive(), traveller: savedTravellerInputSchema })

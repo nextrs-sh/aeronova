@@ -7,7 +7,9 @@ import type { StoredOrder } from '../db/schema';
  */
 export function moneyOf(order: StoredOrder) {
   const succeeded = (attempts: StoredOrder['attempts']) =>
-    attempts.filter((attempt) => attempt.status === 'SUCCEEDED').reduce((sum, a) => sum + a.amountMinor, 0);
+    attempts
+      .filter((attempt) => attempt.status === 'SUCCEEDED')
+      .reduce((sum, a) => sum + a.amountMinor, 0);
   let paid = succeeded(order.attempts);
   let refunded = 0;
   let refundPending = 0;
@@ -23,7 +25,8 @@ export function moneyOf(order: StoredOrder) {
     const done = op.refunds.some((refund) => refund.status === 'SUCCEEDED');
     const last = op.refunds.at(-1);
     if (done) refunded += op.adjustment.amountMinor;
-    else if (last && UNRESOLVED_REFUND_STATUSES.includes(last.status)) refundPending += op.adjustment.amountMinor;
+    else if (last && UNRESOLVED_REFUND_STATUSES.includes(last.status))
+      refundPending += op.adjustment.amountMinor;
     else if (last?.status === 'FAILED') refundFailed += op.adjustment.amountMinor;
   }
   return {

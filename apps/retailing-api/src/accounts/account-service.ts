@@ -15,7 +15,11 @@ import type {
   SessionRepository,
   TravellerRepository,
 } from '../db/repositories/account-repository';
-import type { OrderListing, OrderRepository, TripListSection } from '../db/repositories/order-repository';
+import type {
+  OrderListing,
+  OrderRepository,
+  TripListSection,
+} from '../db/repositories/order-repository';
 import {
   ACCOUNT_SCHEMA_VERSION,
   type StoredAccount,
@@ -56,7 +60,12 @@ export interface AccountConfig {
 }
 
 type Failure = Extract<RetailingResult<never>, { ok: false }>;
-const fail = (status: Failure['status'], code: Failure['code'], message: string, path?: string): Failure => ({
+const fail = (
+  status: Failure['status'],
+  code: Failure['code'],
+  message: string,
+  path?: string,
+): Failure => ({
   ok: false,
   status,
   code,
@@ -68,8 +77,7 @@ const INVALID = () => fail(401, 'INVALID_CREDENTIALS', 'The email or password is
 const TOO_MANY = () =>
   fail(429, 'RATE_LIMITED', 'Too many attempts. Please wait a few minutes and try again.');
 const UNAUTHENTICATED = () => fail(401, 'UNAUTHENTICATED', 'Please sign in again.');
-const TRAVELLER_NOT_FOUND = () =>
-  fail(404, 'NOT_FOUND', 'We couldn’t find this saved traveller.');
+const TRAVELLER_NOT_FOUND = () => fail(404, 'NOT_FOUND', 'We couldn’t find this saved traveller.');
 const ORDER_NOT_FOUND = () => fail(404, 'ORDER_NOT_FOUND', 'We couldn’t find this booking.');
 
 const MINUTE = 60_000;
@@ -197,9 +205,15 @@ export function createAccountService({
     async register(
       input: { email: string; password: string; givenName: string; familyName: string },
       clientKey: string,
-    ): Promise<RetailingResult<{ account: Account; session: { token: string; expiresAt: string } }>> {
+    ): Promise<
+      RetailingResult<{ account: Account; session: { token: string; expiresAt: string } }>
+    > {
       if (!config.registration) {
-        return fail(403, 'REGISTRATION_DISABLED', 'Demo account registration is switched off here.');
+        return fail(
+          403,
+          'REGISTRATION_DISABLED',
+          'Demo account registration is switched off here.',
+        );
       }
       const at = now();
       if (registrationsByClient.blocked(clientKey, at)) return TOO_MANY();
@@ -208,7 +222,12 @@ export function createAccountService({
       const passwordHash = await argonHash(input.password);
       return queue.run(async () => {
         if (await accounts.byEmail(input.email)) {
-          return fail(409, 'ACCOUNT_EXISTS', 'An account with this email already exists. Sign in instead.', 'email');
+          return fail(
+            409,
+            'ACCOUNT_EXISTS',
+            'An account with this email already exists. Sign in instead.',
+            'email',
+          );
         }
         const account: StoredAccount = {
           schemaVersion: ACCOUNT_SCHEMA_VERSION,
@@ -232,14 +251,19 @@ export function createAccountService({
       input: { email: string; password: string },
       clientKey: string,
       previousToken: string | undefined,
-    ): Promise<RetailingResult<{ account: Account; session: { token: string; expiresAt: string } }>> {
+    ): Promise<
+      RetailingResult<{ account: Account; session: { token: string; expiresAt: string } }>
+    > {
       const at = now();
       if (failuresByEmail.blocked(input.email, at) || attemptsByClient.blocked(clientKey, at)) {
         return TOO_MANY();
       }
       attemptsByClient.hit(clientKey, at);
       const account = await accounts.byEmail(input.email);
-      const valid = await argonVerify(account?.passwordHash ?? (await dummy()), input.password).catch(() => false);
+      const valid = await argonVerify(
+        account?.passwordHash ?? (await dummy()),
+        input.password,
+      ).catch(() => false);
       if (!account || !valid) {
         failuresByEmail.hit(input.email, at);
         return INVALID();
@@ -262,7 +286,10 @@ export function createAccountService({
       if (session) await queue.run(() => sessions.revoke(session.sessionId, now()));
     },
 
-    async updateProfile(token: string | undefined, input: { givenName: string; familyName: string }) {
+    async updateProfile(
+      token: string | undefined,
+      input: { givenName: string; familyName: string },
+    ) {
       const auth = await sessionFor(token);
       if (!auth) return UNAUTHENTICATED();
       return queue.run(async (): Promise<RetailingResult<Account>> => {
@@ -273,14 +300,24 @@ export function createAccountService({
     },
 
     /** Change the password, end every session, and start a new one for this browser. */
-    async changePassword(token: string | undefined, input: { currentPassword: string; newPassword: string }) {
+    async changePassword(
+      token: string | undefined,
+      input: { currentPassword: string; newPassword: string },
+    ) {
       const auth = await sessionFor(token);
       if (!auth) return UNAUTHENTICATED();
       const at = now();
       if (failuresByEmail.blocked(auth.account.email, at)) return TOO_MANY();
-      if (!(await argonVerify(auth.account.passwordHash, input.currentPassword).catch(() => false))) {
+      if (
+        !(await argonVerify(auth.account.passwordHash, input.currentPassword).catch(() => false))
+      ) {
         failuresByEmail.hit(auth.account.email, at);
-        return fail(401, 'INVALID_CREDENTIALS', 'Your current password is incorrect.', 'currentPassword');
+        return fail(
+          401,
+          'INVALID_CREDENTIALS',
+          'Your current password is incorrect.',
+          'currentPassword',
+        );
       }
       const passwordHash = await argonHash(input.newPassword);
       return queue.run(async () => {
@@ -308,14 +345,23 @@ export function createAccountService({
       return (await travellers.forAccount(accountId)).map(toPublicTraveller);
     },
 
-    async createTraveller(accountId: string, idempotencyKey: string, input: SavedTravellerInput): Promise<RetailingResult<{ traveller: SavedTraveller; replayed: boolean }>> {
+    async createTraveller(
+      accountId: string,
+      idempotencyKey: string,
+      input: SavedTravellerInput,
+    ): Promise<RetailingResult<{ traveller: SavedTraveller; replayed: boolean }>> {
       const parsed = savedTravellerInputSchema.parse(input);
       return queue.run(async () => {
         const createKey = `${accountId}:${idempotencyKey}`;
         const existing = await travellers.byCreateKey(createKey);
-        if (existing) return { ok: true, value: { traveller: toPublicTraveller(existing), replayed: true } };
+        if (existing)
+          return { ok: true, value: { traveller: toPublicTraveller(existing), replayed: true } };
         if ((await travellers.countForAccount(accountId)) >= ACCOUNT_RULES.maxSavedTravellers) {
-          return fail(409, 'LIMIT_REACHED', `You can save up to ${ACCOUNT_RULES.maxSavedTravellers} travellers.`);
+          return fail(
+            409,
+            'LIMIT_REACHED',
+            `You can save up to ${ACCOUNT_RULES.maxSavedTravellers} travellers.`,
+          );
         }
         const at = now();
         const traveller: StoredTraveller = {
@@ -338,13 +384,22 @@ export function createAccountService({
       });
     },
 
-    async updateTraveller(accountId: string, travellerId: string, expectedRevision: number, input: SavedTravellerInput): Promise<RetailingResult<SavedTraveller>> {
+    async updateTraveller(
+      accountId: string,
+      travellerId: string,
+      expectedRevision: number,
+      input: SavedTravellerInput,
+    ): Promise<RetailingResult<SavedTraveller>> {
       const parsed = savedTravellerInputSchema.parse(input);
       return queue.run(async () => {
         const existing = await travellers.owned(accountId, travellerId);
         if (!existing) return TRAVELLER_NOT_FOUND();
         if (existing.rev !== expectedRevision) {
-          return fail(409, 'SERVICING_CONFLICT', 'This traveller was changed in another window. We’ve loaded the latest details.');
+          return fail(
+            409,
+            'SERVICING_CONFLICT',
+            'This traveller was changed in another window. We’ve loaded the latest details.',
+          );
         }
         const next = await travellers.replace(existing, {
           ...existing,
@@ -369,12 +424,27 @@ export function createAccountService({
     // Trips and linking
     // -----------------------------------------------------------------------
 
-    async trips(accountId: string, section: TripSection, page: number, pageSize: number): Promise<TripsResponse> {
+    async trips(
+      accountId: string,
+      section: TripSection,
+      page: number,
+      pageSize: number,
+    ): Promise<TripsResponse> {
       const at = now();
-      const { items, total } = await orders.listForAccount(accountId, section as TripListSection, at, page, pageSize);
+      const { items, total } = await orders.listForAccount(
+        accountId,
+        section as TripListSection,
+        at,
+        page,
+        pageSize,
+      );
       const sections: TripSection[] = ['upcoming', 'past', 'cancelled', 'attention'];
       const counts = Object.fromEntries(
-        await Promise.all(sections.map(async (name) => [name, await orders.countForAccount(accountId, name, at)] as const)),
+        await Promise.all(
+          sections.map(
+            async (name) => [name, await orders.countForAccount(accountId, name, at)] as const,
+          ),
+        ),
       ) as Record<TripSection, number>;
       return { data: items.map(tripOf), meta: { section, page, pageSize, total, counts } };
     },
@@ -393,7 +463,11 @@ export function createAccountService({
      * guest is refused as unknown, and nothing is linked. Each booking is one compare-and-set
      * write; linking again is a no-op, so a retry after a partial run finishes the job.
      */
-    async link(accountId: string, guestToken: string | undefined, orderIds: string[]): Promise<RetailingResult<{ linked: string[]; alreadyLinked: string[] }>> {
+    async link(
+      accountId: string,
+      guestToken: string | undefined,
+      orderIds: string[],
+    ): Promise<RetailingResult<{ linked: string[]; alreadyLinked: string[] }>> {
       return queue.run(async () => {
         const found = await Promise.all(orderIds.map((id) => orders.byId(id)));
         const alreadyLinked: string[] = [];
@@ -406,7 +480,11 @@ export function createAccountService({
           }
           if (!canAccess(order, { guestToken })) return ORDER_NOT_FOUND();
           if (order.status !== 'CONFIRMED' && order.status !== 'BOOKING_CANCELLED') {
-            return fail(409, 'ORDER_NOT_MODIFIABLE', 'Only confirmed bookings can be added to your account.');
+            return fail(
+              409,
+              'ORDER_NOT_MODIFIABLE',
+              'Only confirmed bookings can be added to your account.',
+            );
           }
           toLink.push(order);
         }

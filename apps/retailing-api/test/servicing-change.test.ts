@@ -24,7 +24,10 @@ import {
  */
 
 /** One adult, one way, no seat chosen (so no paid seat is released by a change). */
-const ONE_WAY = (family: 'LIGHT' | 'CLASSIC' | 'FLEX' | 'BUSINESS', itineraryId = 'NV501-20261215') => ({
+const ONE_WAY = (
+  family: 'LIGHT' | 'CLASSIC' | 'FLEX' | 'BUSINESS',
+  itineraryId = 'NV501-20261215',
+) => ({
   legs: [{ itineraryId, family }],
   seats: 'none' as const,
   search: {
@@ -65,7 +68,9 @@ describe('change flight: eligibility and quotes', { timeout: 60_000 }, () => {
     expect(late.statusCode).toBe(409);
     expect(late.json().error).toMatchObject({ code: 'CHANGE_NOT_ALLOWED' });
     expect(late.json().error.message).toMatch(/24 hours before departure/);
-    const overview = await h.call(`/v1/orders/${booking.order.id}/servicing`, { token: booking.guest });
+    const overview = await h.call(`/v1/orders/${booking.order.id}/servicing`, {
+      token: booking.guest,
+    });
     expect(overview.json().data.servicing.changeFlight[0]).toMatchObject({ allowed: false });
   });
 
@@ -79,7 +84,9 @@ describe('change flight: eligibility and quotes', { timeout: 60_000 }, () => {
     expect((await changeQuotes(h, booking, 'outbound', '2026-13-40')).statusCode).toBe(400);
     expect((await changeQuotes(h, booking, 'inbound', '2026-12-16')).statusCode).toBe(422);
     const sameFlight = await changeQuotes(h, booking, 'outbound', '2026-12-15');
-    const ids = sameFlight.json().data.alternatives.map((a: { itineraryId: string }) => a.itineraryId);
+    const ids = sameFlight
+      .json()
+      .data.alternatives.map((a: { itineraryId: string }) => a.itineraryId);
     expect(ids).not.toContain('NV501-20261215');
     const other = await h.call(`/v1/orders/${booking.order.id}/changes`, {
       method: 'POST',
@@ -126,7 +133,10 @@ describe('change flight: eligibility and quotes', { timeout: 60_000 }, () => {
 
 describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
   it('additional payment: original seats stay committed until the payment succeeds, then swap in one write', async () => {
-    const booking = await confirmedBooking(h, { ...ONE_WAY('CLASSIC'), seats: { 'NV501-20261215': { ADT1: '14B' } } });
+    const booking = await confirmedBooking(h, {
+      ...ONE_WAY('CLASSIC'),
+      seats: { 'NV501-20261215': { ADT1: '14B' } },
+    });
     const originalSeat = booking.order.seats[0]!;
     expect(originalSeat.included).toBe(true);
     const quote = await changeQuote(h, booking, 'outbound', '2026-12-15', 'NV503-20261215');
@@ -149,15 +159,22 @@ describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
     // The old flight's seat is released; the new flight holds the party.
     expect(order.seats).toEqual([]);
     expect(order.hold.flightIds).toEqual(['NV503-20261215']);
-    expect(h.app.persistence.ledger.occupancy('NV501-20261215').seatIds.has(originalSeat.seatId)).toBe(false);
+    expect(
+      h.app.persistence.ledger.occupancy('NV501-20261215').seatIds.has(originalSeat.seatId),
+    ).toBe(false);
     expect(h.app.persistence.ledger.seatsTaken('NV503-20261215', 'economy')).toBe(1);
   });
 
   it('a declined payment leaves the original booking exactly as it was, with its seat', async () => {
-    const booking = await confirmedBooking(h, { ...ONE_WAY('CLASSIC'), seats: { 'NV501-20261215': { ADT1: '14B' } } });
+    const booking = await confirmedBooking(h, {
+      ...ONE_WAY('CLASSIC'),
+      seats: { 'NV501-20261215': { ADT1: '14B' } },
+    });
     const seat = booking.order.seats[0]!;
     const quote = await changeQuote(h, booking, 'outbound', '2026-12-15', 'NV503-20261215');
-    const declined = await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { outcome: 'DECLINED' });
+    const declined = await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, {
+      outcome: 'DECLINED',
+    });
     expect(declined.statusCode).toBe(201);
     const { order, operation } = resultOf(declined);
     expect(operation.status).toBe('AWAITING_PAYMENT');
@@ -166,7 +183,9 @@ describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
     expect(order.seats).toEqual(booking.order.seats);
     expect(order.currentTotalMinor).toBe(booking.order.currentTotalMinor);
     // Both the original seat and the claimed replacement take inventory meanwhile.
-    expect(h.app.persistence.ledger.occupancy('NV501-20261215').seatIds.has(seat.seatId)).toBe(true);
+    expect(h.app.persistence.ledger.occupancy('NV501-20261215').seatIds.has(seat.seatId)).toBe(
+      true,
+    );
     expect(h.app.persistence.ledger.seatsTaken('NV503-20261215', 'economy')).toBe(1);
     // Another change is refused while this one waits; discarding releases the claim.
     const again = await changeQuotes(h, booking, 'outbound', '2026-12-15');
@@ -188,12 +207,17 @@ describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
   it('a declined payment can be retried; success then applies the change', async () => {
     const booking = await confirmedBooking(h, ONE_WAY('CLASSIC'));
     const quote = await changeQuote(h, booking, 'outbound', '2026-12-15', 'NV503-20261215');
-    const declined = resultOf(await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { outcome: 'DECLINED' }));
-    const retry = await h.call(`/v1/orders/${booking.order.id}/servicing/${declined.operation.id}/payment-attempts`, {
-      method: 'POST',
-      token: booking.guest,
-      body: { idempotencyKey: crypto.randomUUID(), method: 'DEMO_WALLET' },
-    });
+    const declined = resultOf(
+      await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { outcome: 'DECLINED' }),
+    );
+    const retry = await h.call(
+      `/v1/orders/${booking.order.id}/servicing/${declined.operation.id}/payment-attempts`,
+      {
+        method: 'POST',
+        token: booking.guest,
+        body: { idempotencyKey: crypto.randomUUID(), method: 'DEMO_WALLET' },
+      },
+    );
     expect(retry.statusCode, retry.body).toBe(201);
     const { order, operation } = resultOf(retry);
     expect(operation.status).toBe('COMPLETED');
@@ -204,7 +228,9 @@ describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
   it('a claim that ends unpaid expires and releases the replacement seats', async () => {
     const booking = await confirmedBooking(h, ONE_WAY('CLASSIC'));
     const quote = await changeQuote(h, booking, 'outbound', '2026-12-15', 'NV503-20261215');
-    const { operation } = resultOf(await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { outcome: 'DECLINED' }));
+    const { operation } = resultOf(
+      await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { outcome: 'DECLINED' }),
+    );
     h.time.advance(11 * 60_000);
     // Expired before any sweep: it no longer takes seats…
     expect(h.app.persistence.ledger.seatsTaken('NV503-20261215', 'economy')).toBe(0);
@@ -233,22 +259,53 @@ describe('change flight: the three money outcomes', { timeout: 60_000 }, () => {
     // Classic with a paid extra-legroom seat (₱1,000): NV505 on 16 Dec is ₱900 cheaper, the seat
     // is released and credited, and the ₱1,200 fee applies: −900 − 1,000 + 1,200 = −700.
     const booking = await confirmedBooking(h, ONE_WAY('CLASSIC'));
-    const legroom = await h.call(`/v1/orders/${booking.order.id}/seatmaps/NV501-20261215`, { token: booking.guest });
+    const legroom = await h.call(`/v1/orders/${booking.order.id}/seatmaps/NV501-20261215`, {
+      token: booking.guest,
+    });
     const seatId = legroom
       .json()
-      .data.seatMap.cabins.flatMap((cabin: { rows: unknown[] }) => cabin.rows).flatMap((row: { seats: ({ id: string; status: string; category: string; restrictions: string[] } | null)[] }) => row.seats)
-      .find((seat: { status: string; category: string; restrictions: string[] } | null) => seat?.status === 'AVAILABLE' && seat.category === 'EXTRA_LEGROOM' && seat.restrictions.length === 0)!.id;
+      .data.seatMap.cabins.flatMap((cabin: { rows: unknown[] }) => cabin.rows)
+      .flatMap(
+        (row: {
+          seats: ({
+            id: string;
+            status: string;
+            category: string;
+            restrictions: string[];
+          } | null)[];
+        }) => row.seats,
+      )
+      .find(
+        (seat: { status: string; category: string; restrictions: string[] } | null) =>
+          seat?.status === 'AVAILABLE' &&
+          seat.category === 'EXTRA_LEGROOM' &&
+          seat.restrictions.length === 0,
+      )!.id;
     const changes = [{ travellerId: 'ADT1', flightId: 'NV501-20261215', seatId }];
-    const seatQuote = (await h.call(`/v1/orders/${booking.order.id}/seat-quotes`, { method: 'POST', token: booking.guest, body: { changes } })).json().data;
+    const seatQuote = (
+      await h.call(`/v1/orders/${booking.order.id}/seat-quotes`, {
+        method: 'POST',
+        token: booking.guest,
+        body: { changes },
+      })
+    ).json().data;
     const seated = await h.call(`/v1/orders/${booking.order.id}/seat-changes`, {
       method: 'POST',
       token: booking.guest,
-      body: { idempotencyKey: crypto.randomUUID(), expectedRevision: booking.order.revision, acceptedAmountMinor: seatQuote.netMinor, changes, payment: { method: 'DEMO_CARD' } },
+      body: {
+        idempotencyKey: crypto.randomUUID(),
+        expectedRevision: booking.order.revision,
+        acceptedAmountMinor: seatQuote.netMinor,
+        changes,
+        payment: { method: 'DEMO_CARD' },
+      },
     });
     expect(seated.statusCode, seated.body).toBe(201);
     const next = await refreshed(h, booking);
     const quote = await changeQuote(h, next, 'outbound', '2026-12-16', 'NV505-20261216');
-    expect(quote.lines.find((line) => line.kind === 'RELEASED_EXTRA')?.amountMinor).toBe(-1000 * PESO);
+    expect(quote.lines.find((line) => line.kind === 'RELEASED_EXTRA')?.amountMinor).toBe(
+      -1000 * PESO,
+    );
     expect(quote.adjustment).toEqual({ kind: 'CREDIT', amountMinor: 700 * PESO });
     const response = await confirmChange(h, next, 'outbound', 'NV505-20261216', quote);
     expect(response.statusCode, response.body).toBe(201);
@@ -283,7 +340,10 @@ describe('change flight: trip shapes', { timeout: 60_000 }, () => {
     });
     const quote = await changeQuote(h, booking, 'inbound', '2026-12-20', 'NV504-20261220');
     const { order } = resultOf(await confirmChange(h, booking, 'inbound', 'NV504-20261220', quote));
-    expect(order.journeys.map((journey) => journey.itinerary.id)).toEqual(['NV501-20261215', 'NV504-20261220']);
+    expect(order.journeys.map((journey) => journey.itinerary.id)).toEqual([
+      'NV501-20261215',
+      'NV504-20261220',
+    ]);
     expect(order.hold.flightIds.sort()).toEqual(['NV501-20261215', 'NV504-20261220']);
     // Moving the outbound after the return is impossible.
     const next = await refreshed(h, { ...booking, order });
@@ -293,19 +353,38 @@ describe('change flight: trip shapes', { timeout: 60_000 }, () => {
 
   it('connecting itinerary: both flights are claimed and committed together (all or nothing)', async () => {
     const booking = await confirmedBooking(h, ONE_WAY('CLASSIC'));
-    const quote = await changeQuote(h, booking, 'outbound', '2026-12-16', 'NV101-20261216_NV701-20261216');
+    const quote = await changeQuote(
+      h,
+      booking,
+      'outbound',
+      '2026-12-16',
+      'NV101-20261216_NV701-20261216',
+    );
     expect(quote.netMinor).toBe((11208 - 8730 + 1200) * PESO);
-    const response = await confirmChange(h, booking, 'outbound', 'NV101-20261216_NV701-20261216', quote, { outcome: 'DECLINED' });
+    const response = await confirmChange(
+      h,
+      booking,
+      'outbound',
+      'NV101-20261216_NV701-20261216',
+      quote,
+      { outcome: 'DECLINED' },
+    );
     const pending = resultOf(response);
     expect(h.app.persistence.ledger.seatsTaken('NV101-20261216', 'economy')).toBe(1);
     expect(h.app.persistence.ledger.seatsTaken('NV701-20261216', 'economy')).toBe(1);
-    const retry = await h.call(`/v1/orders/${booking.order.id}/servicing/${pending.operation.id}/payment-attempts`, {
-      method: 'POST',
-      token: booking.guest,
-      body: { idempotencyKey: crypto.randomUUID(), method: 'DEMO_CARD' },
-    });
+    const retry = await h.call(
+      `/v1/orders/${booking.order.id}/servicing/${pending.operation.id}/payment-attempts`,
+      {
+        method: 'POST',
+        token: booking.guest,
+        body: { idempotencyKey: crypto.randomUUID(), method: 'DEMO_CARD' },
+      },
+    );
     const { order } = resultOf(retry);
-    expect(order.journeys[0]!.itinerary.segments.map((segment) => segment.id)).toEqual(['NV101-20261216', 'NV701-20261216']);
+    expect(order.journeys[0]!.itinerary.segments.map((segment) => segment.id)).toEqual([
+      'NV101-20261216',
+      'NV701-20261216',
+    ]);
     expect(order.hold.flightIds).toEqual(['NV101-20261216', 'NV701-20261216']);
     expect(h.app.persistence.ledger.seatsTaken('NV501-20261215', 'economy')).toBe(0);
   });
@@ -331,7 +410,10 @@ describe('change flight: retries and conflicts', { timeout: 60_000 }, () => {
     expect(order.financial.paidMinor).toBe(booking.order.totalMinor + 1360 * PESO);
     expect((await h.app.persistence.provider.all()).length).toBe(2); // checkout + one change
     // The same key for something else is a conflict, not a second change.
-    const reused = await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, { key, accepted: 1 });
+    const reused = await confirmChange(h, booking, 'outbound', 'NV503-20261215', quote, {
+      key,
+      accepted: 1,
+    });
     expect(reused.statusCode).toBe(409);
     expect(reused.json().error.code).toBe('IDEMPOTENCY_CONFLICT');
   });

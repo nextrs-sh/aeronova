@@ -78,9 +78,7 @@ export class AllocationLedger {
       claims.push({
         state: 'HELD',
         expiresAt: op.claim.expiresAt,
-        pinned: op.attempts.some((attempt) =>
-          UNRESOLVED_PAYMENT_STATUSES.includes(attempt.status),
-        ),
+        pinned: op.attempts.some((attempt) => UNRESOLVED_PAYMENT_STATUSES.includes(attempt.status)),
         checkout: false,
         allocations: op.claim.allocations,
       });
@@ -184,7 +182,8 @@ export class AllocationLedger {
     for (const claim of entry?.claims ?? []) {
       if (!this.active(entry!, claim, now)) continue;
       for (const allocation of claim.allocations) {
-        if (allocation.flightId === flightId) for (const seat of allocation.seatIds) seats.add(seat);
+        if (allocation.flightId === flightId)
+          for (const seat of allocation.seatIds) seats.add(seat);
       }
     }
     return seats;
@@ -207,7 +206,8 @@ export class AllocationLedger {
           .filter((claim) => this.active(entry, claim, now))
           .flatMap((claim) =>
             claim.allocations.map(
-              (a) => `${entry.orderId}|${a.flightId}|${a.cabin}|${a.seats}|${[...a.seatIds].sort().join(',')}`,
+              (a) =>
+                `${entry.orderId}|${a.flightId}|${a.cabin}|${a.seats}|${[...a.seatIds].sort().join(',')}`,
             ),
           ),
       )

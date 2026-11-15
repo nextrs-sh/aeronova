@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import type { ProviderCharge, StoredOrder } from '../src/db/schema';
 import type { CrashPoint } from '../src/crash';
 import {
-  httpCaller,
   newGuestToken,
   newKey,
   pay,

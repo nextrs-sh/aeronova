@@ -254,28 +254,43 @@ export function quoteChange(
   if (refused) return refused;
   const leg = trip.legs.find((candidateLeg) => candidateLeg.direction === direction);
   if (!leg) {
-    return fail(422, 'CHANGE_NOT_ALLOWED', 'This booking has no return flight to change.', 'direction');
+    return fail(
+      422,
+      'CHANGE_NOT_ALLOWED',
+      'This booking has no return flight to change.',
+      'direction',
+    );
   }
   const availability = changeAvailability(leg, ctx.now);
   if (!availability.allowed) return fail(409, 'CHANGE_NOT_ALLOWED', availability.reason!);
   const first = candidate.segments[0]!;
   const last = candidate.segments.at(-1)!;
   const { itinerary } = leg.journey;
-  if (first.schedule.origin !== itinerary.origin || last.schedule.destination !== itinerary.destination) {
-    return fail(422, 'CHANGE_NOT_ALLOWED', 'A change must keep the same origin and destination.', 'itineraryId');
+  if (
+    first.schedule.origin !== itinerary.origin ||
+    last.schedule.destination !== itinerary.destination
+  ) {
+    return fail(
+      422,
+      'CHANGE_NOT_ALLOWED',
+      'A change must keep the same origin and destination.',
+      'itineraryId',
+    );
   }
   if (candidate.id === itinerary.id) {
     return fail(422, 'CHANGE_NOT_ALLOWED', 'That is the flight you already have.', 'itineraryId');
   }
   const passengers = passengersOf(order);
   const eligibility = familyEligibility(candidate, leg.family, passengers, ctx.pricing);
-  if (!eligibility.ok) return fail(409, 'INVENTORY_UNAVAILABLE', eligibility.message, 'itineraryId');
+  if (!eligibility.ok)
+    return fail(409, 'INVENTORY_UNAVAILABLE', eligibility.message, 'itineraryId');
 
   // The trip must stay possible: the return leaves at least two hours after the outbound lands.
   const other = trip.legs.find((candidateLeg) => candidateLeg.direction !== direction);
   if (other) {
     const stay = MIN_STAY_MINUTES * MINUTE;
-    const outboundLands = direction === 'outbound' ? last.arrivalUtc : Date.parse(other.journey.itinerary.arrival.at);
+    const outboundLands =
+      direction === 'outbound' ? last.arrivalUtc : Date.parse(other.journey.itinerary.arrival.at);
     const inboundLeaves = direction === 'inbound' ? first.departureUtc : other.departsAt;
     if (inboundLeaves < outboundLands + stay) {
       return fail(
@@ -301,21 +316,35 @@ export function quoteChange(
   const currentFare = itemsTotal(currentFareItems);
   const released = current.items.filter(
     (item) =>
-      (item.kind === 'SEAT' || item.kind === 'MEAL') && item.flightId !== null && removed.has(item.flightId),
+      (item.kind === 'SEAT' || item.kind === 'MEAL') &&
+      item.flightId !== null &&
+      removed.has(item.flightId),
   );
   const fee = leg.family.rules.change.feePerTravellerMinor * feeTravellers(order);
   const newFare = offer.price.totalMinor;
   const newLabel = candidate.segments.map(flightLabel).join(' + ');
-  const oldNumbers = itinerary.segments.map((segment) => formatFlightNumber(segment.flightNumber)).join(' + ');
-  const newNumbers = candidate.segments.map((segment) => formatFlightNumber(segment.schedule.flightNumber)).join(' + ');
+  const oldNumbers = itinerary.segments
+    .map((segment) => formatFlightNumber(segment.flightNumber))
+    .join(' + ');
+  const newNumbers = candidate.segments
+    .map((segment) => formatFlightNumber(segment.schedule.flightNumber))
+    .join(' + ');
 
   const lines: ServicingQuoteLine[] = [
-    { kind: 'NEW_FARE', label: `New fare · ${leg.family.name}`, detail: newLabel, amountMinor: newFare },
+    {
+      kind: 'NEW_FARE',
+      label: `New fare · ${leg.family.name}`,
+      detail: newLabel,
+      amountMinor: newFare,
+    },
     {
       kind: 'CURRENT_FARE',
       label: `Your current fare · ${leg.family.name}`,
       detail: itinerary.segments
-        .map((segment) => `${segment.departure.airport} → ${segment.arrival.airport} · ${formatFlightNumber(segment.flightNumber)}`)
+        .map(
+          (segment) =>
+            `${segment.departure.airport} → ${segment.arrival.airport} · ${formatFlightNumber(segment.flightNumber)}`,
+        )
         .join(' + '),
       amountMinor: -currentFare,
     },
@@ -370,10 +399,13 @@ export function quoteChange(
   }
   const next: StoredCurrent = {
     version,
-    journeys: current.journeys.map((journey) => (journey.direction === direction ? newJourney : journey)),
+    journeys: current.journeys.map((journey) =>
+      journey.direction === direction ? newJourney : journey,
+    ),
     seats: current.seats.filter((seat) => !removed.has(seat.flightId)),
     ancillaries: current.ancillaries.filter(
-      (selection) => !(selection.category === 'MEAL' && selection.flightId && removed.has(selection.flightId)),
+      (selection) =>
+        !(selection.category === 'MEAL' && selection.flightId && removed.has(selection.flightId)),
     ),
     baggage: current.baggage,
     items,
@@ -391,12 +423,20 @@ export function quoteChange(
   ];
   const notes: string[] = [];
   if (current.seats.some((seat) => removed.has(seat.flightId))) {
-    notes.push('Seats chosen on the flights you leave are released. Choose new seats after the change.');
+    notes.push(
+      'Seats chosen on the flights you leave are released. Choose new seats after the change.',
+    );
   }
   if (released.some((item) => item.kind === 'MEAL')) {
-    notes.push('Meal pre-orders on the flights you leave are cancelled; their price is credited above.');
+    notes.push(
+      'Meal pre-orders on the flights you leave are cancelled; their price is credited above.',
+    );
   }
-  if (current.ancillaries.some((selection) => selection.direction === direction && selection.category !== 'MEAL')) {
+  if (
+    current.ancillaries.some(
+      (selection) => selection.direction === direction && selection.category !== 'MEAL',
+    )
+  ) {
     notes.push('Extra baggage and priority services stay with this direction of your trip.');
   }
   const refundable = leg.family.rules.refund.kind === 'FULL';
@@ -417,7 +457,8 @@ export function quoteChange(
 // Seats
 // ---------------------------------------------------------------------------
 
-export const seatItemId = (travellerId: string, flightId: string) => `seat-${travellerId}-${flightId}`;
+export const seatItemId = (travellerId: string, flightId: string) =>
+  `seat-${travellerId}-${flightId}`;
 
 export function seatClosesAt(segment: FlightInstance) {
   return segment.departureUtc - SEAT_CHANGE_CUTOFF_MINUTES * MINUTE;
@@ -455,30 +496,55 @@ export function quoteSeats(
     const at = (field: string) => `changes.${index}.${field}`;
     const traveller = travellers.get(change.travellerId);
     if (!traveller) {
-      return fail(422, 'TRAVELLER_MISSING', 'This traveller isn’t part of your booking.', at('travellerId'));
+      return fail(
+        422,
+        'TRAVELLER_MISSING',
+        'This traveller isn’t part of your booking.',
+        at('travellerId'),
+      );
     }
     if (!traveller.seatable) {
       return fail(422, 'SEAT_INELIGIBLE', SEAT_PROBLEM_MESSAGES['not-seatable'], at('travellerId'));
     }
     const located = legFor(trip, change.flightId);
     if (!located) {
-      return fail(422, 'INVALID_SELECTION', 'This flight isn’t part of your booking.', at('flightId'));
+      return fail(
+        422,
+        'INVALID_SELECTION',
+        'This flight isn’t part of your booking.',
+        at('flightId'),
+      );
     }
     const { leg, segment } = located;
     const flight = formatFlightNumber(segment.schedule.flightNumber);
     if (ctx.now >= seatClosesAt(segment)) {
-      return fail(409, 'CHANGE_NOT_ALLOWED', `Seat changes for ${flight} have closed.`, at('flightId'));
+      return fail(
+        409,
+        'CHANGE_NOT_ALLOWED',
+        `Seat changes for ${flight} have closed.`,
+        at('flightId'),
+      );
     }
     const key = `${change.travellerId}|${change.flightId}`;
     if (seen.has(key)) {
-      return fail(422, 'INVALID_SELECTION', 'Each traveller can have one seat per flight.', at('seatId'));
+      return fail(
+        422,
+        'INVALID_SELECTION',
+        'Each traveller can have one seat per flight.',
+        at('seatId'),
+      );
     }
     seen.add(key);
     const existing = current.seats.find(
       (seat) => seat.travellerId === change.travellerId && seat.flightId === change.flightId,
     );
     if (existing?.seatId === change.seatId) {
-      return fail(422, 'INVALID_SELECTION', `${slotLabel(change.travellerId)} already has seat ${change.seatId}.`, at('seatId'));
+      return fail(
+        422,
+        'INVALID_SELECTION',
+        `${slotLabel(change.travellerId)} already has seat ${change.seatId}.`,
+        at('seatId'),
+      );
     }
     const seatKey = `${change.flightId}|${change.seatId}`;
     if (chosen.has(seatKey)) {
@@ -492,14 +558,33 @@ export function quoteSeats(
     }
     const seat = seatOn(map, change.seatId);
     if (!seat) {
-      return fail(422, 'SEAT_INELIGIBLE', `There’s no seat ${change.seatId} on this aircraft.`, at('seatId'));
+      return fail(
+        422,
+        'SEAT_INELIGIBLE',
+        `There’s no seat ${change.seatId} on this aircraft.`,
+        at('seatId'),
+      );
     }
     if (ledger.ownSeatIds(order.orderId, segment.id).has(seat.id)) {
-      return fail(409, 'SEAT_UNAVAILABLE', SEAT_PROBLEM_MESSAGES['taken-by-companion'], at('seatId'));
+      return fail(
+        409,
+        'SEAT_UNAVAILABLE',
+        SEAT_PROBLEM_MESSAGES['taken-by-companion'],
+        at('seatId'),
+      );
     }
-    const problem = seatProblem(seat, { fareCabin: leg.family.cabin, traveller, takenByOther: false });
+    const problem = seatProblem(seat, {
+      fareCabin: leg.family.cabin,
+      traveller,
+      takenByOther: false,
+    });
     if (problem === 'occupied' || problem === 'unavailable') {
-      return fail(409, 'SEAT_UNAVAILABLE', `Seat ${seat.id} is no longer available. Please choose another seat.`, at('seatId'));
+      return fail(
+        409,
+        'SEAT_UNAVAILABLE',
+        `Seat ${seat.id} is no longer available. Please choose another seat.`,
+        at('seatId'),
+      );
     }
     if (problem) return fail(422, 'SEAT_INELIGIBLE', SEAT_PROBLEM_MESSAGES[problem], at('seatId'));
 
@@ -535,7 +620,8 @@ export function quoteSeats(
       included,
     };
     const seatIndex = nextSeats.findIndex(
-      (candidate) => candidate.travellerId === change.travellerId && candidate.flightId === change.flightId,
+      (candidate) =>
+        candidate.travellerId === change.travellerId && candidate.flightId === change.flightId,
     );
     if (seatIndex >= 0) nextSeats[seatIndex] = assignment;
     else nextSeats.push(assignment);
@@ -574,11 +660,17 @@ export function quoteSeats(
     const leaving = new Set(here.map((move) => move.from).filter((seat) => seat !== null));
     return {
       ...allocation,
-      seatIds: [...allocation.seatIds.filter((seat) => !leaving.has(seat)), ...here.map((move) => move.to)].sort(),
+      seatIds: [
+        ...allocation.seatIds.filter((seat) => !leaving.has(seat)),
+        ...here.map((move) => move.to),
+      ].sort(),
     };
   });
   const summary = `Seats changed: ${changes
-    .map((change, index) => `${slotLabel(change.travellerId)} ${moves[index]!.from ?? 'no seat'} → ${change.seatId}`)
+    .map(
+      (change, index) =>
+        `${slotLabel(change.travellerId)} ${moves[index]!.from ?? 'no seat'} → ${change.seatId}`,
+    )
     .join(', ')}.`;
   return {
     quote: quoteOf('CHANGE_SEAT', order, ctx, lines, { notes }),
@@ -589,7 +681,10 @@ export function quoteSeats(
       current: { ...current, version: current.version + 1, seats: nextSeats, items: nextItems },
       allocations,
     },
-    claim: [...claimByFlight.values()].map((claim) => ({ ...claim, seatIds: claim.seatIds.sort() })),
+    claim: [...claimByFlight.values()].map((claim) => ({
+      ...claim,
+      seatIds: claim.seatIds.sort(),
+    })),
   };
 }
 
@@ -609,17 +704,24 @@ function ancillaryClosesAt(
 }
 
 /** What can still be added, priced against what each slot already paid. */
-export function ancillaryView(order: StoredOrder, trip: OrderTrip, ctx: QuoteContext): OrderAncillaries {
+export function ancillaryView(
+  order: StoredOrder,
+  trip: OrderTrip,
+  ctx: QuoteContext,
+): OrderAncillaries {
   const liveTrip = { ...trip, legs: trip.legs.filter((leg) => leg.live) };
   const owned = new Map(order.current.ancillaries.map((selection) => [selection.id, selection]));
   const offers = ancillaryOffers(liveTrip).map((offer) => {
     const slot = ancillarySlotId(offer);
     const existing = owned.get(slot);
     const paid = existing
-      ? (order.current.items.find((item) => item.id === ancillaryItemId(slot, existing.productId))?.amountMinor ?? 0)
+      ? (order.current.items.find((item) => item.id === ancillaryItemId(slot, existing.productId))
+          ?.amountMinor ?? 0)
       : 0;
     const leg = liveTrip.legs.find((candidate) => candidate.direction === offer.direction)!;
-    const segment = offer.flightId ? leg.segments.find((candidate) => candidate.id === offer.flightId) : undefined;
+    const segment = offer.flightId
+      ? leg.segments.find((candidate) => candidate.id === offer.flightId)
+      : undefined;
     let unavailableReason: string | null = null;
     if (existing?.productId === offer.productId) unavailableReason = 'Already added.';
     else if (
@@ -643,7 +745,9 @@ export function ancillaryView(order: StoredOrder, trip: OrderTrip, ctx: QuoteCon
     currency: PRICING_CURRENCY,
     offers,
     allowances: order.current.baggage,
-    mealService: liveTrip.legs.flatMap((leg) => leg.segments.map((segment) => mealServiceFor(segment, leg))),
+    mealService: liveTrip.legs.flatMap((leg) =>
+      leg.segments.map((segment) => mealServiceFor(segment, leg)),
+    ),
     cutoffs: {
       baggageHours: ANCILLARY_CUTOFF_HOURS.BAGGAGE,
       mealHours: ANCILLARY_CUTOFF_HOURS.MEAL,
@@ -675,7 +779,12 @@ export function quoteAncillaries(
   for (const [index, change] of changes.entries()) {
     const at = (field: string) => `changes.${index}.${field}`;
     if (!slotIds.has(change.travellerId)) {
-      return fail(422, 'TRAVELLER_MISSING', 'This traveller isn’t part of your booking.', at('travellerId'));
+      return fail(
+        422,
+        'TRAVELLER_MISSING',
+        'This traveller isn’t part of your booking.',
+        at('travellerId'),
+      );
     }
     const product = ANCILLARIES_BY_ID.get(change.productId);
     if (!product || product.category !== change.category) {
@@ -689,14 +798,30 @@ export function quoteAncillaries(
             return leg ? { leg, segment: undefined } : null;
           })();
     if (!located) {
-      return fail(422, 'INVALID_SELECTION', 'This flight isn’t part of your booking.', at(change.category === 'MEAL' ? 'flightId' : 'direction'));
+      return fail(
+        422,
+        'INVALID_SELECTION',
+        'This flight isn’t part of your booking.',
+        at(change.category === 'MEAL' ? 'flightId' : 'direction'),
+      );
     }
     const { leg, segment } = located;
     const direction = leg.direction;
     const flightId = change.category === 'MEAL' ? change.flightId : null;
-    const slot = ancillarySlotId({ category: change.category, travellerId: change.travellerId, direction, flightId, productId: change.productId });
+    const slot = ancillarySlotId({
+      category: change.category,
+      travellerId: change.travellerId,
+      direction,
+      flightId,
+      productId: change.productId,
+    });
     if (seenSlots.has(slot)) {
-      return fail(422, 'INVALID_SELECTION', 'Each service can be added once per traveller.', at('productId'));
+      return fail(
+        422,
+        'INVALID_SELECTION',
+        'Each service can be added once per traveller.',
+        at('productId'),
+      );
     }
     seenSlots.add(slot);
     const offer = offers.get(`${slot}|${change.productId}`);
@@ -723,25 +848,46 @@ export function quoteAncillaries(
     }
     const existing = current.ancillaries.find((selection) => selection.id === slot);
     if (existing?.productId === change.productId) {
-      return fail(409, 'ANCILLARY_UNAVAILABLE', `${product.name} is already part of your booking.`, at('productId'));
+      return fail(
+        409,
+        'ANCILLARY_UNAVAILABLE',
+        `${product.name} is already part of your booking.`,
+        at('productId'),
+      );
     }
     if (
       existing &&
       change.category === 'BAGGAGE' &&
-      (product.extraWeightKg ?? 0) <= (ANCILLARIES_BY_ID.get(existing.productId)?.extraWeightKg ?? 0)
+      (product.extraWeightKg ?? 0) <=
+        (ANCILLARIES_BY_ID.get(existing.productId)?.extraWeightKg ?? 0)
     ) {
-      return fail(422, 'ANCILLARY_UNAVAILABLE', 'You already have this much extra baggage or more.', at('productId'));
+      return fail(
+        422,
+        'ANCILLARY_UNAVAILABLE',
+        'You already have this much extra baggage or more.',
+        at('productId'),
+      );
     }
     const oldItemId = existing ? ancillaryItemId(slot, existing.productId) : null;
-    const paid = oldItemId ? (current.items.find((item) => item.id === oldItemId)?.amountMinor ?? 0) : 0;
+    const paid = oldItemId
+      ? (current.items.find((item) => item.id === oldItemId)?.amountMinor ?? 0)
+      : 0;
     const charge = Math.max(0, offer.priceMinor - paid);
     const value = paid + charge;
     const detail = `${slotLabel(change.travellerId)} · ${segment ? flightLabel(segment) : `${directionWord(direction)}, ${leg.journey.itinerary.origin} → ${leg.journey.itinerary.destination}`}`;
     lines.push({ kind: 'SERVICE', label: product.name, detail, amountMinor: offer.priceMinor });
     if (paid > 0) {
       const old = ANCILLARIES_BY_ID.get(existing!.productId)!;
-      lines.push({ kind: 'ALREADY_PAID', label: `Already paid · ${old.name}`, detail, amountMinor: -Math.min(paid, offer.priceMinor) });
-      if (paid > offer.priceMinor) notes.push(`${product.name} costs less than ${old.name}; the difference isn’t refunded (fictional policy).`);
+      lines.push({
+        kind: 'ALREADY_PAID',
+        label: `Already paid · ${old.name}`,
+        detail,
+        amountMinor: -Math.min(paid, offer.priceMinor),
+      });
+      if (paid > offer.priceMinor)
+        notes.push(
+          `${product.name} costs less than ${old.name}; the difference isn’t refunded (fictional policy).`,
+        );
     }
     if (offer.included) notes.push(`${product.name} is included in your fare: no charge.`);
     const included = offer.included && value === 0;
@@ -817,10 +963,18 @@ export function cancelAvailability(order: StoredOrder, trip: OrderTrip, now: num
     return { allowed: false, reason: 'This booking is already cancelled.', closesAt };
   }
   if (now >= first.departsAt || !first.live) {
-    return { allowed: false, reason: 'Part of this trip has already departed, so it can’t be cancelled online.', closesAt };
+    return {
+      allowed: false,
+      reason: 'Part of this trip has already departed, so it can’t be cancelled online.',
+      closesAt,
+    };
   }
   if (now >= closesAt) {
-    return { allowed: false, reason: `Online cancellation closes ${hoursText(first.family.rules.refund.cutoffMinutes)} before departure.`, closesAt };
+    return {
+      allowed: false,
+      reason: `Online cancellation closes ${hoursText(first.family.rules.refund.cutoffMinutes)} before departure.`,
+      closesAt,
+    };
   }
   return { allowed: true, reason: null, closesAt };
 }
@@ -848,18 +1002,33 @@ export function quoteCancellation(
   let refund = 0;
   let kept = 0;
   let fees = 0;
-  const legOf = (direction: JourneyDirection) => trip.legs.find((leg) => leg.direction === direction)!;
+  const legOf = (direction: JourneyDirection) =>
+    trip.legs.find((leg) => leg.direction === direction)!;
 
   for (const leg of trip.legs) {
     const { refund: rules } = leg.family.rules;
-    const fare = itemsTotal(order.current.items.filter((item) => item.kind === 'FLIGHT' && item.direction === leg.direction));
+    const fare = itemsTotal(
+      order.current.items.filter(
+        (item) => item.kind === 'FLIGHT' && item.direction === leg.direction,
+      ),
+    );
     const route = `${directionWord(leg.direction)}, ${leg.journey.itinerary.origin} → ${leg.journey.itinerary.destination}`;
     if (rules.kind === 'FULL') {
-      lines.push({ kind: 'REFUND', label: `Fare · ${leg.family.name}`, detail: route, amountMinor: -fare });
+      lines.push({
+        kind: 'REFUND',
+        label: `Fare · ${leg.family.name}`,
+        detail: route,
+        amountMinor: -fare,
+      });
       refund += fare;
     } else if (rules.kind === 'FEE') {
       const fee = Math.min(fare, rules.feePerTravellerMinor * travellers);
-      lines.push({ kind: 'REFUND', label: `Fare · ${leg.family.name}`, detail: route, amountMinor: -(fare - fee) });
+      lines.push({
+        kind: 'REFUND',
+        label: `Fare · ${leg.family.name}`,
+        detail: route,
+        amountMinor: -(fare - fee),
+      });
       lines.push({
         kind: 'CANCELLATION_FEE',
         label: `Cancellation fee · ${leg.family.name}`,
@@ -870,8 +1039,18 @@ export function quoteCancellation(
       fees += fee;
     } else {
       const taxes = Math.min(fare, leg.journey.price.totals.taxesMinor);
-      lines.push({ kind: 'REFUND', label: 'Unused taxes and charges', detail: route, amountMinor: -taxes });
-      lines.push({ kind: 'NON_REFUNDABLE', label: `Fare · ${leg.family.name} (non-refundable)`, detail: route, amountMinor: fare - taxes });
+      lines.push({
+        kind: 'REFUND',
+        label: 'Unused taxes and charges',
+        detail: route,
+        amountMinor: -taxes,
+      });
+      lines.push({
+        kind: 'NON_REFUNDABLE',
+        label: `Fare · ${leg.family.name} (non-refundable)`,
+        detail: route,
+        amountMinor: fare - taxes,
+      });
       refund += taxes;
       kept += fare - taxes;
     }
@@ -879,15 +1058,30 @@ export function quoteCancellation(
   for (const item of order.current.items) {
     if (item.kind === 'FLIGHT' || item.amountMinor === 0) continue;
     if (item.kind === 'CHANGE_FEE') {
-      lines.push({ kind: 'NON_REFUNDABLE', label: `${item.label} (non-refundable)`, detail: item.detail, amountMinor: item.amountMinor });
+      lines.push({
+        kind: 'NON_REFUNDABLE',
+        label: `${item.label} (non-refundable)`,
+        detail: item.detail,
+        amountMinor: item.amountMinor,
+      });
       kept += item.amountMinor;
       continue;
     }
     if (legOf(item.direction).family.rules.refund.extrasRefundable) {
-      lines.push({ kind: 'REFUND', label: item.label, detail: item.detail, amountMinor: -item.amountMinor });
+      lines.push({
+        kind: 'REFUND',
+        label: item.label,
+        detail: item.detail,
+        amountMinor: -item.amountMinor,
+      });
       refund += item.amountMinor;
     } else {
-      lines.push({ kind: 'NON_REFUNDABLE', label: `${item.label} (non-refundable)`, detail: item.detail, amountMinor: item.amountMinor });
+      lines.push({
+        kind: 'NON_REFUNDABLE',
+        label: `${item.label} (non-refundable)`,
+        detail: item.detail,
+        amountMinor: item.amountMinor,
+      });
       kept += item.amountMinor;
     }
   }
@@ -896,7 +1090,10 @@ export function quoteCancellation(
     'Your seats are released as soon as the booking is cancelled.',
     'The refund is processed separately and may take a moment; we show its status on your booking.',
   ];
-  if (creditMinor > 0) notes.push(`Travel credit of ${formatPesos(creditMinor)} from an earlier change stays with this booking (fictional).`);
+  if (creditMinor > 0)
+    notes.push(
+      `Travel credit of ${formatPesos(creditMinor)} from an earlier change stays with this booking (fictional).`,
+    );
   return {
     quote: quoteOf('CANCEL_ORDER', order, ctx, lines, { refundable: true, notes, net: -capped }),
     request: { operation: 'CANCEL_ORDER' },

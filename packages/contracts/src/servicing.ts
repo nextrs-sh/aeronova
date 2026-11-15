@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { ancillaryOfferSchema, flightMealServiceSchema, travellerBaggageSchema } from './ancillaries';
+import {
+  ancillaryOfferSchema,
+  flightMealServiceSchema,
+  travellerBaggageSchema,
+} from './ancillaries';
 import { currencyCodeSchema, minorAmountSchema } from './common';
 import { isIsoDate } from './dates';
 import { flightInstanceIdSchema, itineraryIdSchema, journeyDirectionSchema } from './flights';
@@ -222,9 +226,7 @@ export type ConfirmSeatChangeRequest = z.infer<typeof confirmSeatChangeRequestSc
 /** The seat map of a flight in the booking, for its owner: their own seats are marked. */
 export const orderSeatMapSchema = sessionSeatMapSchema.extend({
   /** What each traveller has already paid for their seat on this flight (credited to a new one). */
-  paid: z.array(
-    z.object({ travellerId: travellerIdSchema, amountMinor: minorAmountSchema }),
-  ),
+  paid: z.array(z.object({ travellerId: travellerIdSchema, amountMinor: minorAmountSchema })),
   /** Seat changes close this long before departure. */
   closesAt: z.iso.datetime(),
 });
@@ -270,9 +272,7 @@ export const ancillaryQuoteRequestSchema = z
 export const confirmAncillaryPurchaseRequestSchema = z
   .object({ ...confirmBase, changes: z.array(ancillaryPurchaseSchema).min(1).max(20) })
   .strict();
-export type ConfirmAncillaryPurchaseRequest = z.infer<
-  typeof confirmAncillaryPurchaseRequestSchema
->;
+export type ConfirmAncillaryPurchaseRequest = z.infer<typeof confirmAncillaryPurchaseRequestSchema>;
 
 /** What can still be added to a confirmed booking, priced against what was already bought. */
 export const orderAncillariesSchema = z.object({
@@ -366,7 +366,10 @@ export const refundsResponseSchema = z.object({ data: z.array(refundSchema) });
 export const seatAssignmentsSchema = z.array(seatAssignmentSchema);
 
 /** Short labels for the servicing history. */
-export const SERVICING_OPERATION_LABELS: Record<z.infer<typeof servicingOperationSchema>, string> = {
+export const SERVICING_OPERATION_LABELS: Record<
+  z.infer<typeof servicingOperationSchema>,
+  string
+> = {
   CHANGE_FLIGHT: 'Flight change',
   CHANGE_SEAT: 'Seat change',
   ADD_ANCILLARY: 'Services added',

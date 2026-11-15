@@ -106,7 +106,12 @@ export interface ServicingConfig {
 }
 
 type Failure = Extract<RetailingResult<never>, { ok: false }>;
-const fail = (status: Failure['status'], code: Failure['code'], message: string, path?: string): Failure => ({
+const fail = (
+  status: Failure['status'],
+  code: Failure['code'],
+  message: string,
+  path?: string,
+): Failure => ({
   ok: false,
   status,
   code,
@@ -114,7 +119,8 @@ const fail = (status: Failure['status'], code: Failure['code'], message: string,
   ...(path ? { path } : {}),
 });
 const NOT_FOUND = () => fail(404, 'ORDER_NOT_FOUND', 'We couldn’t find this booking.');
-const NEVER_CHARGED = 'The payment didn’t reach the provider, so nothing was charged. You can try again.';
+const NEVER_CHARGED =
+  'The payment didn’t reach the provider, so nothing was charged. You can try again.';
 
 export interface ServicingOutcome {
   order: StoredOrder;
@@ -199,8 +205,22 @@ export function createServicingService({
         charge.status === 'SUCCEEDED'
           ? confirmServicingPayment(order, operationId, attemptId, charge.reference, now)
           : charge.status === 'DECLINED'
-            ? failServicingPayment(order, operationId, attemptId, charge.declineReason ?? 'Declined.', now, charge.reference)
-            : markServicingUndecided(order, operationId, attemptId, 'PENDING', now, charge.reference);
+            ? failServicingPayment(
+                order,
+                operationId,
+                attemptId,
+                charge.declineReason ?? 'Declined.',
+                now,
+                charge.reference,
+              )
+            : markServicingUndecided(
+                order,
+                operationId,
+                attemptId,
+                'PENDING',
+                now,
+                charge.reference,
+              );
     }
     const stored = await store.write(order, next);
     const after = findOperation(stored, operationId)!;
@@ -220,7 +240,10 @@ export function createServicingService({
     const refund = findOperation(order, operationId)?.refunds.find((r) => r.refundId === refundId);
     if (!refund || !UNRESOLVED_REFUND_STATUSES.includes(refund.status)) return order;
     if (answer.kind === 'timeout') {
-      return store.write(order, setRefund(order, operationId, refundId, { status: 'UNKNOWN' }, now));
+      return store.write(
+        order,
+        setRefund(order, operationId, refundId, { status: 'UNKNOWN' }, now),
+      );
     }
     const { refund: record } = answer;
     if (record.amountMinor !== refund.amountMinor || record.orderId !== order.orderId) {
@@ -228,15 +251,31 @@ export function createServicingService({
     }
     const change =
       record.status === 'SUCCEEDED'
-        ? { status: 'SUCCEEDED' as const, providerReference: record.reference, completedAt: now, failureReason: null }
+        ? {
+            status: 'SUCCEEDED' as const,
+            providerReference: record.reference,
+            completedAt: now,
+            failureReason: null,
+          }
         : record.status === 'FAILED'
-          ? { status: 'FAILED' as const, providerReference: record.reference, completedAt: now, failureReason: record.failureReason }
+          ? {
+              status: 'FAILED' as const,
+              providerReference: record.reference,
+              completedAt: now,
+              failureReason: record.failureReason,
+            }
           : { status: 'PENDING' as const, providerReference: record.reference };
     return store.write(order, setRefund(order, operationId, refundId, change, now));
   }
 
   /** Send a refund (outside the queue), then apply the answer (inside it). */
-  async function sendRefund(orderId: string, operationId: string, refund: StoredRefund, crashAt?: CrashPoint | null, scenario?: Scenario) {
+  async function sendRefund(
+    orderId: string,
+    operationId: string,
+    refund: StoredRefund,
+    crashAt?: CrashPoint | null,
+    scenario?: Scenario,
+  ) {
     const answer = await refunds.refund(
       {
         refundId: refund.refundId,
@@ -291,16 +330,34 @@ export function createServicingService({
       if (attempt) {
         const charge = await provider.lookup(attempt.attemptId);
         if (charge) {
-          current = await applyCharge(current, op.operationId, attempt.attemptId, { kind: 'answered', charge }, now);
+          current = await applyCharge(
+            current,
+            op.operationId,
+            attempt.attemptId,
+            { kind: 'answered', charge },
+            now,
+          );
         } else if (!provider.isInFlight(attempt.attemptId)) {
-          current = await applyCharge(current, op.operationId, attempt.attemptId, { kind: 'missing' }, now);
+          current = await applyCharge(
+            current,
+            op.operationId,
+            attempt.attemptId,
+            { kind: 'missing' },
+            now,
+          );
         }
       }
       for (const refund of op.refunds) {
         if (!UNRESOLVED_REFUND_STATUSES.includes(refund.status)) continue;
         const record = await refunds.lookup(refund.refundId);
         if (record) {
-          current = await applyRefund(current, op.operationId, refund.refundId, { kind: 'answered', refund: record }, now);
+          current = await applyRefund(
+            current,
+            op.operationId,
+            refund.refundId,
+            { kind: 'answered', refund: record },
+            now,
+          );
         } else if (!refunds.isInFlight(refund.refundId)) {
           resend.push({ operationId: op.operationId, refund });
         }
@@ -324,10 +381,16 @@ export function createServicingService({
     scenario?: Scenario,
     crashAt?: CrashPoint | null,
   ): Promise<RetailingResult<ServicingOutcome>> {
-    if ((input.payment?.simulatedOutcome || input.simulatedRefundOutcome) && !config.outcomeControls) {
+    if (
+      (input.payment?.simulatedOutcome || input.simulatedRefundOutcome) &&
+      !config.outcomeControls
+    ) {
       return fail(400, 'BAD_REQUEST', 'Choosing a simulated outcome isn’t available here.');
     }
-    type Started = ServicingOutcome & { attempt: StoredAttempt | null; refund: StoredRefund | null };
+    type Started = ServicingOutcome & {
+      attempt: StoredAttempt | null;
+      refund: StoredRefund | null;
+    };
     const started = await queue.run(async (): Promise<RetailingResult<Started>> => {
       const ctx = context(scenario);
       const found = await repository.byId(orderId);
@@ -335,17 +398,32 @@ export function createServicingService({
       const replay = found.servicing.find((op) => op.idempotencyKey === input.idempotencyKey);
       if (replay) {
         if (replay.requestHash !== requestHash) {
-          return fail(409, 'IDEMPOTENCY_CONFLICT', 'This request was already used for a different change. Please reload.');
+          return fail(
+            409,
+            'IDEMPOTENCY_CONFLICT',
+            'This request was already used for a different change. Please reload.',
+          );
         }
-        return { ok: true, value: { order: found, operation: replay, replayed: true, attempt: null, refund: null } };
+        return {
+          ok: true,
+          value: { order: found, operation: replay, replayed: true, attempt: null, refund: null },
+        };
       }
       // A revision from before this request's own housekeeping (an ended claim) still counts.
       if (input.expectedRevision !== found.rev) {
-        return fail(409, 'SERVICING_CONFLICT', 'Your booking was changed in another window or tab. We’ve loaded the latest version.');
+        return fail(
+          409,
+          'SERVICING_CONFLICT',
+          'Your booking was changed in another window or tab. We’ve loaded the latest version.',
+        );
       }
       const order = await store.expireIfDue(found, ctx.now);
       if (order.servicing.length >= MAX_SERVICING_OPERATIONS) {
-        return fail(409, 'LIMIT_REACHED', 'This booking has reached the number of online changes allowed in this demo.');
+        return fail(
+          409,
+          'LIMIT_REACHED',
+          'This booking has reached the number of online changes allowed in this demo.',
+        );
       }
       const computed = compute(order, tripOf(order), ctx);
       if (isQuoteFailure(computed)) return computed;
@@ -359,14 +437,22 @@ export function createServicingService({
       }
       const charge = quote.adjustment.kind === 'CHARGE';
       if (charge && !input.payment) {
-        return fail(400, 'BAD_REQUEST', 'Choose a demo payment method to pay for this change.', 'payment');
+        return fail(
+          400,
+          'BAD_REQUEST',
+          'Choose a demo payment method to pay for this change.',
+          'payment',
+        );
       }
       const operationId = newId('svc');
       const attempt: StoredAttempt | null = charge
         ? {
             attemptId: newId('pay'),
             idempotencyKey: input.idempotencyKey,
-            requestHash: hashOf({ method: input.payment!.method, outcome: input.payment!.simulatedOutcome ?? 'SUCCESS' }),
+            requestHash: hashOf({
+              method: input.payment!.method,
+              outcome: input.payment!.simulatedOutcome ?? 'SUCCESS',
+            }),
             method: input.payment!.method,
             simulatedOutcome: input.payment!.simulatedOutcome ?? null,
             amountMinor: quote.adjustment.amountMinor,
@@ -414,18 +500,36 @@ export function createServicingService({
         plan: computed.plan,
         claim:
           charge && computed.claim.length > 0
-            ? { status: 'HELD', createdAt: ctx.now, expiresAt: ctx.now + config.claimMs, releasedAt: null, allocations: computed.claim }
+            ? {
+                status: 'HELD',
+                createdAt: ctx.now,
+                expiresAt: ctx.now + config.claimMs,
+                releasedAt: null,
+                allocations: computed.claim,
+              }
             : null,
         attempts: [],
         refunds: refund ? [refund] : [],
         failureReason: null,
       };
-      const next = operation === 'CANCEL_ORDER' ? cancelBooking(order, op, ctx.now) : openOperation(order, op, ctx.now, attempt);
+      const next =
+        operation === 'CANCEL_ORDER'
+          ? cancelBooking(order, op, ctx.now)
+          : openOperation(order, op, ctx.now, attempt);
       const stored = await store.write(order, next);
-      crashIf(crashAt, operation === 'CANCEL_ORDER' ? 'cancel:after-commit' : 'servicing:after-intent');
+      crashIf(
+        crashAt,
+        operation === 'CANCEL_ORDER' ? 'cancel:after-commit' : 'servicing:after-intent',
+      );
       return {
         ok: true,
-        value: { order: stored, operation: findOperation(stored, operationId)!, replayed: false, attempt, refund },
+        value: {
+          order: stored,
+          operation: findOperation(stored, operationId)!,
+          replayed: false,
+          attempt,
+          refund,
+        },
       };
     });
     if (!started.ok) return started;
@@ -436,12 +540,25 @@ export function createServicingService({
     const { attempt, refund, operation: op } = started.value;
     let order = started.value.order;
     if (attempt) {
-      order = await sendCharge(order, op.operationId, attempt, input.payment!.simulatedOutcome ?? 'SUCCESS', crashAt, scenario);
+      order = await sendCharge(
+        order,
+        op.operationId,
+        attempt,
+        input.payment!.simulatedOutcome ?? 'SUCCESS',
+        crashAt,
+        scenario,
+      );
     } else if (refund) {
       order = await sendRefund(orderId, op.operationId, refund, crashAt, scenario);
     }
-    crashIf(crashAt, operation === 'CANCEL_ORDER' ? 'cancel:before-response' : 'servicing:after-commit');
-    return { ok: true, value: { order, operation: findOperation(order, op.operationId)!, replayed: false } };
+    crashIf(
+      crashAt,
+      operation === 'CANCEL_ORDER' ? 'cancel:before-response' : 'servicing:after-commit',
+    );
+    return {
+      ok: true,
+      value: { order, operation: findOperation(order, op.operationId)!, replayed: false },
+    };
   }
 
   function describe(quote: ServicingQuote) {
@@ -469,15 +586,26 @@ export function createServicingService({
     return { ok: true, value: { order, result } };
   }
 
-  function cancellationQuoteFor(order: StoredOrder, trip: OrderTrip, ctx: QuoteContext): QuoteFailure | CancellationComputed {
+  function cancellationQuoteFor(
+    order: StoredOrder,
+    trip: OrderTrip,
+    ctx: QuoteContext,
+  ): QuoteFailure | CancellationComputed {
     if (order.servicingState === 'REFUND_PENDING') {
-      return fail(409, 'REFUND_PENDING', 'A refund on this booking is still being processed. Check its status first.');
+      return fail(
+        409,
+        'REFUND_PENDING',
+        'A refund on this booking is still being processed. Check its status first.',
+      );
     }
     const money = moneyOf(order);
     return quoteCancellation(order, trip, ctx, money.refundableCeilingMinor, money.creditMinor);
   }
 
-  const toCancellationQuote = (computed: CancellationComputed, order: StoredOrder): CancellationQuote => ({
+  const toCancellationQuote = (
+    computed: CancellationComputed,
+    order: StoredOrder,
+  ): CancellationQuote => ({
     ...computed.quote,
     paidMinor: moneyOf(order).paidMinor,
     refundMinor: computed.refundMinor,
@@ -487,7 +615,11 @@ export function createServicingService({
 
   return {
     /** What the booking allows right now, action by action. */
-    async overview(orderId: string, principal: Principal, scenario?: Scenario): Promise<RetailingResult<{ order: StoredOrder; servicing: ServicingOverview }>> {
+    async overview(
+      orderId: string,
+      principal: Principal,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<{ order: StoredOrder; servicing: ServicingOverview }>> {
       const ctx = context(scenario);
       const order = await owned(orderId, principal, ctx.now);
       if (!order) return NOT_FOUND();
@@ -495,8 +627,12 @@ export function createServicingService({
       const blocked = modifiable(order);
       const iso = (ms: number) => new Date(ms).toISOString();
       const closed = (reason: string) => ({ allowed: false, reason, closesAt: null });
-      const seatFlights = trip.legs.flatMap((leg) => leg.segments).filter((segment) => ctx.now < seatClosesAt(segment));
-      const extras = ancillaryView(order, trip, ctx).offers.some((offer) => !offer.unavailableReason);
+      const seatFlights = trip.legs
+        .flatMap((leg) => leg.segments)
+        .filter((segment) => ctx.now < seatClosesAt(segment));
+      const extras = ancillaryView(order, trip, ctx).offers.some(
+        (offer) => !offer.unavailableReason,
+      );
       const cancel = cancelAvailability(order, trip, ctx.now);
       const refundPending = order.servicingState === 'REFUND_PENDING';
       return {
@@ -518,9 +654,17 @@ export function createServicingService({
             seats: blocked
               ? closed(blocked.message)
               : seatFlights.length
-                ? { allowed: true, reason: null, closesAt: iso(Math.max(...seatFlights.map(seatClosesAt))) }
+                ? {
+                    allowed: true,
+                    reason: null,
+                    closesAt: iso(Math.max(...seatFlights.map(seatClosesAt))),
+                  }
                 : closed('Seat selection has closed for every flight in this booking.'),
-            extras: blocked ? closed(blocked.message) : extras ? { allowed: true, reason: null, closesAt: null } : closed('No more services can be added to this booking.'),
+            extras: blocked
+              ? closed(blocked.message)
+              : extras
+                ? { allowed: true, reason: null, closesAt: null }
+                : closed('No more services can be added to this booking.'),
             cancel:
               blocked || refundPending
                 ? closed(blocked?.message ?? 'A refund on this booking is still being processed.')
@@ -534,63 +678,141 @@ export function createServicingService({
     },
 
     /** Replacement flights for one direction on one date, each with its change quote. */
-    async changeSearch(orderId: string, principal: Principal, request: ChangeSearchRequest, scenario?: Scenario, crashAt?: CrashPoint | null): Promise<RetailingResult<ChangeSearchResult>> {
-      const found = await quote(orderId, principal, scenario, crashAt, (order, trip, ctx): QuoteFailure | ChangeSearchResult => {
-        const refused = modifiable(order);
-        if (refused) return refused;
-        const leg = trip.legs.find((candidate) => candidate.direction === request.direction);
-        if (!leg) return fail(422, 'CHANGE_NOT_ALLOWED', 'This booking has no return flight to change.', 'direction');
-        const availability = changeAvailability(leg, ctx.now);
-        if (!availability.allowed) return fail(409, 'CHANGE_NOT_ALLOWED', availability.reason!);
-        const { inventory } = ctx;
-        const today = inventory.referenceDate;
-        if (!isIsoDate(request.date) || request.date < today || !inventory.isWithinSchedule(request.date)) {
-          return fail(422, 'CHANGE_NOT_ALLOWED', `Choose a date between ${formatTravelDate(today)} and ${formatTravelDate(inventory.scheduleEndDate)}.`, 'date');
-        }
-        const candidates = buildCandidates(inventory, leg.journey.itinerary.origin, leg.journey.itinerary.destination, request.date, MAX_STOPS)
-          .filter((candidate) => candidate.segments.every((segment) => segment.status === 'scheduled'))
-          .sort((a, b) => a.segments[0]!.departureUtc - b.segments[0]!.departureUtc || a.id.localeCompare(b.id))
-          .slice(0, 24);
-        const alternatives = [];
-        let lastReason: string | null = null;
-        for (const candidate of candidates) {
-          if (candidate.id === leg.journey.itinerary.id) continue;
-          const computed = quoteChange(order, trip, request.direction, candidate, ctx);
-          if (isQuoteFailure(computed)) {
-            lastReason = computed.message;
-            continue;
+    async changeSearch(
+      orderId: string,
+      principal: Principal,
+      request: ChangeSearchRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ): Promise<RetailingResult<ChangeSearchResult>> {
+      const found = await quote(
+        orderId,
+        principal,
+        scenario,
+        crashAt,
+        (order, trip, ctx): QuoteFailure | ChangeSearchResult => {
+          const refused = modifiable(order);
+          if (refused) return refused;
+          const leg = trip.legs.find((candidate) => candidate.direction === request.direction);
+          if (!leg)
+            return fail(
+              422,
+              'CHANGE_NOT_ALLOWED',
+              'This booking has no return flight to change.',
+              'direction',
+            );
+          const availability = changeAvailability(leg, ctx.now);
+          if (!availability.allowed) return fail(409, 'CHANGE_NOT_ALLOWED', availability.reason!);
+          const { inventory } = ctx;
+          const today = inventory.referenceDate;
+          if (
+            !isIsoDate(request.date) ||
+            request.date < today ||
+            !inventory.isWithinSchedule(request.date)
+          ) {
+            return fail(
+              422,
+              'CHANGE_NOT_ALLOWED',
+              `Choose a date between ${formatTravelDate(today)} and ${formatTravelDate(inventory.scheduleEndDate)}.`,
+              'date',
+            );
           }
-          const journey = computed.plan!.current.journeys.find((j) => j.direction === request.direction)!;
-          alternatives.push({ itineraryId: candidate.id, itinerary: journey.itinerary, price: journey.price, quote: computed.quote });
-        }
-        return {
-          direction: request.direction,
-          date: request.date,
-          current: leg.journey,
-          alternatives,
-          emptyReason:
-            alternatives.length > 0
-              ? null
-              : candidates.length === 0
-                ? `Velasia doesn’t fly ${leg.journey.itinerary.origin} → ${leg.journey.itinerary.destination} on ${formatTravelDate(request.date)}.`
-                : (lastReason ?? 'No other flight can be booked for your party on this date.'),
-          family: leg.family.code,
-        };
-      });
+          const candidates = buildCandidates(
+            inventory,
+            leg.journey.itinerary.origin,
+            leg.journey.itinerary.destination,
+            request.date,
+            MAX_STOPS,
+          )
+            .filter((candidate) =>
+              candidate.segments.every((segment) => segment.status === 'scheduled'),
+            )
+            .sort(
+              (a, b) =>
+                a.segments[0]!.departureUtc - b.segments[0]!.departureUtc ||
+                a.id.localeCompare(b.id),
+            )
+            .slice(0, 24);
+          const alternatives = [];
+          let lastReason: string | null = null;
+          for (const candidate of candidates) {
+            if (candidate.id === leg.journey.itinerary.id) continue;
+            const computed = quoteChange(order, trip, request.direction, candidate, ctx);
+            if (isQuoteFailure(computed)) {
+              lastReason = computed.message;
+              continue;
+            }
+            const journey = computed.plan!.current.journeys.find(
+              (j) => j.direction === request.direction,
+            )!;
+            alternatives.push({
+              itineraryId: candidate.id,
+              itinerary: journey.itinerary,
+              price: journey.price,
+              quote: computed.quote,
+            });
+          }
+          return {
+            direction: request.direction,
+            date: request.date,
+            current: leg.journey,
+            alternatives,
+            emptyReason:
+              alternatives.length > 0
+                ? null
+                : candidates.length === 0
+                  ? `Velasia doesn’t fly ${leg.journey.itinerary.origin} → ${leg.journey.itinerary.destination} on ${formatTravelDate(request.date)}.`
+                  : (lastReason ?? 'No other flight can be booked for your party on this date.'),
+            family: leg.family.code,
+          };
+        },
+      );
       return found.ok ? { ok: true, value: found.value.result } : found;
     },
 
-    confirmChange(orderId: string, principal: Principal, request: ConfirmChangeRequest, scenario?: Scenario, crashAt?: CrashPoint | null) {
-      const requestHash = hashOf({ op: 'CHANGE_FLIGHT', direction: request.direction, itineraryId: request.itineraryId, accepted: request.acceptedAmountMinor, payment: request.payment ?? null });
-      return confirm('CHANGE_FLIGHT', orderId, principal, request, requestHash, (order, trip, ctx) => {
-        const candidate = resolveCandidate(ctx.inventory, request.itineraryId);
-        if (!candidate) return fail(404, 'INVENTORY_UNAVAILABLE', 'This flight is no longer available.', 'itineraryId');
-        return quoteChange(order, trip, request.direction, candidate, ctx);
-      }, scenario, crashAt);
+    confirmChange(
+      orderId: string,
+      principal: Principal,
+      request: ConfirmChangeRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
+      const requestHash = hashOf({
+        op: 'CHANGE_FLIGHT',
+        direction: request.direction,
+        itineraryId: request.itineraryId,
+        accepted: request.acceptedAmountMinor,
+        payment: request.payment ?? null,
+      });
+      return confirm(
+        'CHANGE_FLIGHT',
+        orderId,
+        principal,
+        request,
+        requestHash,
+        (order, trip, ctx) => {
+          const candidate = resolveCandidate(ctx.inventory, request.itineraryId);
+          if (!candidate)
+            return fail(
+              404,
+              'INVENTORY_UNAVAILABLE',
+              'This flight is no longer available.',
+              'itineraryId',
+            );
+          return quoteChange(order, trip, request.direction, candidate, ctx);
+        },
+        scenario,
+        crashAt,
+      );
     },
 
     /** A flight's seat map for the booking's owner: their own seats show as theirs. */
-    async seatMap(orderId: string, principal: Principal, flightId: string, scenario?: Scenario): Promise<RetailingResult<OrderSeatMap>> {
+    async seatMap(
+      orderId: string,
+      principal: Principal,
+      flightId: string,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<OrderSeatMap>> {
       const ctx = context(scenario);
       const order = await owned(orderId, principal, ctx.now);
       if (!order) return NOT_FOUND();
@@ -607,7 +829,9 @@ export function createServicingService({
           rows: cabin.rows.map((row) => ({
             ...row,
             seats: row.seats.map((seat) =>
-              seat && own.has(seat.id) ? { ...seat, status: 'AVAILABLE' as const, unavailableReason: null } : seat,
+              seat && own.has(seat.id)
+                ? { ...seat, status: 'AVAILABLE' as const, unavailableReason: null }
+                : seat,
             ),
           })),
         })),
@@ -625,46 +849,121 @@ export function createServicingService({
           assignments: seats,
           paid: trip.slots.map((slot) => ({
             travellerId: slot.id,
-            amountMinor: order.current.items.find((item) => item.id === `seat-${slot.id}-${flightId}`)?.amountMinor ?? 0,
+            amountMinor:
+              order.current.items.find((item) => item.id === `seat-${slot.id}-${flightId}`)
+                ?.amountMinor ?? 0,
           })),
           closesAt: new Date(seatClosesAt(segment)).toISOString(),
         },
       };
     },
 
-    async seatQuote(orderId: string, principal: Principal, changes: SeatChange[], scenario?: Scenario, crashAt?: CrashPoint | null) {
-      const found = await quote(orderId, principal, scenario, crashAt, (order, trip, ctx) => quoteSeats(order, trip, changes, ctx, ledger));
+    async seatQuote(
+      orderId: string,
+      principal: Principal,
+      changes: SeatChange[],
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
+      const found = await quote(orderId, principal, scenario, crashAt, (order, trip, ctx) =>
+        quoteSeats(order, trip, changes, ctx, ledger),
+      );
       return found.ok ? { ok: true as const, value: found.value.result.quote } : found;
     },
 
-    confirmSeats(orderId: string, principal: Principal, request: ConfirmSeatChangeRequest, scenario?: Scenario, crashAt?: CrashPoint | null) {
-      const requestHash = hashOf({ op: 'CHANGE_SEAT', changes: request.changes, accepted: request.acceptedAmountMinor, payment: request.payment ?? null });
-      return confirm('CHANGE_SEAT', orderId, principal, request, requestHash, (order, trip, ctx) => quoteSeats(order, trip, request.changes, ctx, ledger), scenario, crashAt);
+    confirmSeats(
+      orderId: string,
+      principal: Principal,
+      request: ConfirmSeatChangeRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
+      const requestHash = hashOf({
+        op: 'CHANGE_SEAT',
+        changes: request.changes,
+        accepted: request.acceptedAmountMinor,
+        payment: request.payment ?? null,
+      });
+      return confirm(
+        'CHANGE_SEAT',
+        orderId,
+        principal,
+        request,
+        requestHash,
+        (order, trip, ctx) => quoteSeats(order, trip, request.changes, ctx, ledger),
+        scenario,
+        crashAt,
+      );
     },
 
-    async ancillaries(orderId: string, principal: Principal, scenario?: Scenario): Promise<RetailingResult<OrderAncillaries>> {
+    async ancillaries(
+      orderId: string,
+      principal: Principal,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<OrderAncillaries>> {
       const ctx = context(scenario);
       const order = await owned(orderId, principal, ctx.now);
       if (!order) return NOT_FOUND();
       return { ok: true, value: ancillaryView(order, tripOf(order), ctx) };
     },
 
-    async ancillaryQuote(orderId: string, principal: Principal, changes: AncillaryPurchase[], scenario?: Scenario, crashAt?: CrashPoint | null) {
-      const found = await quote(orderId, principal, scenario, crashAt, (order, trip, ctx) => quoteAncillaries(order, trip, changes, ctx));
+    async ancillaryQuote(
+      orderId: string,
+      principal: Principal,
+      changes: AncillaryPurchase[],
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
+      const found = await quote(orderId, principal, scenario, crashAt, (order, trip, ctx) =>
+        quoteAncillaries(order, trip, changes, ctx),
+      );
       return found.ok ? { ok: true as const, value: found.value.result.quote } : found;
     },
 
-    confirmAncillaries(orderId: string, principal: Principal, request: ConfirmAncillaryPurchaseRequest, scenario?: Scenario, crashAt?: CrashPoint | null) {
-      const requestHash = hashOf({ op: 'ADD_ANCILLARY', changes: request.changes, accepted: request.acceptedAmountMinor, payment: request.payment ?? null });
-      return confirm('ADD_ANCILLARY', orderId, principal, request, requestHash, (order, trip, ctx) => quoteAncillaries(order, trip, request.changes, ctx), scenario, crashAt);
+    confirmAncillaries(
+      orderId: string,
+      principal: Principal,
+      request: ConfirmAncillaryPurchaseRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
+      const requestHash = hashOf({
+        op: 'ADD_ANCILLARY',
+        changes: request.changes,
+        accepted: request.acceptedAmountMinor,
+        payment: request.payment ?? null,
+      });
+      return confirm(
+        'ADD_ANCILLARY',
+        orderId,
+        principal,
+        request,
+        requestHash,
+        (order, trip, ctx) => quoteAncillaries(order, trip, request.changes, ctx),
+        scenario,
+        crashAt,
+      );
     },
 
-    async cancellationQuote(orderId: string, principal: Principal, scenario?: Scenario, crashAt?: CrashPoint | null): Promise<RetailingResult<CancellationQuote>> {
+    async cancellationQuote(
+      orderId: string,
+      principal: Principal,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ): Promise<RetailingResult<CancellationQuote>> {
       const found = await quote(orderId, principal, scenario, crashAt, cancellationQuoteFor);
-      return found.ok ? { ok: true, value: toCancellationQuote(found.value.result, found.value.order) } : found;
+      return found.ok
+        ? { ok: true, value: toCancellationQuote(found.value.result, found.value.order) }
+        : found;
     },
 
-    confirmCancellation(orderId: string, principal: Principal, request: ConfirmCancellationRequest, scenario?: Scenario, crashAt?: CrashPoint | null) {
+    confirmCancellation(
+      orderId: string,
+      principal: Principal,
+      request: ConfirmCancellationRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ) {
       const requestHash = hashOf({ op: 'CANCEL_ORDER', accepted: request.acceptedRefundMinor });
       return confirm(
         'CANCEL_ORDER',
@@ -679,57 +978,120 @@ export function createServicingService({
     },
 
     /** Pay again for a change whose payment was declined, while its claim lasts. */
-    async pay(orderId: string, principal: Principal, operationId: string, request: ServicingPaymentRequest, scenario?: Scenario, crashAt?: CrashPoint | null): Promise<RetailingResult<ServicingOutcome>> {
+    async pay(
+      orderId: string,
+      principal: Principal,
+      operationId: string,
+      request: ServicingPaymentRequest,
+      scenario?: Scenario,
+      crashAt?: CrashPoint | null,
+    ): Promise<RetailingResult<ServicingOutcome>> {
       if (request.simulatedOutcome && !config.outcomeControls) {
         return fail(400, 'BAD_REQUEST', 'Choosing a payment outcome isn’t available here.');
       }
       const outcome = request.simulatedOutcome ?? 'SUCCESS';
       const requestHash = hashOf({ method: request.method, outcome });
-      const started = await queue.run(async (): Promise<RetailingResult<ServicingOutcome & { attempt: StoredAttempt | null }>> => {
-        const now = retailing.now(scenario);
-        const found = await repository.byId(orderId);
-        if (!found || !canAccess(found, principal)) return NOT_FOUND();
-        const op = findOperation(found, operationId);
-        if (!op) return NOT_FOUND();
-        const replay = op.attempts.find((attempt) => attempt.idempotencyKey === request.idempotencyKey);
-        if (replay) {
-          if (replay.requestHash !== requestHash) return fail(409, 'IDEMPOTENCY_CONFLICT', 'This payment request was already used with different details. Please reload.');
-          return { ok: true, value: { order: found, operation: op, replayed: true, attempt: null } };
-        }
-        const order = await store.expireIfDue(found, now);
-        const current = findOperation(order, operationId)!;
-        if (current.status === 'EXPIRED') return fail(410, 'HOLD_EXPIRED', 'This change wasn’t paid in time, so the seats held for it were released. Nothing was charged.');
-        if (current.status !== 'AWAITING_PAYMENT') return fail(409, 'ORDER_NOT_PAYABLE', 'This change isn’t waiting for a payment.');
-        if (current.attempts.some(isUnresolved)) return fail(409, 'PAYMENT_PENDING', 'Your last payment for this change is still being processed. Check its status first.');
-        if (current.attempts.length >= MAX_SERVICING_PAYMENT_ATTEMPTS) return fail(409, 'ORDER_NOT_PAYABLE', 'No payment attempts are left for this change.');
-        const attempt: StoredAttempt = {
-          attemptId: newId('pay'),
-          idempotencyKey: request.idempotencyKey,
-          requestHash,
-          method: request.method,
-          simulatedOutcome: request.simulatedOutcome ?? null,
-          amountMinor: current.adjustment.amountMinor,
-          currency: order.currency,
-          status: 'PROCESSING',
-          createdAt: now,
-          startedAtWall: Date.now(),
-          completedAt: null,
-          failureReason: null,
-          providerReference: null,
-        };
-        const stored = await store.write(order, startServicingAttempt(order, operationId, attempt, now));
-        crashIf(crashAt, 'servicing:after-intent');
-        return { ok: true, value: { order: stored, operation: findOperation(stored, operationId)!, replayed: false, attempt } };
-      });
+      const started = await queue.run(
+        async (): Promise<
+          RetailingResult<ServicingOutcome & { attempt: StoredAttempt | null }>
+        > => {
+          const now = retailing.now(scenario);
+          const found = await repository.byId(orderId);
+          if (!found || !canAccess(found, principal)) return NOT_FOUND();
+          const op = findOperation(found, operationId);
+          if (!op) return NOT_FOUND();
+          const replay = op.attempts.find(
+            (attempt) => attempt.idempotencyKey === request.idempotencyKey,
+          );
+          if (replay) {
+            if (replay.requestHash !== requestHash)
+              return fail(
+                409,
+                'IDEMPOTENCY_CONFLICT',
+                'This payment request was already used with different details. Please reload.',
+              );
+            return {
+              ok: true,
+              value: { order: found, operation: op, replayed: true, attempt: null },
+            };
+          }
+          const order = await store.expireIfDue(found, now);
+          const current = findOperation(order, operationId)!;
+          if (current.status === 'EXPIRED')
+            return fail(
+              410,
+              'HOLD_EXPIRED',
+              'This change wasn’t paid in time, so the seats held for it were released. Nothing was charged.',
+            );
+          if (current.status !== 'AWAITING_PAYMENT')
+            return fail(409, 'ORDER_NOT_PAYABLE', 'This change isn’t waiting for a payment.');
+          if (current.attempts.some(isUnresolved))
+            return fail(
+              409,
+              'PAYMENT_PENDING',
+              'Your last payment for this change is still being processed. Check its status first.',
+            );
+          if (current.attempts.length >= MAX_SERVICING_PAYMENT_ATTEMPTS)
+            return fail(409, 'ORDER_NOT_PAYABLE', 'No payment attempts are left for this change.');
+          const attempt: StoredAttempt = {
+            attemptId: newId('pay'),
+            idempotencyKey: request.idempotencyKey,
+            requestHash,
+            method: request.method,
+            simulatedOutcome: request.simulatedOutcome ?? null,
+            amountMinor: current.adjustment.amountMinor,
+            currency: order.currency,
+            status: 'PROCESSING',
+            createdAt: now,
+            startedAtWall: Date.now(),
+            completedAt: null,
+            failureReason: null,
+            providerReference: null,
+          };
+          const stored = await store.write(
+            order,
+            startServicingAttempt(order, operationId, attempt, now),
+          );
+          crashIf(crashAt, 'servicing:after-intent');
+          return {
+            ok: true,
+            value: {
+              order: stored,
+              operation: findOperation(stored, operationId)!,
+              replayed: false,
+              attempt,
+            },
+          };
+        },
+      );
       if (!started.ok) return started;
-      if (!started.value.attempt) return { ok: true, value: { order: started.value.order, operation: started.value.operation, replayed: true } };
-      const order = await sendCharge(started.value.order, operationId, started.value.attempt, outcome, crashAt, scenario);
+      if (!started.value.attempt)
+        return {
+          ok: true,
+          value: { order: started.value.order, operation: started.value.operation, replayed: true },
+        };
+      const order = await sendCharge(
+        started.value.order,
+        operationId,
+        started.value.attempt,
+        outcome,
+        crashAt,
+        scenario,
+      );
       crashIf(crashAt, 'servicing:after-commit');
-      return { ok: true, value: { order, operation: findOperation(order, operationId)!, replayed: false } };
+      return {
+        ok: true,
+        value: { order, operation: findOperation(order, operationId)!, replayed: false },
+      };
     },
 
     /** Give up a change waiting for payment: release its claim. The booking is unchanged. */
-    async abandon(orderId: string, principal: Principal, operationId: string, scenario?: Scenario): Promise<RetailingResult<ServicingOutcome>> {
+    async abandon(
+      orderId: string,
+      principal: Principal,
+      operationId: string,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<ServicingOutcome>> {
       return queue.run(async () => {
         const now = retailing.now(scenario);
         const found = await repository.byId(orderId);
@@ -737,15 +1099,37 @@ export function createServicingService({
         const order = await store.expireIfDue(found, now);
         const op = findOperation(order, operationId);
         if (!op) return NOT_FOUND();
-        if (op.status !== 'AWAITING_PAYMENT') return { ok: true, value: { order, operation: op, replayed: true } };
-        if (op.attempts.some(isUnresolved)) return fail(409, 'PAYMENT_PENDING', 'A payment for this change is still being processed. Check its status first.');
-        const stored = await store.write(order, endOperation(order, operationId, 'FAILED', 'Discarded by the traveller. Nothing was charged.', now));
-        return { ok: true, value: { order: stored, operation: findOperation(stored, operationId)!, replayed: false } };
+        if (op.status !== 'AWAITING_PAYMENT')
+          return { ok: true, value: { order, operation: op, replayed: true } };
+        if (op.attempts.some(isUnresolved))
+          return fail(
+            409,
+            'PAYMENT_PENDING',
+            'A payment for this change is still being processed. Check its status first.',
+          );
+        const stored = await store.write(
+          order,
+          endOperation(
+            order,
+            operationId,
+            'FAILED',
+            'Discarded by the traveller. Nothing was charged.',
+            now,
+          ),
+        );
+        return {
+          ok: true,
+          value: { order: stored, operation: findOperation(stored, operationId)!, replayed: false },
+        };
       });
     },
 
     /** Find out what happened to undecided payments and refunds of this booking. Never pays. */
-    async refreshStatus(orderId: string, principal: Principal, scenario?: Scenario): Promise<RetailingResult<StoredOrder>> {
+    async refreshStatus(
+      orderId: string,
+      principal: Principal,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<StoredOrder>> {
       const resolved = await queue.run(async () => {
         const found = await repository.byId(orderId);
         if (!found || !canAccess(found, principal)) return null;
@@ -753,7 +1137,8 @@ export function createServicingService({
       });
       if (!resolved) return NOT_FOUND();
       let { order } = resolved;
-      for (const { operationId, refund } of resolved.resend) order = await sendRefund(orderId, operationId, refund, null, scenario);
+      for (const { operationId, refund } of resolved.resend)
+        order = await sendRefund(orderId, operationId, refund, null, scenario);
       return { ok: true, value: order };
     },
 
@@ -762,36 +1147,61 @@ export function createServicingService({
      * the request is safe: once the new refund is recorded, nothing has failed any more, so a
      * second retry is refused instead of sending a second refund.
      */
-    async retryRefund(orderId: string, principal: Principal, simulatedOutcome: SimulatedOutcome | undefined, scenario?: Scenario): Promise<RetailingResult<StoredOrder>> {
-      if (simulatedOutcome && !config.outcomeControls) return fail(400, 'BAD_REQUEST', 'Choosing a simulated outcome isn’t available here.');
-      const started = await queue.run(async (): Promise<RetailingResult<{ order: StoredOrder; operationId: string; refund: StoredRefund | null }>> => {
-        const now = retailing.now(scenario);
-        const order = await repository.byId(orderId);
-        if (!order || !canAccess(order, principal)) return NOT_FOUND();
-        const op = order.servicing.find((candidate) => candidate.refunds.at(-1)?.status === 'FAILED' && !candidate.refunds.some((r) => r.status === 'SUCCEEDED'));
-        if (!op) {
-          return order.servicingState === 'REFUND_PENDING'
-            ? fail(409, 'REFUND_PENDING', 'A refund on this booking is still being processed.')
-            : fail(409, 'ORDER_NOT_MODIFIABLE', 'There is no failed refund to try again.');
-        }
-        if (op.refunds.length >= MAX_REFUND_ATTEMPTS) return fail(409, 'LIMIT_REACHED', 'This refund was tried the maximum number of times in this demo.');
-        const refund: StoredRefund = {
-          refundId: newId('rfd'),
-          amountMinor: op.adjustment.amountMinor,
-          currency: order.currency,
-          status: 'PROCESSING',
-          createdAt: now,
-          startedAtWall: Date.now(),
-          completedAt: null,
-          failureReason: null,
-          providerReference: null,
-          simulatedOutcome: simulatedOutcome ?? null,
-        };
-        const stored = await store.write(order, retryRefund(order, op.operationId, refund, now));
-        return { ok: true, value: { order: stored, operationId: op.operationId, refund } };
-      });
+    async retryRefund(
+      orderId: string,
+      principal: Principal,
+      simulatedOutcome: SimulatedOutcome | undefined,
+      scenario?: Scenario,
+    ): Promise<RetailingResult<StoredOrder>> {
+      if (simulatedOutcome && !config.outcomeControls)
+        return fail(400, 'BAD_REQUEST', 'Choosing a simulated outcome isn’t available here.');
+      const started = await queue.run(
+        async (): Promise<
+          RetailingResult<{ order: StoredOrder; operationId: string; refund: StoredRefund | null }>
+        > => {
+          const now = retailing.now(scenario);
+          const order = await repository.byId(orderId);
+          if (!order || !canAccess(order, principal)) return NOT_FOUND();
+          const op = order.servicing.find(
+            (candidate) =>
+              candidate.refunds.at(-1)?.status === 'FAILED' &&
+              !candidate.refunds.some((r) => r.status === 'SUCCEEDED'),
+          );
+          if (!op) {
+            return order.servicingState === 'REFUND_PENDING'
+              ? fail(409, 'REFUND_PENDING', 'A refund on this booking is still being processed.')
+              : fail(409, 'ORDER_NOT_MODIFIABLE', 'There is no failed refund to try again.');
+          }
+          if (op.refunds.length >= MAX_REFUND_ATTEMPTS)
+            return fail(
+              409,
+              'LIMIT_REACHED',
+              'This refund was tried the maximum number of times in this demo.',
+            );
+          const refund: StoredRefund = {
+            refundId: newId('rfd'),
+            amountMinor: op.adjustment.amountMinor,
+            currency: order.currency,
+            status: 'PROCESSING',
+            createdAt: now,
+            startedAtWall: Date.now(),
+            completedAt: null,
+            failureReason: null,
+            providerReference: null,
+            simulatedOutcome: simulatedOutcome ?? null,
+          };
+          const stored = await store.write(order, retryRefund(order, op.operationId, refund, now));
+          return { ok: true, value: { order: stored, operationId: op.operationId, refund } };
+        },
+      );
       if (!started.ok) return started;
-      const order = await sendRefund(orderId, started.value.operationId, started.value.refund!, null, scenario);
+      const order = await sendRefund(
+        orderId,
+        started.value.operationId,
+        started.value.refund!,
+        null,
+        scenario,
+      );
       return { ok: true, value: order };
     },
 
@@ -806,10 +1216,21 @@ export function createServicingService({
           const before = await repository.byId(candidate.orderId);
           if (!before) return null;
           const result = await resolve(before, now);
-          const count = (order: StoredOrder, pick: (op: StoredServicing) => boolean) => order.servicing.filter(pick).length;
-          summary.payments += count(before, (op) => op.attempts.some(isUnresolved)) - count(result.order, (op) => op.attempts.some(isUnresolved));
-          summary.refunds += count(before, (op) => op.refunds.some((r) => UNRESOLVED_REFUND_STATUSES.includes(r.status))) - count(result.order, (op) => op.refunds.some((r) => UNRESOLVED_REFUND_STATUSES.includes(r.status)));
-          summary.expired += count(result.order, (op) => op.status === 'EXPIRED') - count(before, (op) => op.status === 'EXPIRED');
+          const count = (order: StoredOrder, pick: (op: StoredServicing) => boolean) =>
+            order.servicing.filter(pick).length;
+          summary.payments +=
+            count(before, (op) => op.attempts.some(isUnresolved)) -
+            count(result.order, (op) => op.attempts.some(isUnresolved));
+          summary.refunds +=
+            count(before, (op) =>
+              op.refunds.some((r) => UNRESOLVED_REFUND_STATUSES.includes(r.status)),
+            ) -
+            count(result.order, (op) =>
+              op.refunds.some((r) => UNRESOLVED_REFUND_STATUSES.includes(r.status)),
+            );
+          summary.expired +=
+            count(result.order, (op) => op.status === 'EXPIRED') -
+            count(before, (op) => op.status === 'EXPIRED');
           return result;
         });
         for (const { operationId, refund } of resolved?.resend ?? []) {
@@ -817,7 +1238,8 @@ export function createServicingService({
           summary.resent += 1;
         }
       }
-      if (summary.payments || summary.refunds || summary.resent || summary.expired) log?.info(summary, 'servicing reconciled');
+      if (summary.payments || summary.refunds || summary.resent || summary.expired)
+        log?.info(summary, 'servicing reconciled');
       return summary;
     },
 

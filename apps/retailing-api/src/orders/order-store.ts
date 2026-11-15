@@ -48,7 +48,8 @@ export class OrderStore {
     if (!dueAt(order, now)) return order;
     let next = holdExpiredAt(order, now) ? expireOrder(order, now) : order;
     for (const op of next.servicing) {
-      if (claimExpiredAt(op, now)) next = endOperation(next, op.operationId, 'EXPIRED', CLAIM_ENDED, now);
+      if (claimExpiredAt(op, now))
+        next = endOperation(next, op.operationId, 'EXPIRED', CLAIM_ENDED, now);
     }
     return this.write(order, next);
   }

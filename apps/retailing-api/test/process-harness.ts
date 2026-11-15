@@ -55,7 +55,10 @@ export interface Server extends Caller {
   output: () => string;
 }
 
-export async function startServer(dbPath: string, env: Record<string, string> = {}): Promise<Server> {
+export async function startServer(
+  dbPath: string,
+  env: Record<string, string> = {},
+): Promise<Server> {
   const port = await freePort();
   const child = spawn(process.execPath, ['--import', 'tsx', 'src/server.ts'], {
     cwd: API_DIR,
@@ -137,4 +140,3 @@ export async function killedBy(server: Server, request: Promise<unknown>) {
   const { signal } = await server.exited;
   expect(signal).toBe('SIGKILL');
 }
-

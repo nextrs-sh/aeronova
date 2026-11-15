@@ -246,9 +246,19 @@ export type ServicingStatus = z.infer<typeof servicingStatusSchema>;
  * - `UNKNOWN`: the provider didn't answer in time; looked up, never sent twice.
  * - `SUCCEEDED` / `FAILED`: decided.
  */
-export const refundStatusSchema = z.enum(['PENDING', 'PROCESSING', 'SUCCEEDED', 'FAILED', 'UNKNOWN']);
+export const refundStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'UNKNOWN',
+]);
 export type RefundStatus = z.infer<typeof refundStatusSchema>;
-export const UNRESOLVED_REFUND_STATUSES: readonly RefundStatus[] = ['PENDING', 'PROCESSING', 'UNKNOWN'];
+export const UNRESOLVED_REFUND_STATUSES: readonly RefundStatus[] = [
+  'PENDING',
+  'PROCESSING',
+  'UNKNOWN',
+];
 
 /**
  * What a servicing operation does to money: nothing, a (simulated) charge, a (simulated) refund

@@ -72,7 +72,11 @@ const definitions: FareFamilyDefinition[] = [
     cabin: 'economy',
     component: { rate: 0, fixed: { short: 0, medium: 0, long: 0 } },
     rules: {
-      change: { allowed: true, feePerTravellerMinor: 2500 * MINOR_PER_PESO, cutoffMinutes: 24 * HOUR },
+      change: {
+        allowed: true,
+        feePerTravellerMinor: 2500 * MINOR_PER_PESO,
+        cutoffMinutes: 24 * HOUR,
+      },
       refund: {
         kind: 'TAXES_ONLY',
         feePerTravellerMinor: 0,
@@ -117,7 +121,11 @@ const definitions: FareFamilyDefinition[] = [
     cabin: 'economy',
     component: { rate: 0.12, fixed: { short: 300, medium: 450, long: 600 } },
     rules: {
-      change: { allowed: true, feePerTravellerMinor: 1200 * MINOR_PER_PESO, cutoffMinutes: 3 * HOUR },
+      change: {
+        allowed: true,
+        feePerTravellerMinor: 1200 * MINOR_PER_PESO,
+        cutoffMinutes: 3 * HOUR,
+      },
       refund: {
         kind: 'FEE',
         feePerTravellerMinor: 3000 * MINOR_PER_PESO,

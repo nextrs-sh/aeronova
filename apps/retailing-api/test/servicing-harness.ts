@@ -87,7 +87,9 @@ export async function changeQuote(
   expect(response.statusCode, response.body).toBe(200);
   const alternative = response
     .json()
-    .data.alternatives.find((candidate: { itineraryId: string }) => candidate.itineraryId === itineraryId);
+    .data.alternatives.find(
+      (candidate: { itineraryId: string }) => candidate.itineraryId === itineraryId,
+    );
   if (!alternative) throw new Error(`no alternative ${itineraryId}: ${response.body}`);
   return alternative.quote as ServicingQuote;
 }
@@ -104,14 +106,23 @@ export interface ConfirmOptions {
   options?: CallOptions;
 }
 
-function confirmBody(order: Order, quote: Pick<ServicingQuote, 'netMinor' | 'adjustment'>, o: ConfirmOptions) {
+function confirmBody(
+  order: Order,
+  quote: Pick<ServicingQuote, 'netMinor' | 'adjustment'>,
+  o: ConfirmOptions,
+) {
   const charge = quote.adjustment.kind === 'CHARGE';
   return {
     idempotencyKey: o.key ?? newKey(),
     expectedRevision: o.revision ?? order.revision,
     acceptedAmountMinor: o.accepted ?? quote.netMinor,
     ...(charge && !o.noPayment
-      ? { payment: { method: o.method ?? 'DEMO_CARD', ...(o.outcome ? { simulatedOutcome: o.outcome } : {}) } }
+      ? {
+          payment: {
+            method: o.method ?? 'DEMO_CARD',
+            ...(o.outcome ? { simulatedOutcome: o.outcome } : {}),
+          },
+        }
       : {}),
     ...(o.refundOutcome ? { simulatedRefundOutcome: o.refundOutcome } : {}),
     ...o.extra,
@@ -134,7 +145,12 @@ export function confirmChange(
   });
 }
 
-export async function seatQuote(h: Caller, booking: Booking, changes: object[], options: CallOptions = {}) {
+export async function seatQuote(
+  h: Caller,
+  booking: Booking,
+  changes: object[],
+  options: CallOptions = {},
+) {
   const response = await h.call(`/v1/orders/${booking.order.id}/seat-quotes`, {
     method: 'POST',
     token: booking.guest,
@@ -144,7 +160,13 @@ export async function seatQuote(h: Caller, booking: Booking, changes: object[], 
   return response;
 }
 
-export function confirmSeats(h: Caller, booking: Booking, changes: object[], quote: ServicingQuote, o: ConfirmOptions = {}) {
+export function confirmSeats(
+  h: Caller,
+  booking: Booking,
+  changes: object[],
+  quote: ServicingQuote,
+  o: ConfirmOptions = {},
+) {
   return h.call(`/v1/orders/${booking.order.id}/seat-changes`, {
     method: 'POST',
     token: booking.guest,
@@ -153,7 +175,12 @@ export function confirmSeats(h: Caller, booking: Booking, changes: object[], quo
   });
 }
 
-export function ancillaryQuote(h: Caller, booking: Booking, changes: object[], options: CallOptions = {}) {
+export function ancillaryQuote(
+  h: Caller,
+  booking: Booking,
+  changes: object[],
+  options: CallOptions = {},
+) {
   return h.call(`/v1/orders/${booking.order.id}/ancillary-quotes`, {
     method: 'POST',
     token: booking.guest,
@@ -162,7 +189,13 @@ export function ancillaryQuote(h: Caller, booking: Booking, changes: object[], o
   });
 }
 
-export function confirmAncillaries(h: Caller, booking: Booking, changes: object[], quote: ServicingQuote, o: ConfirmOptions = {}) {
+export function confirmAncillaries(
+  h: Caller,
+  booking: Booking,
+  changes: object[],
+  quote: ServicingQuote,
+  o: ConfirmOptions = {},
+) {
   return h.call(`/v1/orders/${booking.order.id}/ancillary-purchases`, {
     method: 'POST',
     token: booking.guest,
@@ -184,7 +217,12 @@ export function confirmCancellation(
   h: Caller,
   booking: Booking,
   refundMinor: number,
-  o: { key?: string; revision?: number; refundOutcome?: SimulatedOutcome; options?: CallOptions } = {},
+  o: {
+    key?: string;
+    revision?: number;
+    refundOutcome?: SimulatedOutcome;
+    options?: CallOptions;
+  } = {},
 ) {
   return h.call(`/v1/orders/${booking.order.id}/cancellations`, {
     method: 'POST',
@@ -221,7 +259,10 @@ export async function assertDurableConsistency(h: Harness) {
     for (const seat of seats ? seats.split(',') : []) {
       const key = `${flightId}|${seat}`;
       const holder = seen.get(key);
-      expect(holder === undefined || holder === orderId, `seat ${key} held by ${holder} and ${orderId}`).toBe(true);
+      expect(
+        holder === undefined || holder === orderId,
+        `seat ${key} held by ${holder} and ${orderId}`,
+      ).toBe(true);
       seen.set(key, orderId!);
     }
   }

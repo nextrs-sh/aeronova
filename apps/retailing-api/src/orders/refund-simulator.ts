@@ -73,7 +73,10 @@ export class RefundSimulator {
     return Promise.race([answer, timeout]).finally(() => clearTimeout(timer));
   }
 
-  private async process(request: RefundRequest, crashAt?: CrashPoint | null): Promise<RefundAnswer> {
+  private async process(
+    request: RefundRequest,
+    crashAt?: CrashPoint | null,
+  ): Promise<RefundAnswer> {
     const existing = await this.repository.byRefund(request.refundId);
     if (existing) return { kind: 'answered', refund: existing };
     const now = this.wall();

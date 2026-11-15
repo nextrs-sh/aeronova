@@ -268,7 +268,11 @@ export function createCheckoutService({
           baggage: content.snapshot.baggage,
           items: content.items,
         };
-        const listing = listingFor({ current, snapshot: content.snapshot, currency: content.currency });
+        const listing = listingFor({
+          current,
+          snapshot: content.snapshot,
+          currency: content.currency,
+        });
         const order: StoredOrder = {
           schemaVersion: ORDER_SCHEMA_VERSION,
           orderId: newId('ord'),

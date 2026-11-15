@@ -22,10 +22,18 @@ export function accountToken(request: FastifyRequest): string | undefined {
 
 export function clientKey(request: FastifyRequest): string {
   const value = request.headers[CLIENT_HEADER];
-  return typeof value === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(value) ? value : `ip:${request.ip}`;
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(value)
+    ? value
+    : `ip:${request.ip}`;
 }
 
-export async function principalOf(request: FastifyRequest, accounts: AccountService): Promise<Principal> {
+export async function principalOf(
+  request: FastifyRequest,
+  accounts: AccountService,
+): Promise<Principal> {
   const auth = await accounts.sessionFor(accountToken(request));
-  return { guestToken: bearerToken(request), ...(auth ? { accountId: auth.account.accountId } : {}) };
+  return {
+    guestToken: bearerToken(request),
+    ...(auth ? { accountId: auth.account.accountId } : {}),
+  };
 }

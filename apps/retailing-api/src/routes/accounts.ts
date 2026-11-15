@@ -11,7 +11,11 @@ import {
   ACCOUNT_RULES,
 } from '@velasia/contracts';
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
-import { toPublicAccount, type AccountService, type AuthenticatedSession } from '../accounts/account-service';
+import {
+  toPublicAccount,
+  type AccountService,
+  type AuthenticatedSession,
+} from '../accounts/account-service';
 import { parseInput, sendError } from '../http';
 import { accountToken, clientKey } from './principal';
 import { sendResult } from './results';
@@ -106,7 +110,12 @@ export const accountRoutes: FastifyPluginAsync<{ accounts: AccountService }> = a
     if (!auth) return reply;
     const query = parseInput(tripsQuerySchema, request.query ?? {}, reply);
     if (!query) return reply;
-    const trips = await accounts.trips(auth.account.accountId, query.section, query.page, query.pageSize);
+    const trips = await accounts.trips(
+      auth.account.accountId,
+      query.section,
+      query.page,
+      query.pageSize,
+    );
     return sendResult(reply, { ok: true, value: trips });
   });
 
@@ -173,6 +182,9 @@ export const accountRoutes: FastifyPluginAsync<{ accounts: AccountService }> = a
     if (!auth) return reply;
     const params = parseInput(travellerParamsSchema, request.params, reply);
     if (!params) return reply;
-    return sendResult(reply, await accounts.deleteTraveller(auth.account.accountId, params.travellerId));
+    return sendResult(
+      reply,
+      await accounts.deleteTraveller(auth.account.accountId, params.travellerId),
+    );
   });
 };

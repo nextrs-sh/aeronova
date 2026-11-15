@@ -141,7 +141,9 @@ export class OrderRepository {
   /** Orders with a servicing payment or a refund still to finish (recovery). */
   async withPendingServicing(): Promise<StoredOrder[]> {
     return this.parseAll(
-      await this.collection.find({ servicingState: { $in: ['AWAITING_PAYMENT', 'REFUND_PENDING'] } }),
+      await this.collection.find({
+        servicingState: { $in: ['AWAITING_PAYMENT', 'REFUND_PENDING'] },
+      }),
     );
   }
 
@@ -159,7 +161,11 @@ export class OrderRepository {
   ): Promise<{ items: OrderListing[]; total: number }> {
     const match = { ownerAccountId: accountId, ...sectionFilter(section, now) };
     const sort: Record<string, 1 | -1> =
-      section === 'upcoming' ? { tripStartsAt: 1 } : section === 'past' ? { tripEndsAt: -1 } : { updatedAt: -1 };
+      section === 'upcoming'
+        ? { tripStartsAt: 1 }
+        : section === 'past'
+          ? { tripEndsAt: -1 }
+          : { updatedAt: -1 };
     const [docs, total] = await Promise.all([
       this.collection.aggregate([
         { $match: match },

@@ -56,7 +56,8 @@ export const servicingRoutes: FastifyPluginAsync<{
   accounts: AccountService;
   maxPaymentAttempts: number;
 }> = async (app, { servicing, retailing, accounts, maxPaymentAttempts }) => {
-  const now = (request: { scenario?: unknown }) => retailing.now((request.scenario ?? undefined) as never);
+  const now = (request: { scenario?: unknown }) =>
+    retailing.now((request.scenario ?? undefined) as never);
 
   function sendOutcome(reply: FastifyReply, result: RetailingResult<ServicingOutcome>, at: number) {
     if (!result.ok) return sendResult(reply, result);
@@ -81,7 +82,11 @@ export const servicingRoutes: FastifyPluginAsync<{
     const p = params(request, reply);
     if (!p) return reply;
     const scenario = request.scenario ?? undefined;
-    const result = await servicing.overview(p.orderId, await principalOf(request, accounts), scenario);
+    const result = await servicing.overview(
+      p.orderId,
+      await principalOf(request, accounts),
+      scenario,
+    );
     if (!result.ok) return sendResult(reply, result);
     return sendResult(reply, {
       ok: true,
@@ -94,20 +99,24 @@ export const servicingRoutes: FastifyPluginAsync<{
     });
   });
 
-  app.post('/v1/orders/:orderId/change-quotes', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(changeSearchRequestSchema, request.body ?? {}, reply);
-    if (!body) return reply;
-    const result = await servicing.changeSearch(
-      p.orderId,
-      await principalOf(request, accounts),
-      body,
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
-  });
+  app.post(
+    '/v1/orders/:orderId/change-quotes',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(changeSearchRequestSchema, request.body ?? {}, reply);
+      if (!body) return reply;
+      const result = await servicing.changeSearch(
+        p.orderId,
+        await principalOf(request, accounts),
+        body,
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
+    },
+  );
 
   app.post('/v1/orders/:orderId/changes', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
     const p = params(request, reply);
@@ -155,20 +164,24 @@ export const servicingRoutes: FastifyPluginAsync<{
     return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
   });
 
-  app.post('/v1/orders/:orderId/seat-changes', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(confirmSeatChangeRequestSchema, request.body ?? {}, reply);
-    if (!body) return reply;
-    const result = await servicing.confirmSeats(
-      p.orderId,
-      await principalOf(request, accounts),
-      body,
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendOutcome(reply, result, now(request));
-  });
+  app.post(
+    '/v1/orders/:orderId/seat-changes',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(confirmSeatChangeRequestSchema, request.body ?? {}, reply);
+      if (!body) return reply;
+      const result = await servicing.confirmSeats(
+        p.orderId,
+        await principalOf(request, accounts),
+        body,
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendOutcome(reply, result, now(request));
+    },
+  );
 
   app.get('/v1/orders/:orderId/ancillaries', async (request, reply) => {
     const p = params(request, reply);
@@ -181,63 +194,79 @@ export const servicingRoutes: FastifyPluginAsync<{
     return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
   });
 
-  app.post('/v1/orders/:orderId/ancillary-quotes', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(ancillaryQuoteRequestSchema, request.body ?? {}, reply);
-    if (!body) return reply;
-    const result = await servicing.ancillaryQuote(
-      p.orderId,
-      await principalOf(request, accounts),
-      body.changes,
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
-  });
+  app.post(
+    '/v1/orders/:orderId/ancillary-quotes',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(ancillaryQuoteRequestSchema, request.body ?? {}, reply);
+      if (!body) return reply;
+      const result = await servicing.ancillaryQuote(
+        p.orderId,
+        await principalOf(request, accounts),
+        body.changes,
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
+    },
+  );
 
-  app.post('/v1/orders/:orderId/ancillary-purchases', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(confirmAncillaryPurchaseRequestSchema, request.body ?? {}, reply);
-    if (!body) return reply;
-    const result = await servicing.confirmAncillaries(
-      p.orderId,
-      await principalOf(request, accounts),
-      body,
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendOutcome(reply, result, now(request));
-  });
+  app.post(
+    '/v1/orders/:orderId/ancillary-purchases',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(confirmAncillaryPurchaseRequestSchema, request.body ?? {}, reply);
+      if (!body) return reply;
+      const result = await servicing.confirmAncillaries(
+        p.orderId,
+        await principalOf(request, accounts),
+        body,
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendOutcome(reply, result, now(request));
+    },
+  );
 
-  app.post('/v1/orders/:orderId/cancellation-quotes', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    if (!parseInput(z.object({}).strict(), request.body ?? {}, reply)) return reply;
-    const result = await servicing.cancellationQuote(
-      p.orderId,
-      await principalOf(request, accounts),
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
-  });
+  app.post(
+    '/v1/orders/:orderId/cancellation-quotes',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      if (!parseInput(z.object({}).strict(), request.body ?? {}, reply)) return reply;
+      const result = await servicing.cancellationQuote(
+        p.orderId,
+        await principalOf(request, accounts),
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendResult(reply, result.ok ? { ok: true, value: { data: result.value } } : result);
+    },
+  );
 
-  app.post('/v1/orders/:orderId/cancellations', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(confirmCancellationRequestSchema, request.body ?? {}, reply);
-    if (!body) return reply;
-    const result = await servicing.confirmCancellation(
-      p.orderId,
-      await principalOf(request, accounts),
-      body,
-      request.scenario ?? undefined,
-      request.crashPoint,
-    );
-    return sendOutcome(reply, result, now(request));
-  });
+  app.post(
+    '/v1/orders/:orderId/cancellations',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(confirmCancellationRequestSchema, request.body ?? {}, reply);
+      if (!body) return reply;
+      const result = await servicing.confirmCancellation(
+        p.orderId,
+        await principalOf(request, accounts),
+        body,
+        request.scenario ?? undefined,
+        request.crashPoint,
+      );
+      return sendOutcome(reply, result, now(request));
+    },
+  );
 
   app.post(
     '/v1/orders/:orderId/servicing/:operationId/payment-attempts',
@@ -285,34 +314,40 @@ export const servicingRoutes: FastifyPluginAsync<{
       request.scenario ?? undefined,
     );
     if (!result.ok) return sendResult(reply, result);
-    const body: OrderResponse = { data: toPublicOrder(result.value, now(request), maxPaymentAttempts) };
+    const body: OrderResponse = {
+      data: toPublicOrder(result.value, now(request), maxPaymentAttempts),
+    };
     return sendResult(reply, { ok: true, value: body });
   });
 
-  app.post('/v1/orders/:orderId/refunds/retry', { bodyLimit: BODY_LIMIT }, async (request, reply) => {
-    const p = params(request, reply);
-    if (!p) return reply;
-    const body = parseInput(
-      z.object({ simulatedRefundOutcome: simulatedOutcomeSchema.optional() }).strict(),
-      request.body ?? {},
-      reply,
-    );
-    if (!body) return reply;
-    const result = await servicing.retryRefund(
-      p.orderId,
-      await principalOf(request, accounts),
-      body.simulatedRefundOutcome,
-      request.scenario ?? undefined,
-    );
-    if (!result.ok) return sendResult(reply, result);
-    const order = result.value;
-    const undecided = order.servicingState === 'REFUND_PENDING';
-    return sendResult(
-      reply,
-      { ok: true, value: { data: toPublicOrder(order, now(request), maxPaymentAttempts) } },
-      undecided ? 202 : 201,
-    );
-  });
+  app.post(
+    '/v1/orders/:orderId/refunds/retry',
+    { bodyLimit: BODY_LIMIT },
+    async (request, reply) => {
+      const p = params(request, reply);
+      if (!p) return reply;
+      const body = parseInput(
+        z.object({ simulatedRefundOutcome: simulatedOutcomeSchema.optional() }).strict(),
+        request.body ?? {},
+        reply,
+      );
+      if (!body) return reply;
+      const result = await servicing.retryRefund(
+        p.orderId,
+        await principalOf(request, accounts),
+        body.simulatedRefundOutcome,
+        request.scenario ?? undefined,
+      );
+      if (!result.ok) return sendResult(reply, result);
+      const order = result.value;
+      const undecided = order.servicingState === 'REFUND_PENDING';
+      return sendResult(
+        reply,
+        { ok: true, value: { data: toPublicOrder(order, now(request), maxPaymentAttempts) } },
+        undecided ? 202 : 201,
+      );
+    },
+  );
 
   app.get('/v1/orders/:orderId/events', async (request, reply) => {
     const p = params(request, reply);

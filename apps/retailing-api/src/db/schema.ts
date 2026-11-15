@@ -332,7 +332,10 @@ const storedOrderV2Schema = z.object({
    * SHA-256 of the guest token, hex. The token itself is never stored. `null` once the booking
    * was linked to an account: from then on only that account opens it.
    */
-  ownerTokenHash: z.string().regex(/^[0-9a-f]{64}$/).nullable(),
+  ownerTokenHash: z
+    .string()
+    .regex(/^[0-9a-f]{64}$/)
+    .nullable(),
   /** Milestone 6: the account that owns the booking, once linked. */
   ownerAccountId: accountIdSchema.nullable(),
   /** Who owned it, and since when (historical attribution; ids only). */

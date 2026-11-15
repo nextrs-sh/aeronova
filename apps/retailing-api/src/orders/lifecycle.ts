@@ -345,7 +345,9 @@ function assertServicingInvariants(order: StoredOrder, fail: (message: string) =
     fail('only a booking can be serviced.');
   }
   const currentTotal = current.items.reduce((sum, item) => sum + item.amountMinor, 0);
-  if (current.items.some((item) => !Number.isSafeInteger(item.amountMinor) || item.amountMinor < 0)) {
+  if (
+    current.items.some((item) => !Number.isSafeInteger(item.amountMinor) || item.amountMinor < 0)
+  ) {
     fail('a current item with a negative or non-integer amount.');
   }
   if (current.items.some((item) => item.included && item.amountMinor !== 0)) {
@@ -355,8 +357,11 @@ function assertServicingInvariants(order: StoredOrder, fail: (message: string) =
   if (ids.size !== current.items.length) fail('two current items share an id.');
   const seatKeys = new Set(current.seats.map((seat) => `${seat.flightId}|${seat.seatId}`));
   if (seatKeys.size !== current.seats.length) fail('two travellers in one seat.');
-  const travellerFlight = new Set(current.seats.map((seat) => `${seat.flightId}|${seat.travellerId}`));
-  if (travellerFlight.size !== current.seats.length) fail('a traveller with two seats on a flight.');
+  const travellerFlight = new Set(
+    current.seats.map((seat) => `${seat.flightId}|${seat.travellerId}`),
+  );
+  if (travellerFlight.size !== current.seats.length)
+    fail('a traveller with two seats on a flight.');
 
   let completedDelta = 0;
   let completedChanges = 0;
@@ -377,19 +382,24 @@ function assertServicingInvariants(order: StoredOrder, fail: (message: string) =
     }
     if (op.status === 'AWAITING_PAYMENT') {
       awaiting += 1;
-      if (order.status !== 'CONFIRMED') fail(`${where}: awaiting payment on a ${order.status} order.`);
+      if (order.status !== 'CONFIRMED')
+        fail(`${where}: awaiting payment on a ${order.status} order.`);
       if (op.adjustment.kind !== 'CHARGE') fail(`${where}: awaiting payment with nothing to pay.`);
-      if (!op.plan || op.plan.baseVersion !== current.version) fail(`${where}: no plan for the current booking.`);
-      if (op.claim && op.claim.status !== 'HELD') fail(`${where}: awaiting payment without its claim.`);
+      if (!op.plan || op.plan.baseVersion !== current.version)
+        fail(`${where}: no plan for the current booking.`);
+      if (op.claim && op.claim.status !== 'HELD')
+        fail(`${where}: awaiting payment without its claim.`);
       if (succeededAttempts.length > 0) fail(`${where}: paid but not applied.`);
     } else {
       if (op.plan) fail(`${where}: a plan left on a finished operation.`);
       if (op.claim?.status === 'HELD') fail(`${where}: a claim left held on a finished operation.`);
     }
     if (op.status === 'COMPLETED') {
-      if (op.newRevision === null || op.completedAt === null) fail(`${where}: completed without its revision.`);
+      if (op.newRevision === null || op.completedAt === null)
+        fail(`${where}: completed without its revision.`);
       const paid = op.adjustment.kind === 'CHARGE' ? 1 : 0;
-      if (succeededAttempts.length !== paid) fail(`${where}: completed without exactly its payment.`);
+      if (succeededAttempts.length !== paid)
+        fail(`${where}: completed without exactly its payment.`);
       if (op.operation !== 'CANCEL_ORDER') {
         completedChanges += 1;
         completedDelta += op.valueDeltaMinor;
@@ -419,7 +429,8 @@ function assertServicingInvariants(order: StoredOrder, fail: (message: string) =
   if (currentTotal !== order.totalMinor + completedDelta) {
     fail('the current items don’t add up to the purchase plus its completed changes.');
   }
-  if (current.version !== 1 + completedChanges) fail('the booking version doesn’t match its changes.');
+  if (current.version !== 1 + completedChanges)
+    fail('the booking version doesn’t match its changes.');
   const cancellations = servicing.filter(
     (op) => op.operation === 'CANCEL_ORDER' && op.status === 'COMPLETED',
   );

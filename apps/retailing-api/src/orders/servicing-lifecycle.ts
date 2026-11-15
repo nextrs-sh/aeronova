@@ -97,9 +97,7 @@ function completeOp(order: StoredOrder, operationId: string, now: number): Store
     ...current,
     status: 'COMPLETED',
     plan: null,
-    claim: current.claim
-      ? { ...current.claim, status: 'COMMITTED', releasedAt: null }
-      : null,
+    claim: current.claim ? { ...current.claim, status: 'COMMITTED', releasedAt: null } : null,
     completedAt: now,
     updatedAt: now,
     newRevision: order.rev + 1,
@@ -108,7 +106,8 @@ function completeOp(order: StoredOrder, operationId: string, now: number): Store
     [APPLIED_EVENT[op.operation], op.summary.slice(0, 200)],
     ['SERVICING_COMPLETED', op.operation],
   ];
-  if (op.adjustment.kind === 'CREDIT') list.push(['CREDIT_ISSUED', String(op.adjustment.amountMinor)]);
+  if (op.adjustment.kind === 'CREDIT')
+    list.push(['CREDIT_ISSUED', String(op.adjustment.amountMinor)]);
   return events(next, now, list);
 }
 
@@ -133,7 +132,10 @@ export function openOperation(
   if (charge !== (firstAttempt !== null)) {
     throw new InvalidTransitionError('A charge needs a payment attempt, and only a charge.');
   }
-  if (firstAttempt && (firstAttempt.status !== 'PROCESSING' || firstAttempt.amountMinor !== op.adjustment.amountMinor)) {
+  if (
+    firstAttempt &&
+    (firstAttempt.status !== 'PROCESSING' || firstAttempt.amountMinor !== op.adjustment.amountMinor)
+  ) {
     throw new InvalidTransitionError('A new attempt must be processing and charge the change.');
   }
   const recorded: StoredServicing = {
@@ -143,19 +145,29 @@ export function openOperation(
   };
   let next: StoredOrder = { ...order, servicing: [...order.servicing, recorded] };
   next = events(next, now, [['SERVICING_REQUESTED', op.operation]]);
-  if (op.claim) next = events(next, now, [['SERVICING_INVENTORY_CLAIMED', `${op.claim.allocations.length} flight(s)`]]);
+  if (op.claim)
+    next = events(next, now, [
+      ['SERVICING_INVENTORY_CLAIMED', `${op.claim.allocations.length} flight(s)`],
+    ]);
   if (firstAttempt) {
     return events(next, now, [['SERVICING_PAYMENT_INITIATED', firstAttempt.method]]);
   }
   if (op.operation === 'CANCEL_ORDER') return next;
   next = completeOp(next, op.operationId, now);
-  return op.refunds.length ? events(next, now, [['REFUND_REQUESTED', String(op.adjustment.amountMinor)]]) : next;
+  return op.refunds.length
+    ? events(next, now, [['REFUND_REQUESTED', String(op.adjustment.amountMinor)]])
+    : next;
 }
 
 /** Cancel a confirmed booking: release its seats and record the cancellation, in one change. */
 export function cancelBooking(order: StoredOrder, op: StoredServicing, now: number): StoredOrder {
-  if (order.status !== 'CONFIRMED' || order.servicing.some((o) => o.status === 'AWAITING_PAYMENT')) {
-    throw new InvalidTransitionError('Only a confirmed booking with no change in progress can be cancelled.');
+  if (
+    order.status !== 'CONFIRMED' ||
+    order.servicing.some((o) => o.status === 'AWAITING_PAYMENT')
+  ) {
+    throw new InvalidTransitionError(
+      'Only a confirmed booking with no change in progress can be cancelled.',
+    );
   }
   let next = openOperation(order, { ...op, status: 'COMPLETED' }, now, null);
   next = setOp(next, op.operationId, (current) => ({
@@ -167,7 +179,9 @@ export function cancelBooking(order: StoredOrder, op: StoredServicing, now: numb
   next = withEvent(setHold(next, 'RELEASED', now, 'cancelled'), 'HOLD_RELEASED', now, 'cancelled');
   next = withEvent(setStatus(next, 'BOOKING_CANCELLED'), 'BOOKING_CANCELLED', now);
   next = { ...next, cancelledAt: now };
-  return op.refunds.length ? withEvent(next, 'REFUND_REQUESTED', now, String(op.adjustment.amountMinor)) : next;
+  return op.refunds.length
+    ? withEvent(next, 'REFUND_REQUESTED', now, String(op.adjustment.amountMinor))
+    : next;
 }
 
 // ---------------------------------------------------------------------------
@@ -204,7 +218,8 @@ export function startServicingAttempt(
   if (op?.status !== 'AWAITING_PAYMENT' || op.claim?.status !== 'HELD') {
     throw new InvalidTransitionError('Only a change waiting for payment can take one.');
   }
-  if (op.attempts.some(isUnresolved)) throw new InvalidTransitionError('A payment is still undecided.');
+  if (op.attempts.some(isUnresolved))
+    throw new InvalidTransitionError('A payment is still undecided.');
   if (op.attempts.length >= MAX_SERVICING_PAYMENT_ATTEMPTS) {
     throw new InvalidTransitionError('No payment attempts are left for this change.');
   }
@@ -268,7 +283,13 @@ export function failServicingPayment(
   next = withEvent(next, 'SERVICING_PAYMENT_FAILED', now);
   const failed = findOperation(next, operationId)!.attempts.filter((a) => a.status === 'FAILED');
   if (failed.length >= MAX_SERVICING_PAYMENT_ATTEMPTS) {
-    next = endOperation(next, operationId, 'FAILED', 'No payment attempts are left for this change.', now);
+    next = endOperation(
+      next,
+      operationId,
+      'FAILED',
+      'No payment attempts are left for this change.',
+      now,
+    );
   }
   return next;
 }
@@ -324,7 +345,12 @@ export function endOperation(
     completedAt: now,
     updatedAt: now,
   }));
-  return withEvent(next, status === 'EXPIRED' ? 'SERVICING_EXPIRED' : 'SERVICING_FAILED', now, op.operation);
+  return withEvent(
+    next,
+    status === 'EXPIRED' ? 'SERVICING_EXPIRED' : 'SERVICING_FAILED',
+    now,
+    op.operation,
+  );
 }
 
 /** The change's claim ended with no payment undecided. */
