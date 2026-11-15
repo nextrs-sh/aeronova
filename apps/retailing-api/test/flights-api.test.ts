@@ -11,7 +11,7 @@ import {
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
-import { loadConfig } from '../src/config';
+import { describeConfigError, loadConfig, loadRuntimeConfig } from '../src/config';
 import { DEFAULT_RETAILING_CONFIG } from '../src/offers/retailing-service';
 import { TODAY } from './helpers';
 
@@ -343,6 +343,9 @@ describe('simulated network conditions', () => {
 });
 
 describe('configuration', () => {
+  /** Production needs an explicit, absolute database path (Milestone 7). */
+  const PRODUCTION = { NODE_ENV: 'production', TALADB_PATH: '/data/velasia.db' } as const;
+
   it('defaults to safe, deterministic settings', () => {
     expect(loadConfig({})).toEqual({
       today: undefined,
@@ -359,17 +362,19 @@ describe('configuration', () => {
       },
       servicing: { claimMs: 10 * 60_000 },
       accounts: { registration: true, sessionMs: 7 * 24 * 60 * 60_000 },
+      sessions: { durability: 'batched', flushMs: 1_000 },
     });
+    expect(loadConfig({ SHOPPING_SESSION_DURABILITY: 'sync' }).sessions.durability).toBe('sync');
+    expect(() => loadConfig({ SHOPPING_SESSION_FLUSH_MS: '10' })).toThrow();
     // Demo registration is closed in production unless explicitly enabled (Milestone 6).
-    expect(loadConfig({ NODE_ENV: 'production' }).accounts.registration).toBe(false);
+    expect(loadConfig({ ...PRODUCTION }).accounts.registration).toBe(false);
     expect(
-      loadConfig({ NODE_ENV: 'production', ACCOUNT_REGISTRATION: 'enabled' }).accounts.registration,
+      loadConfig({ ...PRODUCTION, ACCOUNT_REGISTRATION: 'enabled' }).accounts.registration,
     ).toBe(true);
     // Production never lets a request choose the payment outcome unless explicitly enabled.
-    expect(loadConfig({ NODE_ENV: 'production' }).payments.outcomeControls).toBe(false);
+    expect(loadConfig({ ...PRODUCTION }).payments.outcomeControls).toBe(false);
     expect(
-      loadConfig({ NODE_ENV: 'production', PAYMENT_OUTCOME_CONTROLS: 'enabled' }).payments
-        .outcomeControls,
+      loadConfig({ ...PRODUCTION, PAYMENT_OUTCOME_CONTROLS: 'enabled' }).payments.outcomeControls,
     ).toBe(true);
     expect(loadConfig({ PAYMENT_OUTCOME_CONTROLS: 'disabled' }).payments.outcomeControls).toBe(
       false,
@@ -380,6 +385,42 @@ describe('configuration', () => {
     expect(DEFAULT_RETAILING_CONFIG.offerValidityMs).toBe(15 * 60_000);
     expect(loadConfig({ OFFER_VALIDITY_MINUTES: '5' }).retailing.offerValidityMs).toBe(300_000);
     expect(() => loadConfig({ OFFER_VALIDITY_MINUTES: '0' })).toThrow();
+  });
+
+  it('refuses unsafe production configuration, naming variables but never values', () => {
+    expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(/TALADB_PATH must be set/);
+    expect(() => loadConfig({ NODE_ENV: 'production', TALADB_PATH: 'data/x.db' })).toThrow(
+      /absolute path/,
+    );
+    expect(() => loadConfig({ ...PRODUCTION, RETAILING_API_FAULTS: 'enabled' })).toThrow(
+      /VELASIA_ALLOW_TEST_CONTROLS/,
+    );
+    expect(() => loadConfig({ ...PRODUCTION, RETAILING_API_CRASH_TESTS: 'enabled' })).toThrow(
+      /test-only/,
+    );
+    expect(
+      loadConfig({
+        ...PRODUCTION,
+        RETAILING_API_FAULTS: 'enabled',
+        VELASIA_ALLOW_TEST_CONTROLS: 'enabled',
+      }).faults.enabled,
+    ).toBe(true);
+    // Development keeps its relative default and may enable faults freely.
+    expect(loadConfig({ RETAILING_API_FAULTS: 'enabled' }).faults.enabled).toBe(true);
+    const secret = 'super-secret-metrics-token-value';
+    let message = '';
+    try {
+      loadRuntimeConfig({ METRICS_TOKEN: 'short', LOG_LEVEL: 'loud' });
+    } catch (error) {
+      message = describeConfigError(error);
+    }
+    expect(message).toMatch(/METRICS_TOKEN/);
+    expect(message).toMatch(/LOG_LEVEL/);
+    expect(loadRuntimeConfig({ METRICS_TOKEN: secret }).metricsToken).toBe(secret);
+    expect(describeConfigError(new Error(secret))).not.toContain(secret);
+    expect(loadRuntimeConfig({}).port).toBe(4010);
+    expect(loadRuntimeConfig({ PORT: '8080' }).port).toBe(8080);
+    expect(loadRuntimeConfig({ RETAILING_API_PORT: '4011', PORT: '8080' }).port).toBe(4011);
   });
 
   it('parses overrides and rejects bad values', () => {
