@@ -11,6 +11,7 @@ import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { loadConfig } from '../src/config';
+import { DEFAULT_RETAILING_CONFIG } from '../src/offers/retailing-service';
 import { TODAY } from './helpers';
 
 let app: FastifyInstance;
@@ -346,7 +347,11 @@ describe('configuration', () => {
       today: undefined,
       inventory: { seed: 'aeronova', horizonDays: 120 },
       faults: { enabled: false, latency: undefined, timeoutMs: 15_000 },
+      retailing: DEFAULT_RETAILING_CONFIG,
     });
+    expect(DEFAULT_RETAILING_CONFIG.offerValidityMs).toBe(15 * 60_000);
+    expect(loadConfig({ OFFER_VALIDITY_MINUTES: '5' }).retailing.offerValidityMs).toBe(300_000);
+    expect(() => loadConfig({ OFFER_VALIDITY_MINUTES: '0' })).toThrow();
   });
 
   it('parses overrides and rejects bad values', () => {
@@ -365,10 +370,7 @@ describe('configuration', () => {
     expect(() => loadConfig({ RETAILING_API_FAULTS: 'yes' })).toThrow();
   });
 
-  it('still honours the deprecated pre-rebrand AERONOVA_TODAY, with VELASIA_TODAY winning', () => {
-    expect(loadConfig({ AERONOVA_TODAY: '2027-02-01' }).today).toBe('2027-02-01');
-    expect(loadConfig({ VELASIA_TODAY: '2027-03-01', AERONOVA_TODAY: '2027-02-01' }).today).toBe(
-      '2027-03-01',
-    );
+  it('no longer reads the pre-rebrand AERONOVA_TODAY alias (removed in M3)', () => {
+    expect(loadConfig({ ['AERONOVA' + '_TODAY']: '2027-02-01' }).today).toBeUndefined();
   });
 });
