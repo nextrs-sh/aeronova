@@ -2,4 +2,8 @@ export * from './common';
 export * from './airports';
 export * from './destinations';
 export * from './dates';
+export * from './time';
 export * from './search';
+export * from './network';
+export * from './flights';
+export * from './flight-results';
