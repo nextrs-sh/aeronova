@@ -1,5 +1,21 @@
 import 'server-only';
 import {
+  ancillaryCatalogueResponseSchema,
+  reviewResponseSchema,
+  seatMapResponseSchema,
+  sessionAncillariesResponseSchema,
+  sessionSeatMapResponseSchema,
+  validateBookingResponseSchema,
+  type AncillaryCatalogueResponse,
+  type AncillaryChange,
+  type CompleteStepRequest,
+  type ReviewResponse,
+  type SavePassengersRequest,
+  type SeatMapResponse,
+  type SessionAncillaries,
+  type SessionSeatMapResponse,
+  type UpdateSeatsRequest,
+  type ValidateBookingResponse,
   createSessionResponseSchema,
   fareFamiliesResponseSchema,
   offerPriceCheckResponseSchema,
@@ -90,7 +106,7 @@ interface RequestOptions {
   allowNotFound?: boolean;
   /** Forward test fault-injection hints. Only for uncached, request-time calls. */
   live?: boolean;
-  method?: 'GET' | 'POST' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** JSON request body. */
   body?: unknown;
   /** Shopping session token, sent as a bearer token. */
@@ -331,5 +347,114 @@ export const retailingApi = {
   async deleteSession(id: string, token: string): Promise<void> {
     const path = `/v1/shopping-sessions/${encodeURIComponent(id)}`;
     await getJson(path, shoppingSessionResponseSchema, { method: 'DELETE', token, live: true });
+  },
+
+  // -------------------------------------------------------------------------
+  // Booking steps (Milestone 4). Public reads need no token; everything else is private to
+  // the session and never cached.
+  // -------------------------------------------------------------------------
+
+  async getAncillaryCatalogue(): Promise<AncillaryCatalogueResponse> {
+    return (await getJson('/v1/ancillaries', ancillaryCatalogueResponseSchema))!;
+  },
+
+  /** Public layout and availability. Throws `not-found` for an unknown flight. */
+  async getSeatMap(flightId: string): Promise<SeatMapResponse> {
+    const path = `/v1/flights/${encodeURIComponent(flightId)}/seatmap`;
+    return (await getJson(path, seatMapResponseSchema, { live: true }))!;
+  },
+
+  async getSessionSeatMap(
+    id: string,
+    token: string,
+    flightId: string,
+  ): Promise<SessionSeatMapResponse['data']> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/seatmaps/${encodeURIComponent(flightId)}`;
+    return (await getJson(path, sessionSeatMapResponseSchema, { token, live: true }))!.data;
+  },
+
+  async getSessionAncillaries(id: string, token: string): Promise<SessionAncillaries> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/ancillaries`;
+    return (await getJson(path, sessionAncillariesResponseSchema, { token, live: true }))!.data;
+  },
+
+  async getReview(id: string, token: string): Promise<ReviewResponse['data']> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/review`;
+    return (await getJson(path, reviewResponseSchema, { token, live: true }))!.data;
+  },
+
+  async savePassengers(
+    id: string,
+    token: string,
+    request: SavePassengersRequest,
+  ): Promise<ShoppingSession> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/passengers`;
+    const body = await getJson(path, shoppingSessionResponseSchema, {
+      method: 'PUT',
+      body: request,
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async updateSeats(
+    id: string,
+    token: string,
+    request: UpdateSeatsRequest,
+  ): Promise<ShoppingSession> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/seats`;
+    const body = await getJson(path, shoppingSessionResponseSchema, {
+      method: 'PUT',
+      body: request,
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async updateAncillaries(
+    id: string,
+    token: string,
+    request: { expectedVersion?: number; changes: AncillaryChange[] },
+  ): Promise<ShoppingSession> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/ancillaries`;
+    const body = await getJson(path, shoppingSessionResponseSchema, {
+      method: 'PUT',
+      body: request,
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async completeStep(
+    id: string,
+    token: string,
+    request: CompleteStepRequest,
+  ): Promise<ShoppingSession> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/steps`;
+    const body = await getJson(path, shoppingSessionResponseSchema, {
+      method: 'POST',
+      body: request,
+      token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async validateBooking(
+    id: string,
+    token: string,
+    expectedVersion?: number,
+  ): Promise<ValidateBookingResponse['data']> {
+    const path = `/v1/shopping-sessions/${encodeURIComponent(id)}/validate`;
+    const body = await getJson(path, validateBookingResponseSchema, {
+      method: 'POST',
+      body: expectedVersion === undefined ? {} : { expectedVersion },
+      token,
+      live: true,
+    });
+    return body!.data;
   },
 };

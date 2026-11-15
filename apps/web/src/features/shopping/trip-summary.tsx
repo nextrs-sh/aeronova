@@ -179,6 +179,11 @@ export async function TripSummary({ search, state, airports }: TripSummaryProps)
           <Line label="Taxes and fees">
             {formatMinor(summary.totals.taxesMinor, summary.currency)}
           </Line>
+          {summary.totals.extrasMinor > 0 ? (
+            <Line label="Seats and extras">
+              {formatMinor(summary.totals.extrasMinor, summary.currency)}
+            </Line>
+          ) : null}
           <Line label="Included services">No extra charge</Line>
         </dl>
         <div className="border-t border-line pt-4">
