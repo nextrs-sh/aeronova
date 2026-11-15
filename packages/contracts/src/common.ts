@@ -69,6 +69,24 @@ export const apiErrorCodeSchema = z.enum([
   'INVALID_QUANTITY',
   /** The price changed since the traveller last saw it; they must accept it first. */
   'PRICE_CHANGED',
+  /** Checkout refused: the booking review has issues to resolve first. */
+  'CHECKOUT_NOT_READY',
+  /** Not enough seats are left to hold this booking. */
+  'INVENTORY_UNAVAILABLE',
+  /** An idempotency key was reused for a different request. */
+  'IDEMPOTENCY_CONFLICT',
+  /** No order with this id for this guest. Deliberately the same answer for a wrong guest. */
+  'ORDER_NOT_FOUND',
+  /** The order's seat hold ended before a payment succeeded. */
+  'HOLD_EXPIRED',
+  /** The order can't take a payment in its current state (failed, cancelled). */
+  'ORDER_NOT_PAYABLE',
+  /** The order is already confirmed: nothing was charged again. */
+  'ORDER_ALREADY_CONFIRMED',
+  /** An earlier payment attempt is still undecided: check its status first. */
+  'PAYMENT_IN_PROGRESS',
+  /** This trip was already booked from this shopping session. */
+  'SESSION_ORDERED',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

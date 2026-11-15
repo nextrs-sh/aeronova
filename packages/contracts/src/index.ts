@@ -14,3 +14,4 @@ export * from './travellers';
 export * from './seatmaps';
 export * from './ancillaries';
 export * from './booking';
+export * from './orders';
