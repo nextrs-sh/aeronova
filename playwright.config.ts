@@ -1,12 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
+import { API_PORT, BASE_URL, E2E_TODAY, WEB_PORT } from './tests/e2e/constants';
 
 /*
  * E2E runs against the production build (`pnpm test:e2e` builds first).
  * Dedicated ports keep it independent of a local `pnpm dev` session.
  */
-const WEB_PORT = Number(process.env.E2E_WEB_PORT ?? 3200);
-const API_PORT = Number(process.env.E2E_API_PORT ?? 4210);
-const baseURL = `http://127.0.0.1:${WEB_PORT}`;
+const baseURL = BASE_URL;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -37,6 +36,10 @@ export default defineConfig({
         RETAILING_API_PORT: String(API_PORT),
         RETAILING_API_HOST: '127.0.0.1',
         LOG_LEVEL: 'warn',
+        AERONOVA_TODAY: E2E_TODAY,
+        // Test-only: lets specs simulate failures with the `aeronova-fault` cookie.
+        RETAILING_API_FAULTS: 'enabled',
+        RETAILING_API_FAULT_TIMEOUT_MS: '10000',
       },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
@@ -44,7 +47,12 @@ export default defineConfig({
     {
       command: `pnpm --filter @aeronova/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
       url: baseURL,
-      env: { RETAILING_API_URL: `http://127.0.0.1:${API_PORT}` },
+      env: {
+        RETAILING_API_URL: `http://127.0.0.1:${API_PORT}`,
+        AERONOVA_TODAY: E2E_TODAY,
+        RETAILING_API_FORWARD_FAULTS: 'enabled',
+        RETAILING_API_TIMEOUT_MS: '2500',
+      },
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
     },

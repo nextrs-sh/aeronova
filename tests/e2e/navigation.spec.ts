@@ -1,5 +1,4 @@
-import { expect, test } from '@playwright/test';
-
+import { expect, test } from './helpers';
 test.describe('site navigation', () => {
   test('primary navigation reaches every section', async ({ page }) => {
     await page.goto('/');

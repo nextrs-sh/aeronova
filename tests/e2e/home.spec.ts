@@ -1,6 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
-import { expectNoBrokenImages, trackPageErrors } from './helpers';
+import { expectNoBrokenImages, trackPageErrors, expect, test } from './helpers';
 
 test.describe('homepage', () => {
   test('loads without errors, broken images, or hydration warnings', async ({ page }) => {
