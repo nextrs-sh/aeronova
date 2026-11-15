@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1.10
+#
+# Velasia Airways — reverse proxy (nginx, unprivileged). Milestone 7.
+#
+# Public entry point: forwards to the storefront only (the retailing API is never reachable
+# from here), keeps streaming unbuffered, limits body sizes and request rates, mints request
+# ids, and hides /api/internal/*. TLS is terminated here only in the HTTPS variant documented
+# in docs/DEPLOYMENT.md; the default listens on plain HTTP :8080 for local use.
+
+ARG NGINX_IMAGE=nginxinc/nginx-unprivileged:1.30-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+FROM ${NGINX_IMAGE}
+LABEL org.opencontainers.image.title="velasia-proxy" \
+      org.opencontainers.image.source="https://github.com/nextrs-sh/velasia-airways" \
+      org.opencontainers.image.licenses="MIT"
+ENV NGINX_ENVSUBST_OUTPUT_DIR=/tmp/nginx/conf.d \
+    NGINX_ENVSUBST_FILTER=VELASIA_ \
+    VELASIA_RATE_LIMIT_RPS=50 \
+    VELASIA_RATE_LIMIT_BURST=100 \
+    VELASIA_POST_RATE_LIMIT_RPS=10 \
+    VELASIA_POST_RATE_LIMIT_BURST=30
+# Security updates for the base image's Alpine packages, then back to the unprivileged user.
+USER root
+RUN apk upgrade --no-cache
+USER 101
+COPY docker/proxy/nginx.conf /etc/nginx/nginx.conf
+COPY docker/proxy/templates/ /etc/nginx/templates/
+COPY docker/proxy/05-velasia-dirs.sh /docker-entrypoint.d/05-velasia-dirs.sh
+EXPOSE 8080
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=3 \
+  CMD ["wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/__proxy/health"]
+STOPSIGNAL SIGQUIT

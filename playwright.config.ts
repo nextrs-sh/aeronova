@@ -63,12 +63,19 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: `pnpm --filter @velasia/web exec next start --port ${WEB_PORT} --hostname 127.0.0.1`,
+      // Milestone 7: the standalone server the production image runs (same Next.js server as
+      // `next start`; see apps/web/scripts/copy-standalone-assets.mjs).
+      command: 'node apps/web/.next/standalone/apps/web/server.js',
       url: baseURL,
       env: {
+        PORT: String(WEB_PORT),
+        HOSTNAME: '127.0.0.1',
+        SITE_URL: baseURL,
         RETAILING_API_URL: `http://127.0.0.1:${API_PORT}`,
         VELASIA_TODAY: E2E_TODAY,
         RETAILING_API_FORWARD_FAULTS: 'enabled',
+        // The standalone server runs with NODE_ENV=production: test-only controls need this.
+        VELASIA_ALLOW_TEST_CONTROLS: 'enabled',
         RETAILING_API_TIMEOUT_MS: '2500',
       },
       reuseExistingServer: !process.env.CI,

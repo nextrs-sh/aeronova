@@ -12,10 +12,20 @@
  * for that task to settle before starting the next one: giving up must never let two writers
  * overlap. Tasks only do bounded database work (the payment provider is called outside it).
  */
+/** Milestone 7: optional timing hooks (metrics). They must not throw. */
+export interface QueueObserver {
+  /** Seconds a task waited for the writer. */
+  waited(seconds: number): void;
+  /** Seconds a task held the writer. */
+  ran(seconds: number): void;
+  rejected(reason: 'closed' | 'full' | 'timeout'): void;
+}
+
 export class SerialQueue {
   private tail: Promise<unknown> = Promise.resolve();
   private pending = 0;
   private closed = false;
+  observer?: QueueObserver;
 
   constructor(
     private readonly options: { maxPending: number; taskTimeoutMs: number } = {
@@ -28,11 +38,36 @@ export class SerialQueue {
     return this.pending;
   }
 
+  /** Whether new work is refused (graceful shutdown has begun). */
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
   run<T>(task: () => Promise<T>): Promise<T> {
-    if (this.closed) return Promise.reject(new QueueClosedError());
-    if (this.pending >= this.options.maxPending) return Promise.reject(new QueueFullError());
+    if (this.closed) {
+      this.observer?.rejected('closed');
+      return Promise.reject(new QueueClosedError());
+    }
+    if (this.pending >= this.options.maxPending) {
+      this.observer?.rejected('full');
+      return Promise.reject(new QueueFullError());
+    }
     this.pending += 1;
-    const work = this.tail.then(task);
+    const observer = this.observer;
+    const enqueuedAt = performance.now();
+    const work = this.tail.then(
+      observer
+        ? async () => {
+            const startedAt = performance.now();
+            observer.waited((startedAt - enqueuedAt) / 1000);
+            try {
+              return await task();
+            } finally {
+              observer.ran((performance.now() - startedAt) / 1000);
+            }
+          }
+        : task,
+    );
     // The next task waits for this one to settle, whatever its outcome.
     this.tail = work
       .catch(() => undefined)
@@ -45,7 +80,10 @@ export class SerialQueue {
   private withTimeout<T>(work: Promise<T>): Promise<T> {
     let timer: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
-      timer = setTimeout(() => reject(new QueueTimeoutError()), this.options.taskTimeoutMs);
+      timer = setTimeout(() => {
+        this.observer?.rejected('timeout');
+        reject(new QueueTimeoutError());
+      }, this.options.taskTimeoutMs);
       timer.unref();
     });
     return Promise.race([work, timeout]).finally(() => clearTimeout(timer));

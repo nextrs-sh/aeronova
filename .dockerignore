@@ -1,0 +1,26 @@
+# Milestone 7: what never goes into a build context (and so never into an image).
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/.DS_Store
+.git
+.github
+docs
+benchmarks/**/results
+backups
+playwright-report
+test-results
+blob-report
+# Secrets and local configuration
+**/.env
+**/.env.*
+!.env.example
+!.env.production.example
+# Local databases and backups (passenger data)
+**/data
+**/*.db
+**/*.db.partial
+**/*.db.pre-restore-*

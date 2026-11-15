@@ -17,6 +17,7 @@ import {
   retailingApi,
   type RetailingApiErrorKind,
 } from '@/lib/retailing-api/client';
+import { logUpstreamFailure } from '@/lib/observability';
 
 export const PRICE_CURRENCY = 'PHP';
 
@@ -29,7 +30,7 @@ async function load<T>(label: string, run: () => Promise<T>): Promise<Loaded<T>>
     return { ok: true, data: await run() };
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[flights] ${label}: ${error.message}`);
+    logUpstreamFailure('flights', label, error);
     return {
       ok: false,
       error: error.kind,

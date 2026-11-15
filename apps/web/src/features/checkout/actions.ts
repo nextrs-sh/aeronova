@@ -22,6 +22,7 @@ import {
   readGuestToken,
   writeCheckoutOrderId,
 } from './checkout-cookies';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Checkout Server Actions. Each is a public POST endpoint, so each one:
@@ -70,7 +71,7 @@ const NOT_THIS_BROWSER = failure(
 function fromApiError(error: unknown, action: string): CheckoutActionState {
   if (!(error instanceof RetailingApiError)) throw error;
   // Error codes only: never order ids, tokens, or traveller details.
-  console.error(`[checkout] ${action}: ${error.code ?? error.kind}`);
+  logUpstreamFailure('checkout', action, error);
   switch (error.code) {
     case 'SESSION_EXPIRED':
     case 'SESSION_NOT_FOUND':

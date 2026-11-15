@@ -80,7 +80,10 @@ export function AccountShell({
 
 export function AccountSkeleton() {
   return (
-    <Container className="py-12" aria-busy="true" aria-label="Loading your account">
+    <Container className="py-12" aria-busy="true">
+      <span className="sr-only" role="status">
+        Loading your account…
+      </span>
       <div className="h-64 animate-pulse rounded-[1.5rem] bg-surface-strong motion-reduce:animate-none" />
     </Container>
   );

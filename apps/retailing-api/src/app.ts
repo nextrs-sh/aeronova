@@ -1,13 +1,15 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
+import { requestIdFrom } from '@velasia/observability';
+import Fastify, { LogController, type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { createClock, type Clock } from './clock';
 import {
   DEFAULT_ACCOUNTS_CONFIG,
   DEFAULT_CHECKOUT_CONFIG,
   DEFAULT_PAYMENTS_CONFIG,
   DEFAULT_SERVICING_CONFIG,
+  DEFAULT_SESSIONS_CONFIG,
   type ApiConfig,
 } from './config';
 import { createAccountService, type AccountService } from './accounts/account-service';
@@ -21,6 +23,20 @@ import { RefundSimulator } from './orders/refund-simulator';
 import { accountRoutes } from './routes/accounts';
 import { servicingRoutes } from './routes/servicing';
 import { createServicingService, type ServicingService } from './servicing/servicing-service';
+import { ShoppingSessionRepository } from './db/repositories/shopping-session-repository';
+import { SessionWriter } from './offers/session-persistence';
+import {
+  createApiMetrics,
+  instrumentCollection,
+  instrumentProvider,
+  registerHttpObservability,
+  registerMetricsRoute,
+  registerStateGauges,
+  timedReconcile,
+  type ApiMetrics,
+} from './observability';
+import type { ChargeAnswer } from './orders/payment-simulator';
+import type { RefundAnswer } from './orders/refund-simulator';
 import { openDatabase, type Database } from './db/client';
 import { OrderRepository } from './db/repositories/order-repository';
 import { PaymentProviderRepository } from './db/repositories/payment-provider-repository';
@@ -48,7 +64,7 @@ import { createRetailingService, DEFAULT_RETAILING_CONFIG } from './offers/retai
 import { createCatalog } from './services/catalog';
 import { createFlightService } from './services/flights';
 
-export const API_VERSION = '0.6.0';
+export const API_VERSION = '0.7.0';
 
 /** Hooks for tests: control time and randomness that production takes from the system. */
 export interface TestHooks {
@@ -62,6 +78,17 @@ export interface BuildAppOptions extends FastifyServerOptions {
   /** Defaults are deterministic apart from "today", which follows the system clock unless pinned. */
   config?: Partial<ApiConfig>;
   testHooks?: TestHooks;
+  /** Milestone 7: metrics registry (a private one per app when omitted) and options. */
+  metrics?: ApiMetrics;
+  observability?: { metricsToken?: string; slowRequestMs?: number };
+}
+
+/** Milestone 7: whether the API should receive traffic. */
+export interface Lifecycle {
+  /** TalaDB open, migrations checked, ledger rebuilt, recovery done, sessions restored. */
+  ready: boolean;
+  /** Graceful shutdown has begun: readiness fails while in-flight requests finish. */
+  shuttingDown: boolean;
 }
 
 /** Checkout and order internals, for graceful shutdown, diagnostics, and tests. */
@@ -83,11 +110,17 @@ export interface Persistence {
   /** What startup reconciliation did. */
   recovered: { resolved: number; expired: number; confirmed: number };
   recoveredServicing: { payments: number; refunds: number; resent: number; expired: number };
+  /** Milestone 7: durable shopping sessions. */
+  shoppingSessions: ShoppingSessionRepository;
+  sessionWriter: SessionWriter;
+  restoredSessions: number;
 }
 
 declare module 'fastify' {
   interface FastifyInstance {
     persistence: Persistence;
+    lifecycle: Lifecycle;
+    metrics: ApiMetrics;
   }
 }
 
@@ -101,12 +134,15 @@ const DEFAULT_CONFIG: ApiConfig = {
   payments: DEFAULT_PAYMENTS_CONFIG,
   servicing: DEFAULT_SERVICING_CONFIG,
   accounts: DEFAULT_ACCOUNTS_CONFIG,
+  sessions: DEFAULT_SESSIONS_CONFIG,
 };
 
 /** Build the app without listening, so tests can use `app.inject()`. Await `app.ready()`. */
 export function buildApp({
   config = {},
   testHooks = {},
+  metrics = createApiMetrics(),
+  observability = {},
   ...options
 }: BuildAppOptions = {}): FastifyInstance {
   const settings: ApiConfig = {
@@ -116,8 +152,51 @@ export function buildApp({
     payments: { ...DEFAULT_PAYMENTS_CONFIG, ...config.payments },
     servicing: { ...DEFAULT_SERVICING_CONFIG, ...config.servicing },
     accounts: { ...DEFAULT_ACCOUNTS_CONFIG, ...config.accounts },
+    sessions: { ...DEFAULT_SESSIONS_CONFIG, ...config.sessions },
   };
-  const app = Fastify({ logger: false, ...options });
+  const app = Fastify({
+    logger: false,
+    // Correlation: keep a well-formed `x-request-id` from the proxy or storefront, else mint one.
+    genReqId: (request) => requestIdFrom(request.headers['x-request-id']),
+    // One structured line per request comes from `registerHttpObservability` instead.
+    logController: new LogController({
+      requestIdLogLabel: 'requestId',
+      disableRequestLogging: true,
+    }),
+    ...options,
+  });
+  const lifecycle: Lifecycle = { ready: false, shuttingDown: false };
+  app.decorate('lifecycle', lifecycle);
+  app.decorate('metrics', metrics);
+  registerHttpObservability(app, metrics, {
+    slowRequestMs: observability.slowRequestMs ?? 1_000,
+  });
+  // Changed shopping sessions are durable before a mutating request is answered (Milestone 7).
+  let sessionWriter: SessionWriter | null = null;
+  app.addHook('onSend', async (request, reply, payload) => {
+    // While draining, close each connection after its answer: a kept-alive socket would
+    // otherwise hold `close()` open until its keep-alive timeout.
+    if (lifecycle.shuttingDown) reply.header('connection', 'close');
+    // Only in `sync` mode; `batched` writes behind (see offers/session-persistence.ts).
+    if (!sessionWriter || sessionWriter.durability !== 'sync') return payload;
+    if (request.method === 'GET' || request.method === 'HEAD') return payload;
+    if (sessionWriter.pending === 0) return payload;
+    try {
+      await sessionWriter.flush();
+      return payload;
+    } catch (error) {
+      request.log.error({ err: error }, 'shopping session write failed');
+      reply.code(503).header('cache-control', 'no-store');
+      reply.header('content-type', 'application/json; charset=utf-8');
+      reply.apiErrorCode = 'SERVICE_UNAVAILABLE';
+      return JSON.stringify({
+        error: {
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'We couldn’t save your trip just now. Please try again.',
+        },
+      });
+    }
+  });
 
   const clock = testHooks.clock ?? createClock(settings.today);
   // Seats held by orders; filled from the database before the app is ready.
@@ -140,7 +219,8 @@ export function buildApp({
     sessionMaxMs: settings.retailing.sessionMaxMs,
     holdMs: settings.checkout.holdMs,
   });
-  app.register(healthRoutes, { version: API_VERSION });
+  app.register(healthRoutes, { version: API_VERSION, lifecycle });
+  registerMetricsRoute(app, metrics, { token: observability.metricsToken });
   app.register(airlineRoutes);
   app.register(airportRoutes, { catalog });
   app.register(destinationRoutes, { catalog });
@@ -157,10 +237,17 @@ export function buildApp({
     const tempDir = settings.persistence.path
       ? null
       : mkdtempSync(join(tmpdir(), 'velasia-retailing-'));
-    const database = await openDatabase(settings.persistence.path ?? join(tempDir!, 'velasia.db'));
+    const database = await openDatabase(settings.persistence.path ?? join(tempDir!, 'velasia.db'), {
+      wrap: (collection, name) => instrumentCollection(collection, name, metrics),
+    });
     const orders = new OrderRepository(database.orders);
     const provider = new PaymentProviderRepository(database.provider);
     const queue = new SerialQueue();
+    queue.observer = {
+      waited: (seconds) => metrics.writerWait.observe(seconds),
+      ran: (seconds) => metrics.writerRun.observe(seconds),
+      rejected: (reason) => metrics.writerRejected.inc({ reason }),
+    };
     const store = new OrderStore(orders, ledger, queue, settings.checkout.maxPaymentAttempts);
     // Inventory held by orders comes from durable state only.
     ledger.rebuild(await orders.withActiveHolds());
@@ -170,6 +257,9 @@ export function buildApp({
       pendingResolveMs: settings.payments.pendingResolveMs,
       wallClock: testHooks.wallClock,
     });
+    instrumentProvider(simulator, 'charge', 'payment', metrics, (answer: ChargeAnswer) =>
+      answer.kind === 'answered' ? answer.charge.status : 'TIMEOUT',
+    );
     const orderService = createOrderService({
       store,
       provider: simulator,
@@ -195,6 +285,9 @@ export function buildApp({
       pendingResolveMs: settings.payments.pendingResolveMs,
       wallClock: testHooks.wallClock,
     });
+    instrumentProvider(refundSimulator, 'refund', 'refund', metrics, (answer: RefundAnswer) =>
+      answer.kind === 'answered' ? answer.refund.status : 'TIMEOUT',
+    );
     const servicing = createServicingService({
       store,
       flights,
@@ -223,8 +316,36 @@ export function buildApp({
     });
 
     // Finish what a previous process left undecided, and release holds that ended meanwhile.
-    const recovered = await orderService.reconcile(clock.now());
-    const recoveredServicing = await servicing.reconcile(clock.now());
+    const recovered = await timedReconcile(metrics, 'orders', 'startup', () =>
+      orderService.reconcile(clock.now()),
+    );
+    const recoveredServicing = await timedReconcile(metrics, 'servicing', 'startup', () =>
+      servicing.reconcile(clock.now()),
+    );
+
+    // Milestone 7: shopping sessions survive a restart. Ended ones are purged, the rest restored
+    // into memory, and every later change is written through before it is acknowledged.
+    const shoppingSessions = new ShoppingSessionRepository(database.shoppingSessions);
+    const sessionCutoff = () => clock.now() - retailing.sessionGraceMs;
+    await shoppingSessions.purgeEnded(sessionCutoff());
+    const { sessions: restorable, unreadable } =
+      await shoppingSessions.loadRestorable(sessionCutoff());
+    const restore = retailing.restoreSessions(restorable);
+    const writer = new SessionWriter(shoppingSessions, (id) => retailing.storedSession(id), {
+      ...settings.sessions,
+      observe: (seconds, failed, error) => {
+        metrics.sessionWrites.observe(seconds);
+        if (!failed) return;
+        metrics.sessionWriteFailures.inc();
+        app.log.error({ err: error }, 'shopping session write failed');
+      },
+    });
+    retailing.attachSessionListener(writer);
+    for (const id of restore.dropped) writer.deleted(id);
+    if (restore.dropped.length > 0) await writer.flush();
+    sessionWriter = writer;
+    if (unreadable > 0) app.log.warn({ unreadable }, 'unreadable shopping sessions removed');
+
     app.persistence = {
       database,
       orders,
@@ -241,15 +362,30 @@ export function buildApp({
       travellers,
       recovered,
       recoveredServicing,
+      shoppingSessions,
+      sessionWriter: writer,
+      restoredSessions: restore.restored,
     };
+    registerStateGauges(metrics, {
+      queueDepth: () => queue.size,
+      databasePath: () => database.path,
+      memoryStores: () => retailing.stats(),
+      pendingSessionWrites: () => writer.pending,
+      activeHolds: () => ledger.activeOrders,
+      ready: () => lifecycle.ready && !lifecycle.shuttingDown,
+    });
 
     // Expiry is also checked on every access; the sweep releases holds nobody looks at.
     const sweep = setInterval(() => {
       const now = clock.now();
-      orderService
-        .reconcile(now)
-        .then(() => servicing.reconcile(now))
+      timedReconcile(metrics, 'orders', 'sweep', () => orderService.reconcile(now))
+        .then(() => timedReconcile(metrics, 'servicing', 'sweep', () => servicing.reconcile(now)))
         .then(() => accounts.purgeSessions())
+        .then(() => {
+          retailing.sweepSessions(now);
+          return writer.flush();
+        })
+        .then(() => shoppingSessions.purgeEnded(sessionCutoff()))
         .catch((error: unknown) => {
           app.log.error({ err: error }, 'order sweep failed');
         });
@@ -258,13 +394,16 @@ export function buildApp({
 
     scope.get('/health/ready', async (_request, reply) => {
       const db = await database.health();
+      const ready = db.ok && lifecycle.ready && !lifecycle.shuttingDown;
       return reply
-        .code(db.ok ? 200 : 503)
+        .code(ready ? 200 : 503)
         .header('cache-control', 'no-store')
         .send({
-          status: db.ok ? 'ok' : 'unavailable',
+          status: ready ? 'ok' : lifecycle.shuttingDown ? 'shutting-down' : 'unavailable',
           database: db,
+          schemaVersion: database.schema.schemaVersion,
           checkoutQueue: queue.size,
+          pendingSessionWrites: writer.pending,
         });
     });
     scope.register(checkoutRoutes, { checkout, orders: orderService, retailing });
@@ -276,10 +415,16 @@ export function buildApp({
       maxPaymentAttempts: settings.checkout.maxPaymentAttempts,
     });
     scope.register(accountRoutes, { accounts });
+    lifecycle.ready = true;
 
     scope.addHook('onClose', async () => {
+      lifecycle.ready = false;
       clearInterval(sweep);
+      // No new durable writes; let queued ones reach their (atomic) end.
       await queue.drain();
+      await writer.close().catch((error: unknown) => {
+        app.log.error({ err: error }, 'shopping sessions not saved at shutdown');
+      });
       await database.close();
       if (tempDir) rmSync(tempDir, { recursive: true, force: true });
     });

@@ -107,6 +107,11 @@ const ALLOWED: { file: string; pattern: RegExp; why: string }[] = [
     pattern: /INVENTORY_SEED=aeronova/,
     why: 'stable seed',
   },
+  {
+    file: '.env.production.example',
+    pattern: /INVENTORY_SEED=aeronova/,
+    why: 'stable seed (Milestone 7 production template)',
+  },
   { file: 'apps/retailing-api/src/app.ts', pattern: /seed: 'aeronova'/, why: 'stable seed' },
   {
     file: 'apps/retailing-api/src/config.ts',

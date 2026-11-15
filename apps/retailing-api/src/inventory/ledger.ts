@@ -57,6 +57,11 @@ export class AllocationLedger {
 
   constructor(private readonly now: () => number) {}
 
+  /** Orders with at least one claim on seats (metrics). */
+  get activeOrders(): number {
+    return this.entries.size;
+  }
+
   /** Index (or drop) one order's hold, from its durable state. */
   apply(order: StoredOrder): void {
     this.remove(order.orderId);

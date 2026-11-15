@@ -64,6 +64,9 @@ export const REFUND_PROVIDER_COLLECTION = 'refund_provider';
 export const ACCOUNTS_COLLECTION = 'accounts';
 export const SESSIONS_COLLECTION = 'account_sessions';
 export const TRAVELLERS_COLLECTION = 'saved_travellers';
+/** Milestone 7: shopping sessions (write-through from memory) and schema compatibility. */
+export const SHOPPING_SESSIONS_COLLECTION = 'shopping_sessions';
+export const META_COLLECTION = 'velasia_meta';
 
 const epochMs = z.number().int().nonnegative();
 

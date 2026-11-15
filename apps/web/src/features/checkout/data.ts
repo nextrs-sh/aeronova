@@ -6,6 +6,7 @@ import {
   type RetailingApiErrorKind,
 } from '@/lib/retailing-api/client';
 import { readCheckoutOrderId, readGuestToken } from './checkout-cookies';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Server-side reads for checkout and confirmation. Personal: always `no-store`, outside any
@@ -29,7 +30,7 @@ async function load(orderId: string): Promise<OrderState> {
     return order ? { status: 'ready', order } : { status: 'missing' };
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[checkout] order: ${error.code ?? error.kind}`);
+    logUpstreamFailure('checkout', 'order', error);
     return { status: 'error', error: error.kind };
   }
 }
@@ -50,7 +51,7 @@ export async function loadPaymentOptions(): Promise<PaymentOptions | null> {
     return await retailingApi.getPaymentOptions();
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[checkout] payment options: ${error.kind}`);
+    logUpstreamFailure('checkout', 'payment options', error);
     return null;
   }
 }

@@ -381,13 +381,16 @@ describe('account actions', () => {
   });
 
   it('logs no password, email, or token, and follows only same-site paths', async () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const errors = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const email = `logs.${randomUUID().slice(0, 8)}@example.com`;
     await register(email);
     const token = jar.cookies().get(ACCOUNT_COOKIE)!;
     await run(signInAction, form({ email, password: 'wrong-password-2' }));
     await register(email); // exists
-    const logged = errors.mock.calls.flat().join(' ');
+    const logged = errors.mock.calls.map((call) => String(call[0])).join(' ');
+    errors.mockRestore();
+    // Failed sign-in and duplicate registration were logged — by code only.
+    expect(logged).toMatch(/INVALID_CREDENTIALS/);
     for (const secret of [PASSWORD, 'wrong-password-2', email, token])
       expect(logged).not.toContain(secret);
     expect(safeNext('/manage-booking/ord_x')).toBe('/manage-booking/ord_x');

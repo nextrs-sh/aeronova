@@ -67,7 +67,12 @@ export function BookingRecovery({
 
 export function StepSkeleton() {
   return (
-    <div className="space-y-6" aria-busy="true" aria-label="Loading your booking">
+    // No aria-label here: it is prohibited on a generic <div> (axe `aria-prohibited-attr`, which
+    // failed intermittently whenever axe ran while this streamed fallback was still visible).
+    <div className="space-y-6" aria-busy="true">
+      <span className="sr-only" role="status">
+        Loading your booking…
+      </span>
       <div className="h-8 w-full max-w-md animate-pulse rounded-full bg-surface-strong motion-reduce:animate-none" />
       <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="h-96 animate-pulse rounded-[1.5rem] bg-surface-strong motion-reduce:animate-none" />

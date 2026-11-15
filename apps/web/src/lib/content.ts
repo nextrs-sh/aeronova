@@ -9,6 +9,7 @@ import type {
 } from '@velasia/contracts';
 import { cacheLife, cacheTag } from 'next/cache';
 import { RetailingApiError, retailingApi } from './retailing-api/client';
+import { logUpstreamFailure } from './observability';
 
 /*
  * Cached public content for Server Components.
@@ -88,7 +89,7 @@ export async function loadSection<T>(load: () => Promise<T>): Promise<ContentRes
     return { ok: true, data: await load() };
   } catch (error) {
     if (error instanceof RetailingApiError) {
-      console.error(`[content] ${error.message}`);
+      logUpstreamFailure('content', 'section', error);
       return { ok: false };
     }
     throw error;

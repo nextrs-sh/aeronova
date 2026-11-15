@@ -26,6 +26,7 @@ import {
   safeNext,
   writeAccountToken,
 } from './session';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Demo account Server Actions (Milestone 6). Passwords travel only in the POST body to the
@@ -64,7 +65,7 @@ function fieldErrors(error: z.ZodError): Record<string, string> {
 function fromApiError(error: unknown, action: string): ManageActionState {
   if (!(error instanceof RetailingApiError)) throw error;
   // Codes only: never emails, names, or tokens.
-  console.error(`[account] ${action}: ${error.code ?? error.kind}`);
+  logUpstreamFailure('account', action, error);
   switch (error.code) {
     case 'INVALID_CREDENTIALS':
     case 'ACCOUNT_EXISTS':
@@ -153,7 +154,7 @@ export async function signOutAction(): Promise<void> {
     } catch (error) {
       // The cookie goes regardless; the session expires on its own if the API missed this.
       if (!(error instanceof RetailingApiError)) throw error;
-      console.error(`[account] sign-out: ${error.code ?? error.kind}`);
+      logUpstreamFailure('account', 'sign-out', error);
     }
   }
   await clearAccountToken();

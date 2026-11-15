@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { isAbsolute, resolve } from 'node:path';
 import { ACCOUNT_RULES, isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 import { DEFAULT_RETAILING_CONFIG, type RetailingConfig } from './offers/retailing-service';
@@ -57,7 +57,90 @@ const envSchema = z.object({
   /** Test-only: honour `x-velasia-crash` (needs RETAILING_API_FAULTS=enabled too). */
   RETAILING_API_CRASH_TESTS: z.enum(['enabled', 'disabled']).default('disabled'),
   NODE_ENV: z.string().optional(),
+  // Milestone 7: runtime and operations.
+  RETAILING_API_HOST: z.string().min(1).default('127.0.0.1'),
+  RETAILING_API_PORT: z.coerce.number().int().min(1).max(65_535).optional(),
+  PORT: z.coerce.number().int().min(1).max(65_535).optional(),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+  /** Optional bearer token for `GET /metrics` (the API is internal-only either way). */
+  METRICS_TOKEN: z.string().min(16).max(256).optional(),
+  /** Bound on a graceful shutdown; past it the process exits (TalaDB stays consistent). */
+  SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(10_000),
+  /** Requests slower than this are logged at `warn`. */
+  SLOW_REQUEST_MS: z.coerce.number().int().min(10).max(120_000).default(1_000),
+  /**
+   * Production guard: fault injection and crash tests are refused under `NODE_ENV=production`
+   * unless this is also set, for a deliberately controlled demonstration environment.
+   */
+  VELASIA_ALLOW_TEST_CONTROLS: z.enum(['enabled', 'disabled']).default('disabled'),
+  /** Shopping sessions in TalaDB: `batched` write-behind (default) or `sync` (see M7 report). */
+  SHOPPING_SESSION_DURABILITY: z.enum(['batched', 'sync']).default('batched'),
+  /** `batched`: how often changed sessions are group-committed (the most a crash can lose). */
+  SHOPPING_SESSION_FLUSH_MS: z.coerce.number().int().min(50).max(10_000).default(1_000),
 });
+
+export class ConfigError extends Error {
+  override readonly name = 'ConfigError';
+}
+
+/**
+ * Settings that are safe in development but must be explicit in production. Throws a
+ * `ConfigError` naming the variables (never their values).
+ */
+function checkProduction(parsed: z.output<typeof envSchema>, env: NodeJS.ProcessEnv): void {
+  if (parsed.NODE_ENV !== 'production') return;
+  const problems: string[] = [];
+  if (!env.TALADB_PATH) {
+    problems.push('TALADB_PATH must be set explicitly in production (an absolute path).');
+  } else if (!isAbsolute(env.TALADB_PATH)) {
+    problems.push('TALADB_PATH must be an absolute path in production.');
+  }
+  const testControls =
+    parsed.RETAILING_API_FAULTS === 'enabled' || parsed.RETAILING_API_CRASH_TESTS === 'enabled';
+  if (testControls && parsed.VELASIA_ALLOW_TEST_CONTROLS !== 'enabled') {
+    problems.push(
+      'RETAILING_API_FAULTS / RETAILING_API_CRASH_TESTS are test-only. In production they also need VELASIA_ALLOW_TEST_CONTROLS=enabled (controlled demonstrations only).',
+    );
+  }
+  if (problems.length > 0) throw new ConfigError(problems.join(' '));
+}
+
+/** Process-level settings for `server.ts` (not needed by `buildApp`). */
+export interface RuntimeConfig {
+  host: string;
+  port: number;
+  logLevel: z.output<typeof envSchema>['LOG_LEVEL'];
+  metricsToken?: string;
+  shutdownTimeoutMs: number;
+  slowRequestMs: number;
+  production: boolean;
+}
+
+export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): RuntimeConfig {
+  const parsed = envSchema.parse(
+    Object.fromEntries(Object.entries(env).filter(([, value]) => value !== '')),
+  );
+  return {
+    host: parsed.RETAILING_API_HOST,
+    port: parsed.RETAILING_API_PORT ?? parsed.PORT ?? 4010,
+    logLevel: parsed.LOG_LEVEL,
+    metricsToken: parsed.METRICS_TOKEN,
+    shutdownTimeoutMs: parsed.SHUTDOWN_TIMEOUT_MS,
+    slowRequestMs: parsed.SLOW_REQUEST_MS,
+    production: parsed.NODE_ENV === 'production',
+  };
+}
+
+/** Variable names (never values) behind a configuration failure, for the startup log. */
+export function describeConfigError(error: unknown): string {
+  if (error instanceof ConfigError) return error.message;
+  if (error instanceof z.ZodError) {
+    return `Invalid environment: ${error.issues
+      .map((issue) => `${issue.path.join('.')} (${issue.message})`)
+      .join('; ')}`;
+  }
+  return 'Invalid configuration.';
+}
 
 export interface ApiConfig {
   today?: string;
@@ -82,7 +165,14 @@ export interface ApiConfig {
   /** Milestone 6. */
   servicing: { claimMs: number };
   accounts: { registration: boolean; sessionMs: number };
+  /** Milestone 7: how shopping sessions reach TalaDB. */
+  sessions: { durability: 'batched' | 'sync'; flushMs: number };
 }
+
+export const DEFAULT_SESSIONS_CONFIG: ApiConfig['sessions'] = {
+  durability: 'batched',
+  flushMs: 1_000,
+};
 
 export const DEFAULT_SERVICING_CONFIG: ApiConfig['servicing'] = { claimMs: 10 * 60_000 };
 export const DEFAULT_ACCOUNTS_CONFIG: ApiConfig['accounts'] = {
@@ -108,6 +198,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
   const parsed = envSchema.parse(
     Object.fromEntries(Object.entries(env).filter(([, value]) => value !== '')),
   );
+  checkProduction(parsed, env);
   return {
     today: parsed.VELASIA_TODAY,
     inventory: { seed: parsed.INVENTORY_SEED, horizonDays: parsed.INVENTORY_HORIZON_DAYS },
@@ -136,6 +227,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       timeoutMs: parsed.PAYMENT_PROVIDER_TIMEOUT_MS,
     },
     servicing: { claimMs: parsed.SERVICING_CLAIM_MINUTES * 60_000 },
+    sessions: {
+      durability: parsed.SHOPPING_SESSION_DURABILITY,
+      flushMs: parsed.SHOPPING_SESSION_FLUSH_MS,
+    },
     accounts: {
       ...DEFAULT_ACCOUNTS_CONFIG,
       registration:

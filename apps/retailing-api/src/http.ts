@@ -2,6 +2,13 @@ import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@velasia/contracts';
 import type { FastifyReply } from 'fastify';
 import type { z } from 'zod';
 
+declare module 'fastify' {
+  interface FastifyReply {
+    /** The API error code sent, for metrics (Milestone 7). */
+    apiErrorCode?: ApiErrorCode;
+  }
+}
+
 export function sendError(
   reply: FastifyReply,
   status: number,
@@ -10,6 +17,7 @@ export function sendError(
   issues?: ApiErrorIssue[],
 ): FastifyReply {
   const body: ApiError = { error: { code, message, ...(issues?.length ? { issues } : {}) } };
+  reply.apiErrorCode = code;
   return reply.code(status).header('cache-control', 'no-store').send(body);
 }
 

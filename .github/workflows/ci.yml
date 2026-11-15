@@ -9,24 +9,30 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege: read the code, nothing else. No job needs secrets.
 permissions:
   contents: read
 
+env:
+  CI: 'true'
+  TURBO_TELEMETRY_DISABLED: '1'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+# Every third-party action is pinned to a full commit SHA (tag in the comment), and every
+# scanner runs from an image pinned by digest.
 jobs:
   verify:
     name: Lint, typecheck, test, build, E2E
     runs-on: ubuntu-latest
-    timeout-minutes: 25
-    env:
-      CI: 'true'
-      TURBO_TELEMETRY_DISABLED: '1'
-      NEXT_TELEMETRY_DISABLED: '1'
+    timeout-minutes: 35
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.22.2
           cache: pnpm
@@ -43,7 +49,10 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit and integration tests
+      - name: Dependency audit (production dependencies, high and critical)
+        run: pnpm audit --prod --audit-level high
+
+      - name: Unit, integration, TalaDB persistence, crash, backup/restore tests
         run: pnpm test
 
       - name: Production build
@@ -52,13 +61,153 @@ jobs:
       - name: Install Playwright browser
         run: pnpm exec playwright install --with-deps chromium
 
-      - name: E2E tests
+      - name: E2E tests (standalone production server)
         run: pnpm exec playwright test
 
       - name: Upload Playwright report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  docker:
+    name: Docker images, smoke test, Docker E2E, scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      # The deployment as the Docker journey runs it (pinned "today", demo registration open).
+      COMPOSE_FILE: compose.yaml:compose.e2e.yaml
+      VELASIA_DEPLOYMENT_ID: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+          fetch-depth: 0 # full history for the secret scan
+
+      - name: Secret scan (gitleaks, whole history)
+        run: >
+          docker run --rm -v "$PWD:/repo:ro"
+          zricethezav/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f
+          git /repo --redact --no-banner --exit-code 1
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Record image ids and sizes
+        run: |
+          for image in velasia-api velasia-web velasia-proxy; do
+            docker image inspect "$image:local" \
+              --format "$image {{.Id}} {{.Size}} bytes {{.Architecture}}" | tee -a image-report.txt
+          done
+
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.22.2
+          cache: pnpm
+
+      - name: Install (Playwright and scripts only)
+        run: pnpm install --frozen-lockfile --filter velasia-airways
+
+      - name: Start the stack
+        run: pnpm docker:up
+
+      - name: Container smoke test
+        run: pnpm docker:smoke
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Docker E2E journey (through the proxy, across an API restart)
+        run: pnpm test:docker
+
+      - name: Backup, then verify the live database (API stopped for both)
+        run: |
+          mkdir -p "$RUNNER_TEMP/velasia-backups"
+          sudo chown 1000:1000 "$RUNNER_TEMP/velasia-backups"
+          pnpm docker:backup "$RUNNER_TEMP/velasia-backups"
+          pnpm docker:verify-db | tee verify.json
+          grep -q '"ok": true' verify.json
+          # Backups hold (synthetic) passenger data: never uploaded.
+          sudo rm -rf "$RUNNER_TEMP/velasia-backups"
+
+      - name: Graceful shutdown
+        run: |
+          docker compose stop --timeout 30
+          for service in velasia-api velasia-web; do
+            code=$(docker inspect --format '{{.State.ExitCode}}' "$(docker compose ps -aq "$service")")
+            echo "$service exited $code"
+            # 0 (clean) or 143 (Next.js reports SIGTERM as 128+15 after draining).
+            [ "$code" = 0 ] || [ "$code" = 143 ]
+          done
+          docker compose logs velasia-api | grep -q '"msg":"shutdown complete"'
+
+      - name: Container vulnerability scan (Trivy; fails on fixable critical)
+        run: |
+          for image in velasia-api velasia-web velasia-proxy; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c \
+              image --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed --no-progress \
+              "$image:local" | tee -a trivy-report.txt
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c \
+              image --scanners vuln --severity CRITICAL --ignore-unfixed --exit-code 1 --quiet \
+              "$image:local"
+          done
+
+      - name: Software bill of materials (Syft, SPDX JSON)
+        run: |
+          mkdir -p sbom
+          for image in velasia-api velasia-web velasia-proxy; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              anchore/syft:v1.57.0@sha256:3c70e6d5979364cefdc22b51617a78fd264574d3bd6b4f84a351204147025e2a \
+              "docker:$image:local" -o spdx-json > "sbom/$image.spdx.json"
+          done
+          sha256sum sbom/*.json | tee -a image-report.txt
+
+      - name: Upload image report, scan results, and SBOMs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: docker-release-evidence
+          path: |
+            image-report.txt
+            trivy-report.txt
+            sbom/
+          retention-days: 14
+
+      - name: Container logs on failure (synthetic data only)
+        if: failure()
+        run: docker compose logs --no-color --tail=300
+
+      - name: Upload Docker E2E report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-report-docker
+          path: playwright-report-docker/
+          retention-days: 7
+
+      - name: Tear down
+        if: always()
+        run: docker compose down --volumes
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      # Needs the repository's dependency graph (Settings → Code security). Until an admin
+      # enables it this step reports instead of blocking; `pnpm audit` in `verify` still gates.
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        continue-on-error: true
+        with:
+          fail-on-severity: high

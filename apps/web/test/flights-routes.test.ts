@@ -22,6 +22,7 @@ vi.mock('next/cache', () => ({ cacheLife: () => {}, cacheTag: () => {} }));
 
 let faultCookie: string | undefined;
 vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({
     get: (name: string) =>
       name === 'velasia-fault' && faultCookie ? { value: faultCookie } : undefined,

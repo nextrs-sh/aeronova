@@ -1,0 +1,72 @@
+# Rendered by the nginx image's entrypoint (envsubst) into /tmp/nginx/conf.d at start.
+# Variables: VELASIA_RATE_LIMIT_RPS, VELASIA_RATE_LIMIT_BURST, VELASIA_POST_RATE_LIMIT_RPS,
+# VELASIA_POST_RATE_LIMIT_BURST (see compose.yaml).
+
+# Per-client request rates (edge rate limiting, Milestone 7). Mutations — Server Actions are
+# POSTs — get a tighter limit than page and asset reads.
+limit_req_zone $binary_remote_addr zone=velasia_all:20m rate=${VELASIA_RATE_LIMIT_RPS}r/s;
+map $request_method $velasia_post_key {
+  POST    $binary_remote_addr;
+  default "";
+}
+limit_req_zone $velasia_post_key zone=velasia_posts:20m rate=${VELASIA_POST_RATE_LIMIT_RPS}r/s;
+limit_conn_zone $binary_remote_addr zone=velasia_conn:20m;
+
+upstream velasia_web {
+  zone velasia_web 64k;
+  server velasia-web:3000 resolve;
+  keepalive 32;
+}
+
+server {
+  listen 8080;
+  server_name _;
+
+  # Booking forms are small; Server Actions are limited to 128 KB in Next.js as well.
+  client_max_body_size 256k;
+  client_body_timeout 15s;
+  client_header_timeout 15s;
+  send_timeout 30s;
+
+  limit_req zone=velasia_all burst=${VELASIA_RATE_LIMIT_BURST} nodelay;
+  limit_req zone=velasia_posts burst=${VELASIA_POST_RATE_LIMIT_BURST} nodelay;
+  limit_conn velasia_conn 100;
+  limit_req_status 429;
+  limit_conn_status 429;
+
+  # The proxy's own liveness (container health check); answered here, never proxied.
+  location = /__proxy/health {
+    access_log off;
+    default_type text/plain;
+    return 200 "ok\n";
+  }
+
+  # Health checks and metrics are for the container network only.
+  location ^~ /api/internal/ {
+    return 404;
+  }
+
+  location / {
+    proxy_pass http://velasia_web;
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+
+    # Server Actions compare Origin with Host / X-Forwarded-Host: keep the browser's host:port.
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    # Overwrite (never append to) what the client sent: the storefront rate-limits on this.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Real-IP $remote_addr;
+    # One correlation id per request, minted here; clients can't choose it.
+    proxy_set_header X-Request-ID $request_id;
+    add_header X-Request-ID $request_id always;
+
+    # Streaming (Suspense, Partial Prerendering, RSC): pass bytes through as they arrive.
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 30s;
+    proxy_read_timeout 60s;
+  }
+}

@@ -41,6 +41,7 @@ const jar = vi.hoisted(() => {
 });
 
 vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({
     get: (name: string) => {
       const value = jar.cookies().get(name);

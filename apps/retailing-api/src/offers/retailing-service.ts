@@ -73,7 +73,7 @@ import {
   type StoredBooking,
   type Trip,
 } from '../booking/booking';
-import { BoundedStore } from './bounded-store';
+import { BoundedStore, type StoreListener } from './bounded-store';
 import {
   PRICING_VERSION,
   createOffer,
@@ -1356,7 +1356,10 @@ export function createRetailingService({
     /** Remember that this session's trip was booked (no-op if the session is gone). */
     markOrdered(id: string, orderId: string): void {
       const session = sessions.get(id);
-      if (session) session.orderedOrderId = orderId;
+      if (!session) return;
+      session.orderedOrderId = orderId;
+      // Re-set so the change is written through to TalaDB (Milestone 7).
+      sessions.set(id, session, clock.now());
     },
 
     orderedOrderId(id: string): string | null {
@@ -1389,6 +1392,42 @@ export function createRetailingService({
     stats() {
       return { offers: offers.size, sessions: sessions.size };
     },
+
+    // -----------------------------------------------------------------------
+    // Milestone 7: durable shopping sessions
+    // -----------------------------------------------------------------------
+
+    /** Receive every session write and removal (the TalaDB write-through). */
+    attachSessionListener(listener: StoreListener): void {
+      sessions.listener = listener;
+    },
+
+    /** The stored form of a session, for writing it to TalaDB; `undefined` once it is gone. */
+    storedSession(id: string): StoredSession | undefined {
+      return sessions.get(id);
+    },
+
+    /**
+     * Load sessions read back from TalaDB at startup, newest last, keeping at most
+     * `maxSessions`. Returns how many were restored and which (oldest) ones didn't fit.
+     */
+    restoreSessions(stored: readonly StoredSession[]): { restored: number; dropped: string[] } {
+      const ordered = [...stored].sort((a, b) => a.updatedAt - b.updatedAt);
+      const keep = ordered.slice(-config.maxSessions);
+      for (const session of keep) sessions.restore(session.id, session);
+      return {
+        restored: keep.length,
+        dropped: ordered.slice(0, ordered.length - keep.length).map((session) => session.id),
+      };
+    },
+
+    /** Drop sessions whose expiry and grace period have passed (the periodic sweep). */
+    sweepSessions(now = clock.now()): void {
+      sessions.sweep(now);
+    },
+
+    /** Sessions are remembered this long after expiry, to answer "expired" not "unknown". */
+    sessionGraceMs: EXPIRED_GRACE_MS,
   };
 
   // Every session-scoped operation sees availability as other guests leave it: this session's

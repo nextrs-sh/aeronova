@@ -34,6 +34,7 @@ const jar = vi.hoisted(() => {
 });
 
 vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({
     get: (name: string) => {
       const value = jar.cookies().get(name);
@@ -337,11 +338,14 @@ describe('payment actions', () => {
 
   it('logs error codes only — never personal details, tokens, or order ids', async () => {
     const { orderId, guest } = await checkedOut();
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    // Milestone 7: server logs are JSON lines on stderr (see src/lib/observability.ts).
+    const errors = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     await run(submitDemoPaymentAction, payForm(orderId, { outcome: 'TIMEOUT' }));
     await run(submitDemoPaymentAction, payForm(orderId, { outcome: 'SUCCESS' })); // in progress
-    const logged = errors.mock.calls.flat().join(' ');
+    const logged = errors.mock.calls.map((call) => String(call[0])).join(' ');
+    errors.mockRestore();
     expect(logged).toContain('PAYMENT_IN_PROGRESS');
+    expect(JSON.parse(logged.split('\n')[0]!)).toMatchObject({ level: 50, area: 'checkout' });
     for (const secret of [
       orderId,
       guest,
