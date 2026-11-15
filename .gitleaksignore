@@ -1,0 +1,4 @@
+# Reviewed false positives (Milestone 7). Idempotency keys in a unit test, not secrets:
+# "same-key-0123456789" and "click-key-0123456789" (apps/web/test/checkout.test.ts).
+d6cea92c080a7de965715e452d01550b84b3f0d6:apps/web/test/checkout.test.ts:generic-api-key:180
+d6cea92c080a7de965715e452d01550b84b3f0d6:apps/web/test/checkout.test.ts:generic-api-key:274
