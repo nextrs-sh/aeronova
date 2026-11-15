@@ -77,9 +77,9 @@ export async function PromoFares() {
           </div>
         )}
         <p className="mt-6 max-w-3xl text-xs leading-relaxed text-ink-subtle">
-          *Illustrative one-way Economy fares per person for this demo, shown from the origin noted
-          on each destination page. They are not live offers, include no real availability, and
-          cannot be booked.
+          *Lowest indicative one-way Economy fare per adult, including simulated taxes and charges,
+          from the origin noted on each destination page over the published schedule. These are not
+          offers, are not guaranteed, and cannot be booked.
         </p>
       </Container>
     </section>
