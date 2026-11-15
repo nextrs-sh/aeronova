@@ -35,6 +35,7 @@ import {
   type SelectionStatus,
   type SelectOfferResponse,
   type ShoppingSession,
+  type TravellerBaggage,
 } from '@velasia/contracts';
 import type { Clock } from '../clock';
 import { AIRPORTS } from '../fixtures/airports';
@@ -86,6 +87,7 @@ import {
   type PricingContext,
   type StoredOffer,
 } from './offer-engine';
+import type { AllocationLedger } from '../inventory/ledger';
 import { NO_SCENARIO, type Scenario } from './scenario';
 
 export interface RetailingConfig {
@@ -117,7 +119,7 @@ const EXPIRED_GRACE_MS = 30 * 60_000;
 
 export type RetailingFailure = {
   ok: false;
-  status: 400 | 404 | 409 | 410 | 422;
+  status: 400 | 404 | 409 | 410 | 422 | 503;
   code: ApiErrorCode;
   message: string;
   path?: string;
@@ -161,6 +163,8 @@ export interface StoredSession {
   updatedAt: number;
   expiresAt: number;
   version: number;
+  /** Set once an order from this session is confirmed (Milestone 5): it can't be bought twice. */
+  orderedOrderId: string | null;
 }
 
 const KNOWN_AIRPORTS: ReadonlySet<string> = new Set(AIRPORTS.map((airport) => airport.code));
@@ -178,10 +182,13 @@ export function createRetailingService({
   flights,
   clock,
   config = DEFAULT_RETAILING_CONFIG,
+  ledger,
 }: {
   flights: FlightService;
   clock: Clock;
   config?: RetailingConfig;
+  /** Seats held by orders (Milestone 5): a session never competes with its own pending hold. */
+  ledger?: AllocationLedger;
 }) {
   const offers = new BoundedStore<StoredOffer>({
     maxEntries: config.maxOffers,
@@ -679,7 +686,93 @@ export function createRetailingService({
     };
   }
 
-  return {
+  /**
+   * The final pre-checkout check: re-price the offers, re-check every traveller, seat, and
+   * service against current availability and rules, rebuild the quote, and record the result.
+   * A seat taken meanwhile is released and the traveller is sent back to choose again.
+   */
+  function validateBooking(
+    id: string,
+    token: string | undefined,
+    expectedVersion: number | undefined,
+    scenario?: Scenario,
+  ): RetailingResult<{ session: ShoppingSession; review: BookingReview; quote: Quote }> {
+    const ctx = context(scenario);
+    const found = authorize(id, token, ctx);
+    if (!found.ok) return found;
+    const session = found.value;
+    if (expectedVersion !== undefined && expectedVersion !== session.version) {
+      return fail(
+        409,
+        'SESSION_CONFLICT',
+        'Your trip was changed in another window or tab. We’ve loaded the latest version.',
+      );
+    }
+    if (!tripFor(session, ctx).complete) {
+      return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Choose your flights and fares first.');
+    }
+    const outcomes = repriceSelections(session, ctx, undefined);
+    const trip = tripFor(session, ctx);
+    const { booking } = session;
+    const notices: BookingNotice[] = [];
+    // What is unfinished as the traveller left it, then what this check finds.
+    const issues: ReviewIssue[] = bookingIssues(booking, trip);
+    for (const outcome of outcomes) {
+      if (outcome.outcome === 'REFRESHED') {
+        notices.push({
+          code: 'OFFER_REFRESHED',
+          message: `The price hold on your ${outcome.direction === 'outbound' ? 'departing' : 'return'} flight had ended, so we checked it again: the price is the same.`,
+        });
+      }
+    }
+    for (const notice of reconcileBooking(booking, trip)) {
+      notices.push(notice);
+      const seat = notice.code === 'SEAT_REMOVED' || notice.code === 'SEATS_RESET';
+      issues.push({
+        code: seat ? 'SEAT_INELIGIBLE' : 'ANCILLARY_UNAVAILABLE',
+        step: seat ? 'seats' : 'extras',
+        message: notice.message,
+        direction: null,
+        travellerId: null,
+        flightId: null,
+      });
+      if (seat) booking.progress.seats = false;
+    }
+    // Seats are provisional: check each one is still free right now.
+    booking.seats = booking.seats.filter((assignment) => {
+      const located = findLeg(trip, assignment.flightId);
+      const seat = located && seatOn(seatMapFor(located.segment, session, ctx), assignment.seatId);
+      if (seat?.status === 'AVAILABLE') return true;
+      booking.progress.seats = false;
+      const flight = located
+        ? located.segment.schedule.flightNumber.replace(/^NV/, 'VEL ')
+        : 'your flight';
+      issues.push({
+        code: 'SEAT_UNAVAILABLE',
+        step: 'seats',
+        message: `Seat ${assignment.seatId} on ${flight} is no longer available for ${slotLabel(assignment.travellerId)}. Please choose another seat.`,
+        direction: located?.leg.direction ?? null,
+        travellerId: assignment.travellerId,
+        flightId: assignment.flightId,
+      });
+      return false;
+    });
+    touch(session, ctx.now);
+    const view = toPublicSession(session, ctx);
+    const quote = buildQuote(trip, view.booking.seats, view.booking.ancillaries, ctx.now);
+    booking.review = {
+      status: issues.length === 0 ? 'READY' : 'ACTION_REQUIRED',
+      checkedAt: ctx.now,
+      sessionVersion: session.version,
+      totalMinor: quote.totals.totalMinor,
+      issues,
+    };
+    booking.notices = notices;
+    const latest = toPublicSession(session, ctx);
+    return { ok: true, value: { session: latest, review: latest.booking.review!, quote } };
+  }
+
+  const service = {
     config,
 
     // -----------------------------------------------------------------------
@@ -819,6 +912,7 @@ export function createRetailingService({
         updatedAt: ctx.now,
         expiresAt: ctx.now + config.sessionIdleMs,
         version: 0,
+        orderedOrderId: null,
       };
       sessions.set(session.id, session, ctx.now);
       return { ok: true, value: { session: toPublicSession(session, ctx), token } };
@@ -1227,91 +1321,51 @@ export function createRetailingService({
       };
     },
 
+    validateBooking,
+
     /**
-     * The final pre-checkout check: re-price the offers, re-check every traveller, seat, and
-     * service against current availability and rules, rebuild the quote, and record the result.
-     * A seat taken meanwhile is released and the traveller is sent back to choose again.
+     * The final check before an order is created (Milestone 5): the same validation as
+     * `validateBooking`, plus what the order snapshot needs that the public session doesn't carry.
+     * Synchronous, so the caller can run it inside an inventory exclusion (`AllocationLedger`).
      */
-    validateBooking(
+    checkoutCheck(
       id: string,
       token: string | undefined,
-      expectedVersion: number | undefined,
       scenario?: Scenario,
-    ): RetailingResult<{ session: ShoppingSession; review: BookingReview; quote: Quote }> {
+    ): RetailingResult<{
+      session: ShoppingSession;
+      review: BookingReview;
+      quote: Quote;
+      baggage: TravellerBaggage[];
+      orderedOrderId: string | null;
+    }> {
+      const validated = validateBooking(id, token, undefined, scenario);
+      if (!validated.ok) return validated;
+      const stored = sessions.get(id)!;
       const ctx = context(scenario);
-      const found = authorize(id, token, ctx);
-      if (!found.ok) return found;
-      const session = found.value;
-      if (expectedVersion !== undefined && expectedVersion !== session.version) {
-        return fail(
-          409,
-          'SESSION_CONFLICT',
-          'Your trip was changed in another window or tab. We’ve loaded the latest version.',
-        );
-      }
-      if (!tripFor(session, ctx).complete) {
-        return fail(409, 'BOOKING_STEP_UNAVAILABLE', 'Choose your flights and fares first.');
-      }
-      const outcomes = repriceSelections(session, ctx, undefined);
-      const trip = tripFor(session, ctx);
-      const { booking } = session;
-      const notices: BookingNotice[] = [];
-      // What is unfinished as the traveller left it, then what this check finds.
-      const issues: ReviewIssue[] = bookingIssues(booking, trip);
-      for (const outcome of outcomes) {
-        if (outcome.outcome === 'REFRESHED') {
-          notices.push({
-            code: 'OFFER_REFRESHED',
-            message: `The price hold on your ${outcome.direction === 'outbound' ? 'departing' : 'return'} flight had ended, so we checked it again: the price is the same.`,
-          });
-        }
-      }
-      for (const notice of reconcileBooking(booking, trip)) {
-        notices.push(notice);
-        const seat = notice.code === 'SEAT_REMOVED' || notice.code === 'SEATS_RESET';
-        issues.push({
-          code: seat ? 'SEAT_INELIGIBLE' : 'ANCILLARY_UNAVAILABLE',
-          step: seat ? 'seats' : 'extras',
-          message: notice.message,
-          direction: null,
-          travellerId: null,
-          flightId: null,
-        });
-        if (seat) booking.progress.seats = false;
-      }
-      // Seats are provisional: check each one is still free right now.
-      booking.seats = booking.seats.filter((assignment) => {
-        const located = findLeg(trip, assignment.flightId);
-        const seat =
-          located && seatOn(seatMapFor(located.segment, session, ctx), assignment.seatId);
-        if (seat?.status === 'AVAILABLE') return true;
-        booking.progress.seats = false;
-        const flight = located
-          ? located.segment.schedule.flightNumber.replace(/^NV/, 'VEL ')
-          : 'your flight';
-        issues.push({
-          code: 'SEAT_UNAVAILABLE',
-          step: 'seats',
-          message: `Seat ${assignment.seatId} on ${flight} is no longer available for ${slotLabel(assignment.travellerId)}. Please choose another seat.`,
-          direction: located?.leg.direction ?? null,
-          travellerId: assignment.travellerId,
-          flightId: assignment.flightId,
-        });
-        return false;
-      });
-      touch(session, ctx.now);
-      const view = toPublicSession(session, ctx);
-      const quote = buildQuote(trip, view.booking.seats, view.booking.ancillaries, ctx.now);
-      booking.review = {
-        status: issues.length === 0 ? 'READY' : 'ACTION_REQUIRED',
-        checkedAt: ctx.now,
-        sessionVersion: session.version,
-        totalMinor: quote.totals.totalMinor,
-        issues,
+      return {
+        ok: true,
+        value: {
+          ...validated.value,
+          baggage: baggageAllowances(tripFor(stored, ctx), stored.booking),
+          orderedOrderId: stored.orderedOrderId,
+        },
       };
-      booking.notices = notices;
-      const latest = toPublicSession(session, ctx);
-      return { ok: true, value: { session: latest, review: latest.booking.review!, quote } };
+    },
+
+    /** Remember that this session's trip was booked (no-op if the session is gone). */
+    markOrdered(id: string, orderId: string): void {
+      const session = sessions.get(id);
+      if (session) session.orderedOrderId = orderId;
+    },
+
+    orderedOrderId(id: string): string | null {
+      return sessions.get(id)?.orderedOrderId ?? null;
+    },
+
+    /** The API clock as a request sees it (scenarios shift it). */
+    now(scenario?: Scenario): number {
+      return context(scenario).now;
     },
 
     deleteSession(id: string, token: string | undefined): RetailingResult<null> {
@@ -1329,4 +1383,31 @@ export function createRetailingService({
       return { offers: offers.size, sessions: sessions.size };
     },
   };
+
+  // Every session-scoped operation sees availability as other guests leave it: this session's
+  // own pending checkout hold is excluded, so its own seats never look taken to it.
+  if (ledger) {
+    for (const name of SESSION_SCOPED_METHODS) {
+      const original = service[name] as (...args: unknown[]) => unknown;
+      (service as Record<string, unknown>)[name] = (...args: unknown[]) =>
+        ledger.withExcludedSession(args[0] as string, () => original(...args));
+    }
+  }
+  return service;
 }
+
+/** Methods whose first argument is a shopping session id. */
+const SESSION_SCOPED_METHODS = [
+  'getSession',
+  'select',
+  'reprice',
+  'sessionSeatMap',
+  'sessionAncillaries',
+  'savePassengers',
+  'updateSeats',
+  'updateAncillaries',
+  'completeStep',
+  'review',
+  'validateBooking',
+  'checkoutCheck',
+] as const;

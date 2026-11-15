@@ -73,3 +73,9 @@ export function formatMinorDifference(differenceMinor: number, currency: string)
 export function formatAirlineTime(instant: string): string {
   return toZonedDateTime(new Date(instant), AIRLINE_TIME_ZONE).time;
 }
+
+/** `2026-12-01T02:15:00Z` → `Tue 1 Dec 2026, 10:15` in the airline's time zone (Manila). */
+export function formatAirlineDateTime(instant: string): string {
+  const zoned = toZonedDateTime(new Date(instant), AIRLINE_TIME_ZONE);
+  return `${formatShortDate(zoned.date)} ${zoned.date.slice(0, 4)}, ${zoned.time}`;
+}

@@ -10,9 +10,12 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   // Internal workspace packages ship TypeScript source.
   transpilePackages: ['@velasia/contracts', '@velasia/ui'],
-  // US spelling of the first booking step.
+  // US spelling of the first booking step, and the short checkout URL.
   async redirects() {
-    return [{ source: '/booking/travelers', destination: '/booking/travellers', permanent: true }];
+    return [
+      { source: '/booking/travelers', destination: '/booking/travellers', permanent: true },
+      { source: '/checkout', destination: '/booking/checkout', permanent: false },
+    ];
   },
   images: {
     // All imagery is local (public/images); trim variants to what layouts use.

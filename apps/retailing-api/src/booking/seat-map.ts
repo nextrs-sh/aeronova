@@ -16,7 +16,12 @@ import { SALES_CUTOFF_MINUTES } from '../search/flight-search';
  *   sellable, just not choosable in advance. Every other free seat is `AVAILABLE`.
  * - On a cancelled flight, or once online sales have closed, every free seat is `UNAVAILABLE`.
  *
- * A traveller's choice never changes availability (see `seatmaps.ts` in the contracts).
+ * - Seats held or committed by orders (Milestone 5, `inventory/ledger.ts`) are `OCCUPIED` too:
+ *   a seat an order chose is always shown as taken, and seats held for travellers without a
+ *   chosen seat take the least wanted free seats, so the map still matches the inventory.
+ *
+ * Choosing a seat during the booking steps never changes availability; only an order's hold
+ * does (see `seatmaps.ts` in the contracts).
  */
 
 /** Economy seats held for airport assignment, when at least `HOLD_THRESHOLD` are free. */
@@ -45,8 +50,17 @@ export function buildSeatMap(instance: FlightInstance, options: SeatMapOptions):
     instance.departureUtc < options.now + SALES_CUTOFF_MINUTES * 60_000;
   const unit = (key: string) => hashToUnit(options.seed, `${instance.id}:seat:${key}`);
 
+  const occupancy = instance.ledger?.occupancy(instance.id);
   const cabins = layout.cabins.map((cabin): SeatMapCabin => {
-    const sold = Math.min(cabinInventory(instance, cabin.cabin)?.sold ?? 0, cabin.capacity);
+    // Seats chosen by orders in this cabin, and how many seats orders take here in total.
+    const ordered = new Set(
+      [...(occupancy?.seatIds ?? [])].filter((id) => layout.seats.get(id)?.cabin === cabin.cabin),
+    );
+    const orderedSeats = Math.max(ordered.size, occupancy?.seatsByCabin.get(cabin.cabin) ?? 0);
+    const sold = Math.min(
+      cabinInventory(instance, cabin.cabin)?.sold ?? 0,
+      cabin.capacity - Math.min(orderedSeats, cabin.capacity),
+    );
     const ranked = cabin.rows
       .flatMap((row, rowIndex) =>
         row.seats
@@ -57,14 +71,31 @@ export function buildSeatMap(instance: FlightInstance, options: SeatMapOptions):
           })),
       )
       .sort((a, b) => b.score - a.score || a.seat.id.localeCompare(b.seat.id));
-    const occupied = new Set(ranked.slice(0, sold).map(({ seat }) => seat.id));
+    // Seeded demand takes the most wanted seats that no order has chosen.
+    const occupied = new Set(
+      ranked
+        .filter(({ seat }) => !ordered.has(seat.id))
+        .slice(0, sold)
+        .map(({ seat }) => seat.id),
+    );
+    for (const id of ordered) occupied.add(id);
+    // Travellers held without a chosen seat take the least wanted free seats.
+    let unassigned = orderedSeats - ordered.size;
+    for (const { seat } of [...ranked].reverse()) {
+      if (unassigned <= 0) break;
+      if (occupied.has(seat.id)) continue;
+      occupied.add(seat.id);
+      unassigned -= 1;
+    }
 
     // A scenario seat "taken by someone else" swaps places with the least wanted occupied seat,
     // so the cabin's totals still match the inventory.
     for (const id of options.takenSeatIds ?? []) {
       if (!layout.seats.has(id) || layout.seats.get(id)!.cabin !== cabin.cabin) continue;
       if (occupied.has(id)) continue;
-      const released = [...ranked].reverse().find(({ seat }) => occupied.has(seat.id));
+      const released = [...ranked]
+        .reverse()
+        .find(({ seat }) => occupied.has(seat.id) && !ordered.has(seat.id));
       if (released && !options.takenSeatIds!.has(released.seat.id)) {
         occupied.delete(released.seat.id);
       }

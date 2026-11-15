@@ -7,7 +7,8 @@ export const FAULT_COOKIE = 'velasia-fault';
 const FAULT_VALUE = /^(delay=\d{1,6}|timeout|unavailable|empty|malformed|slow-commit)$/;
 /** Browser cookie a test sets to run a deterministic retailing scenario (offer expiry, …). */
 export const SCENARIO_COOKIE = 'velasia-scenario';
-const SCENARIO_VALUE = /^(offer-expired|price-increase|sold-out|session-expired|seat-taken)$/;
+const SCENARIO_VALUE =
+  /^(offer-expired|price-increase|sold-out|session-expired|seat-taken|hold-expired)$/;
 
 /**
  * Test-only bridge for fault injection: when explicitly enabled, the

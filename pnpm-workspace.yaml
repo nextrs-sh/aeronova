@@ -25,6 +25,9 @@ catalog:
   server-only: 0.0.1
   # API
   fastify: 5.12.8
+  # Persistence (retailing API only)
+  taladb: 0.13.0
+  '@taladb/node': 0.13.0
   tsx: 4.23.15
   # Tooling
   turbo: 2.11.11

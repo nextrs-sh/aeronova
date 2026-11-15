@@ -65,3 +65,16 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Print (booking confirmation): the content and the demo notice, without site navigation. */
+@media print {
+  body > header,
+  body > footer,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+}

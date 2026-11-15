@@ -11,11 +11,16 @@ the airline's retailing API, and three small shared packages.
    │                │                    └▶ features/shopping/data.ts (offers + session,  │
    │                │                         no-store; session from HTTP-only cookie)    │
    │ Server Actions │ features/shopping/actions.ts: select · check/continue · clear      │      apps/retailing-api (Fastify)
+   │                │ features/booking/actions.ts, features/checkout/actions.ts (M4–M5)  │
    ├──POST─────────▶│   └─▶ lib/retailing-api/client.ts (server-only) ──────fetch────────┼──▶   GET /health, /v1/airline, /v1/airports
    │ Axios (fetch)  │ Route Handlers  /api/airports, /api/destinations, /api/flights,     │      GET /v1/destinations[/:slug], /v1/routes, /v1/aircraft
    └──GET /api/*───▶│   /api/flights/[id], /api/routes, /api/aircraft,                    │      GET /v1/flights, /v1/flights/calendar, /v1/flights/:id[/availability]
                     │   /api/fare-families, /api/offers, /api/offers/[offerId]            │      GET /v1/fare-families, /v1/offers, /v1/offers/:id[/price]
                     └──────────────────────────────────────────────────────────────────────┘      POST/GET/DELETE /v1/shopping-sessions[/:id][/select|/reprice]
+                                                                                                         POST /v1/checkout/{validate,prepare}, GET /v1/payments/options
+                                                                                                         GET /v1/orders/:id, /v1/orders/reference/:ref, …/payment-status
+                                                                                                         POST /v1/orders/:id/payment-attempts
+                                                                                                           └─▶ TalaDB file (orders, payment_provider) — API only
                                        ▲                                ▲
                          packages/ui (tokens, primitives)   packages/contracts (Zod)
 ```
@@ -181,7 +186,7 @@ Everything lives in the M3 shopping session (`StoredSession.booking`); there is 
 session mechanism and no cart. The API owns every rule and amount; the storefront renders it.
 
 ```text
-M3 trip summary ──Continue (re-validated)──▶ travellers ──▶ seats ──▶ extras ──▶ review ──▶ checkout preview
+M3 trip summary ──Continue (re-validated)──▶ travellers ──▶ seats ──▶ extras ──▶ review ──▶ checkout (M5)
                                               PUT …/passengers   PUT …/seats   PUT …/ancillaries   POST …/validate
                                                                  POST …/steps {seats}  POST …/steps {extras}
 ```
@@ -252,6 +257,63 @@ traveller form, the seat selector, extras choices, and action buttons. Seat maps
 flights load through `GET /api/flights/[id]/seatmap` (Axios, Fetch adapter). The ancillary
 catalogue is `use cache` (`cacheTag('ancillaries')`); availability, eligibility, and prices
 are never cached.
+
+## Checkout and orders (M5)
+
+The full design, its guarantees and limits, and the test evidence are in
+[MILESTONE-5-REPORT.md](MILESTONE-5-REPORT.md). In short:
+
+```text
+review ──prepareCheckoutAction──▶ POST /v1/checkout/prepare ──▶ [serial queue]
+                                    validate (M4 rules) → snapshot → inventory check → insert order+hold
+checkout ──submitDemoPaymentAction──▶ POST /v1/orders/:id/payment-attempts
+                                    A [queue] record attempt PROCESSING
+                                    B         simulated provider (own durable ledger)
+                                    C [queue] apply: CONFIRMED+COMMITTED | FAILED | PENDING/UNKNOWN
+         ──refreshPaymentStatusAction──▶ GET …/payment-status (ask the provider, apply)
+confirmation ──▶ GET /v1/orders/:id (guest bearer)            startup + sweep: reconcile()
+```
+
+**Persistence.** TalaDB 0.13 (`taladb` + `@taladb/node`), one file owned by one API process
+(TalaDB locks it), opened once at startup in a Fastify plugin, migrated (`db/migrations.ts`),
+index-verified, health-checked (`/health/ready`), and closed on shutdown. The storefront never
+imports it. Two collections: `orders` (one document per order: snapshot, items, seat hold,
+payment attempts, events) and `payment_provider` (the simulated provider's own ledger).
+Documents carry `schemaVersion` and are Zod-validated on every write and read.
+
+**Consistency without multi-document transactions.** TalaDB commits one document atomically
+and nothing larger, so: (1) everything about an order that must change together is in one
+document, written with a compare-and-set on `rev`; (2) every read-then-write on orders or
+inventory runs through one `SerialQueue`; (3) seat inventory is never stored as counters: the
+`AllocationLedger` indexes the holds of durable orders (rebuilt at startup, updated after each
+write) and is subtracted from the seeded demand in `seatsAvailable` and the seat maps. A hold
+counts while `COMMITTED`, `HELD` and unexpired, or `HELD` with an undecided payment; expiry is
+evaluated on every lookup. A session's own pending hold is ignored in that session's own views.
+
+**Lifecycle.** `orders/lifecycle.ts` holds the transition tables (order, hold, payment) and
+`assertOrderInvariants`, run before every write. `PENDING_PAYMENT → CONFIRMED | PAYMENT_FAILED |
+EXPIRED | CANCELLED`; confirming the same payment twice is a no-op.
+
+**Idempotency.** Checkout: `(sessionId, idempotencyKey)` stored on the order with a request
+hash; the same request under another key, or the same trip again, returns the pending order.
+Payments: the key and request hash are stored on the attempt; one undecided attempt at most;
+the provider is idempotent per attempt.
+
+**Recovery.** `reconcile()` (startup, every `ORDER_SWEEP_INTERVAL_MS`, and status checks) asks
+the provider about undecided attempts, applies its record, fails attempts it never received
+(nothing charged), and expires ended holds. It never invents a success.
+
+**Ownership.** The storefront keeps a random guest token in the HTTP-only `velasia-guest`
+cookie (set before the prepare call) and the current order id in `velasia-checkout`. The API
+stores only the token's SHA-256 and checks it on every order read and write; a wrong token is
+the same 404 as an unknown order. References and order ids are not credentials.
+
+**Rendering.** `/booking/checkout` and `/booking/confirmation/[orderId]` are partial
+prerenders: a static shell plus a `<Suspense>` section that reads the order (`no-store`, after
+`connection()`). Client leaves: the checkout start form, payment form, status check, hold timer,
+print button. Idempotency keys are rendered by the server per page render. `NavLink` renders a
+plain link as its Suspense fallback, because `usePathname()` suspends while prerendering a route
+with a request-time param.
 
 ## Search request flow
 
@@ -369,7 +431,6 @@ instance for the build and stops it afterwards.
 
 ## Out of scope so far
 
-There is no database (TalaDB is planned for orders, holds, and shared sessions in M5), no
-authentication, no orders, seat holds, ticketing, or payments, and no NextRS integration (M8).
-Offers and shopping sessions (including traveller details, seats, and extras) are in-memory in
-a single API process.
+No authentication or accounts, no order servicing (change, cancel, refund), no ticketing, and no
+NextRS integration (M8). Offers and shopping sessions are still in memory in one API process;
+orders are durable in TalaDB, owned by that single process. Payments are simulated.

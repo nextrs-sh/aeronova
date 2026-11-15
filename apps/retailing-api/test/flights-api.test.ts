@@ -1,3 +1,4 @@
+import { resolve } from 'node:path';
 import {
   aircraftListResponseSchema,
   apiErrorSchema,
@@ -346,9 +347,29 @@ describe('configuration', () => {
     expect(loadConfig({})).toEqual({
       today: undefined,
       inventory: { seed: 'aeronova', horizonDays: 120 },
-      faults: { enabled: false, latency: undefined, timeoutMs: 15_000 },
+      faults: { enabled: false, latency: undefined, timeoutMs: 15_000, crashTests: false },
       retailing: DEFAULT_RETAILING_CONFIG,
+      persistence: { path: resolve('./data/velasia.db') },
+      checkout: { holdMs: 10 * 60_000, maxPaymentAttempts: 5, sweepIntervalMs: 30_000 },
+      payments: {
+        outcomeControls: true,
+        pendingResolveMs: 5_000,
+        responseDelayMs: 350,
+        timeoutMs: 2_500,
+      },
     });
+    // Production never lets a request choose the payment outcome unless explicitly enabled.
+    expect(loadConfig({ NODE_ENV: 'production' }).payments.outcomeControls).toBe(false);
+    expect(
+      loadConfig({ NODE_ENV: 'production', PAYMENT_OUTCOME_CONTROLS: 'enabled' }).payments
+        .outcomeControls,
+    ).toBe(true);
+    expect(loadConfig({ PAYMENT_OUTCOME_CONTROLS: 'disabled' }).payments.outcomeControls).toBe(
+      false,
+    );
+    expect(loadConfig({ CHECKOUT_HOLD_MINUTES: '3' }).checkout.holdMs).toBe(180_000);
+    expect(() => loadConfig({ CHECKOUT_HOLD_MINUTES: '0' })).toThrow();
+    expect(loadConfig({ TALADB_PATH: '/tmp/x.db' }).persistence.path).toBe('/tmp/x.db');
     expect(DEFAULT_RETAILING_CONFIG.offerValidityMs).toBe(15 * 60_000);
     expect(loadConfig({ OFFER_VALIDITY_MINUTES: '5' }).retailing.offerValidityMs).toBe(300_000);
     expect(() => loadConfig({ OFFER_VALIDITY_MINUTES: '0' })).toThrow();

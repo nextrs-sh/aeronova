@@ -42,7 +42,13 @@ export async function selectFamily(page: Page, family: 'Light' | 'Classic' | 'Fl
 export async function simulateScenario(
   page: Page,
   scenario:
-    'offer-expired' | 'price-increase' | 'sold-out' | 'session-expired' | 'seat-taken' | null,
+    | 'offer-expired'
+    | 'price-increase'
+    | 'sold-out'
+    | 'session-expired'
+    | 'seat-taken'
+    | 'hold-expired'
+    | null,
 ) {
   const context = page.context();
   if (scenario === null) await context.clearCookies({ name: 'velasia-scenario' });

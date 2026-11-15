@@ -21,6 +21,9 @@ catalogs:
     '@tailwindcss/postcss':
       specifier: 4.3.5
       version: 4.3.5
+    '@taladb/node':
+      specifier: 0.13.0
+      version: 0.13.0
     '@testing-library/dom':
       specifier: 10.4.2
       version: 10.4.2
@@ -102,6 +105,9 @@ catalogs:
     tailwindcss:
       specifier: 4.3.5
       version: 4.3.5
+    taladb:
+      specifier: 0.13.0
+      version: 0.13.0
     tsx:
       specifier: 4.23.15
       version: 4.23.15
@@ -155,12 +161,18 @@ importers:
 
   apps/retailing-api:
     dependencies:
+      '@taladb/node':
+        specifier: 'catalog:'
+        version: 0.13.0
       '@velasia/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
       fastify:
         specifier: 'catalog:'
         version: 5.12.8
+      taladb:
+        specifier: 'catalog:'
+        version: 0.13.0(@taladb/node@0.13.0)
       tsx:
         specifier: 'catalog:'
         version: 4.23.15
@@ -1935,6 +1947,10 @@ packages:
 
   '@tailwindcss/postcss@4.3.5':
     resolution: {integrity: sha512-FAV37Tlx9wBiT/hkfgVD0Q6CWsP2oUX3lf28nrfjW8+ksILjnpuFulUqWDfNR4/ZiEHHDRBX8DUTzD1Rys687A==}
+
+  '@taladb/node@0.13.0':
+    resolution: {integrity: sha512-1bnbqRIWwlTWOQke1YDavH/BTjInIT42vxoxdglQRKNlyBDu3nPW9RMPrlRA285A3ZTLuRZzdqvIF6prMSn2dA==}
+    engines: {bun: '>=1.0', node: '>=18'}
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -3833,6 +3849,18 @@ packages:
   tailwindcss@4.3.5:
     resolution: {integrity: sha512-FcQk9BuffmEHJP2G0XmB2SplU1aLTI7j07Kunk+U74Ny+XiWOtzXz9aujFZ/avntw1e2cOv/3PkgzflQ7gX2vQ==}
 
+  taladb@0.13.0:
+    resolution: {integrity: sha512-b3GJIbtNGsS1Hsk80/zM+XF4CwjHQI9NGzcsHabXrSPS2rrqRdBVCdGetM6HC5bO03A4AdZu3YF+XWYUAM9jnQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@taladb/node': 0.13.0
+      '@taladb/web': 0.13.0
+    peerDependenciesMeta:
+      '@taladb/node':
+        optional: true
+      '@taladb/web':
+        optional: true
+
   tapable@2.3.4:
     resolution: {integrity: sha512-NHFiWnAbMJxNNpBwiO7jJVGDuqMxT9/oV8v57RR+fgBQShkJil5inGD8/xWy0hjLyHQyX1tu27QANhlz3KBqCg==}
     engines: {node: '>=6'}
@@ -5545,6 +5573,8 @@ snapshots:
       '@tailwindcss/oxide': 4.3.5
       postcss: 8.5.33
       tailwindcss: 4.3.5
+
+  '@taladb/node@0.13.0': {}
 
   '@testing-library/dom@10.4.2':
     dependencies:
@@ -7662,6 +7692,12 @@ snapshots:
   tailwind-merge@3.7.0: {}
 
   tailwindcss@4.3.5: {}
+
+  taladb@0.13.0(@taladb/node@0.13.0):
+    dependencies:
+      js-yaml: 4.3.2
+    optionalDependencies:
+      '@taladb/node': 0.13.0
 
   tapable@2.3.4: {}
 

@@ -13,11 +13,12 @@ dynamic offers, booking journeys, and modern Offer & Order retailing.
 
 Velasia Airways is a modern, full-service airline headquartered (fictionally) in the
 Philippines, flying across Southeast Asia and to selected international destinations, priced in
-PHP. **Flight search, offer shopping, and the pre-checkout booking flow are built today**:
-compare fare families, choose offers for each direction, enter traveller details, choose seats
-on aircraft-specific seat maps, add baggage, meals, and priority services, and review a
-server-validated pre-checkout quote. Checkout, orders, and payment are planned milestones (see
-[status](#milestone-status)); nothing is ever booked or charged.
+PHP. **Flight search, offer shopping, booking, and checkout are built today**: compare fare
+families, choose offers for each direction, enter traveller details, choose seats on
+aircraft-specific seat maps, add baggage, meals, and priority services, review a
+server-validated quote, then check out with a **simulated** payment into a durable order with a
+booking reference (see [status](#milestone-status)). It is all fictional: no real booking, no
+ticket, and no money ever moves.
 
 > Velasia Airways is not a real airline. It does not operate flights, sell tickets, or process
 > payments, and it holds no IATA or ICAO airline designator: flight numbers such as `VEL 501`
@@ -35,13 +36,14 @@ server-validated pre-checkout quote. Checkout, orders, and payment are planned m
 | 2.5       | Velasia Airways rebrand: identity, design system, API, docs   | ✅ Done        |
 | 3         | Dynamic offers, fare families, shopping sessions              | ✅ Done        |
 | 4         | Traveller details, seat maps, ancillaries, booking review     | ✅ Done        |
-| 5–7       | Checkout & orders → order servicing → accounts & operations   | Planned        |
+| 5         | Checkout, durable orders (TalaDB), simulated payments         | ✅ Done        |
+| 6–7       | Order servicing & accounts → production hardening             | Planned        |
 | 8         | NextRS runtime integration and compatibility                  | Planned (last) |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
 [M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
 [M2.5](docs/MILESTONE-2.5-REBRANDING.md), [M3](docs/MILESTONE-3-REPORT.md),
-[M4](docs/MILESTONE-4-REPORT.md). M1 and M2 were delivered under the project's former
+[M4](docs/MILESTONE-4-REPORT.md), [M5](docs/MILESTONE-5-REPORT.md). M1 and M2 were delivered under the project's former
 working name, AeroNova; their reports are kept as written.
 
 **What works today:** search a fictional network of 21 airports and 54 routes, and get real
@@ -111,17 +113,41 @@ your say. There are also destination guides and help pages. Nothing on the site 
   Business), and priority services (never sold to fares that include them). Saved as you choose.
 - **Review** (`/booking/review`). Itinerary, travellers, seats, extras, and an itemised quote. A
   final check re-prices the offers and re-checks every seat and service; "Continue to checkout"
-  appears only when it passes, and leads to a clearly labelled preview that creates nothing.
+  appears only when it passes.
+
+## Checkout, orders, and simulated payments
+
+- **Checkout** (`/booking/checkout`). Continuing from the review validates everything once more
+  and creates a pending **order** that holds your seats for 10 minutes. The page shows the order
+  itself — travellers, flights, seats, baggage, extras, an itemised price with taxes, and the
+  total in PHP — with a hold timer and a demo payment section. If the price changed, checkout
+  stops and asks you to accept the new total first.
+- **Simulated payments.** Demo Card, Demo Wallet, or Demo Bank Transfer — no card, bank, or
+  wallet details are ever asked for. In development a "simulated outcome" control lets you
+  approve, decline, time out, or leave a payment pending; the API decides the result. A decline
+  can be retried while the seats are held; a timeout or pending payment shows "check status"
+  and is never paid twice.
+- **Durable orders.** Orders live in **TalaDB**, owned by the retailing API: they survive
+  refreshes, new tabs, and API restarts. Seats held or bought by orders really are taken for
+  everyone else; two guests can't buy the last seat, and an expired hold frees its seats.
+- **Confirmation** (`/booking/confirmation/[orderId]`). "Booking confirmed" only once the
+  payment succeeded and the seats were committed, with a booking reference like `VEL-8K4P2Q`,
+  the itinerary, travellers, seats, extras, and total, plus print / save as PDF. It opens only in
+  the browser that made the booking.
+
+The consistency design, recovery protocol, and test evidence are in the
+[M5 report](docs/MILESTONE-5-REPORT.md).
 
 ## Mock retailing API
 
-`apps/retailing-api` is an independent Fastify service with no database: deterministic inventory
-from fixtures, a seeded demand model, offers and shopping sessions in bounded memory. The full
+`apps/retailing-api` is an independent Fastify service: deterministic inventory from fixtures, a
+seeded demand model, offers and shopping sessions in bounded memory, and orders, seat holds, and
+simulated payments in a TalaDB file that only this service opens. The full
 endpoint list is in [ARCHITECTURE.md](docs/ARCHITECTURE.md) and the
 [M3 report](docs/MILESTONE-3-REPORT.md#api-endpoint-changes). For testing, it can simulate
 latency, failures (`x-velasia-fault`, including `slow-commit` for an answer lost after a change),
 and retailing scenarios (`x-velasia-scenario`: `offer-expired`, `price-increase`, `sold-out`,
-`session-expired`, `seat-taken`), all off by default. M4's endpoints are listed in the
+`session-expired`, `seat-taken`, `hold-expired`), all off by default. M4's endpoints are listed in the
 [M4 report](docs/MILESTONE-4-REPORT.md#api-endpoints).
 
 ## Brand
@@ -141,11 +167,11 @@ selective emphasis, and booking screens stay on light, readable surfaces.
 
 Next.js 16.4 (App Router, Cache Components) · React 19 · TypeScript (strict) · Tailwind CSS 4 ·
 Radix UI · Lucide · Zustand · React Hook Form · Zod · Axios (Fetch adapter) · Fastify 5 ·
-Vitest · Playwright · pnpm workspaces · Turborepo
+TalaDB (`taladb`, `@taladb/node`) · Vitest · Playwright · pnpm workspaces · Turborepo
 
 ```text
 apps/web             Next.js storefront
-apps/retailing-api   Fastify mock retailing API (fixtures + deterministic inventory, no database)
+apps/retailing-api   Fastify mock retailing API (deterministic inventory; orders in TalaDB)
 packages/contracts   Shared Zod schemas, types, and pure domain rules
 packages/ui          Design tokens and accessible UI primitives
 packages/config      Shared TypeScript and ESLint configuration
@@ -164,18 +190,33 @@ pnpm install
 pnpm dev          # storefront on http://localhost:3000, API on http://127.0.0.1:4010
 ```
 
-No API keys, paid services, or databases are needed. Configuration is optional; see
+No API keys, paid services, or database servers are needed. Configuration is optional; see
 [`.env.example`](.env.example).
 
-| Command          | What it does                                                       |
-| ---------------- | ------------------------------------------------------------------ |
-| `pnpm dev`       | Run the storefront and the mock API with hot reload                |
-| `pnpm build`     | Production build (starts a temporary local API if none is running) |
-| `pnpm lint`      | ESLint across all packages                                         |
-| `pnpm typecheck` | `tsc --noEmit` across all packages and the E2E suite               |
-| `pnpm test`      | Vitest unit, component, and integration tests                      |
-| `pnpm test:e2e`  | Build, then run Playwright (desktop + mobile) on ports 3200/4210   |
-| `pnpm format`    | Prettier                                                           |
+**Orders database.** The retailing API creates its TalaDB file at
+`apps/retailing-api/data/velasia.db` (gitignored; set `TALADB_PATH` to move it). Only one API
+process may own a file — a second one exits with "in use by another process". Orders are kept
+across restarts; to start empty, stop the API and run
+`pnpm --filter @velasia/retailing-api db:reset --confirm`. Tests and builds use their own
+temporary files.
+
+`@taladb/node` 0.13 ships native binaries for Apple silicon Macs, Linux x64, and Windows x64.
+**Intel Macs** have none yet: build it once from the matching tag
+(`git clone --depth 1 --branch v0.13.0 https://github.com/taladb/taladb && cd taladb &&
+cargo build --release -p taladb-node`), then copy `target/release/libtaladb_node.dylib` to
+`node_modules/.pnpm/@taladb+node@0.13.0/node_modules/@taladb/node/taladb-node.darwin-x64.node`
+(repeat after a fresh install).
+
+| Command                                         | What it does                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------ |
+| `pnpm dev`                                      | Run the storefront and the mock API with hot reload                |
+| `pnpm build`                                    | Production build (starts a temporary local API if none is running) |
+| `pnpm lint`                                     | ESLint across all packages                                         |
+| `pnpm typecheck`                                | `tsc --noEmit` across all packages and the E2E suite               |
+| `pnpm test`                                     | Vitest unit, component, and integration tests                      |
+| `pnpm test:e2e`                                 | Build, then run Playwright (desktop + mobile) on ports 3200/4210   |
+| `pnpm format`                                   | Prettier                                                           |
+| `pnpm --filter @velasia/retailing-api db:reset` | Show (or `--confirm`: delete) the orders database                  |
 
 To try slow responses locally, run the API with `RETAILING_API_LATENCY_MS=300-1200`. Offers stay
 valid for `OFFER_VALIDITY_MINUTES` (default 15). For
@@ -185,6 +226,10 @@ storefront.
 First E2E run: `pnpm exec playwright install chromium`.
 
 ## Screenshots
+
+| Checkout (simulated payment)                       | Booking confirmation                                       |
+| -------------------------------------------------- | ---------------------------------------------------------- |
+| ![Checkout](docs/screenshots/checkout-desktop.jpg) | ![Confirmation](docs/screenshots/confirmation-desktop.jpg) |
 
 | Seat selection (A321neo)                                      | Booking review                                                 |
 | ------------------------------------------------------------- | -------------------------------------------------------------- |

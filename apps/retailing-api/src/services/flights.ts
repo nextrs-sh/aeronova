@@ -16,6 +16,7 @@ import {
 import type { Clock } from '../clock';
 import { AIRCRAFT, AIRCRAFT_BY_CODE } from '../fixtures/aircraft';
 import { Inventory, cabinInventory, seatsAvailable } from '../inventory/inventory';
+import type { AllocationLedger } from '../inventory/ledger';
 import { PRICING_CURRENCY, priceItinerary } from '../pricing/pricing';
 import { fareCalendar } from '../search/calendar';
 import { SALES_CUTOFF_MINUTES, searchLeg } from '../search/flight-search';
@@ -26,6 +27,8 @@ export interface FlightServiceOptions {
   clock: Clock;
   seed: string;
   horizonDays: number;
+  /** Seats taken by orders; see `inventory/ledger.ts`. */
+  ledger?: AllocationLedger;
 }
 
 /** Minimum time between the outbound landing and the inbound departing on a round trip. */
@@ -45,14 +48,14 @@ export type FlightService = ReturnType<typeof createFlightService>;
  * is generated once per reference date (at startup, and again only when the
  * airline's calendar day changes) and reused by every request.
  */
-export function createFlightService({ clock, seed, horizonDays }: FlightServiceOptions) {
+export function createFlightService({ clock, seed, horizonDays, ledger }: FlightServiceOptions) {
   let inventory: Inventory | undefined;
   const lowestFareCache = new Map<string, number | null>();
 
   function current(): Inventory {
     const today = clock.today();
     if (inventory?.referenceDate !== today) {
-      inventory = new Inventory({ referenceDate: today, seed, horizonDays });
+      inventory = new Inventory({ referenceDate: today, seed, horizonDays, ledger });
     }
     return inventory;
   }
