@@ -3,17 +3,19 @@ import {
   apiErrorSchema,
   destinationListResponseSchema,
   destinationResponseSchema,
+  flightSearchResponseSchema,
   healthResponseSchema,
 } from '@aeronova/contracts';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildApp } from '../src/app';
 import { AIRPORTS } from '../src/fixtures/airports';
-import { DESTINATIONS } from '../src/fixtures/destinations';
+import { DESTINATION_CONTENT } from '../src/fixtures/destinations';
+import { TODAY } from './helpers';
 
 let app: FastifyInstance;
 beforeAll(async () => {
-  app = buildApp();
+  app = buildApp({ config: { today: TODAY } });
   await app.ready();
 });
 afterAll(() => app.close());
@@ -112,30 +114,50 @@ describe('fixture integrity', () => {
   const airportCodes = new Set(AIRPORTS.map((a) => a.code));
 
   it('has unique slugs and airport codes', () => {
-    expect(new Set(DESTINATIONS.map((d) => d.slug)).size).toBe(DESTINATIONS.length);
+    expect(new Set(DESTINATION_CONTENT.map((d) => d.slug)).size).toBe(DESTINATION_CONTENT.length);
     expect(airportCodes.size).toBe(AIRPORTS.length);
   });
 
-  it('only references airports that exist', () => {
-    for (const destination of DESTINATIONS) {
+  it('derives destination routes and fares from the network', async () => {
+    const { data } = destinationListResponseSchema.parse((await get('/v1/destinations')).json());
+    for (const destination of data) {
       for (const code of destination.airportCodes) expect(airportCodes).toContain(code);
+      expect(destination.routes.length, destination.slug).toBeGreaterThan(0);
       for (const route of destination.routes) {
         expect(airportCodes).toContain(route.origin);
         expect(destination.airportCodes).toContain(route.destination);
         expect(route.origin).not.toBe(route.destination);
       }
-      if (destination.illustrativeFare) {
-        expect(destination.illustrativeFare.kind).toBe('illustrative');
-        expect(destination.illustrativeFare.currency).toBe('PHP');
-        expect(destination.routes.map((r) => r.origin)).toContain(
-          destination.illustrativeFare.origin,
-        );
-      }
+      const fare = destination.illustrativeFare!;
+      expect(fare.kind).toBe('illustrative');
+      expect(fare.currency).toBe('PHP');
+      expect(destination.routes.map((r) => r.origin)).toContain(fare.origin);
     }
   });
 
+  it('quotes "from" fares that search can actually find', async () => {
+    const { data } = destinationResponseSchema.parse(
+      (await get('/v1/destinations/singapore')).json(),
+    );
+    const fare = data.illustrativeFare!;
+    let lowest = Number.POSITIVE_INFINITY;
+    for (let day = 0; day < 120; day += 1) {
+      const date = new Date(Date.parse(`${TODAY}T00:00:00Z`) + day * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const body = flightSearchResponseSchema.parse(
+        (
+          await get(`/v1/flights?from=${fare.origin}&to=SIN&departureDate=${date}&maxStops=0`)
+        ).json(),
+      );
+      const price = body.data.legs[0]!.summary.lowestPerAdultMinor;
+      if (price !== null) lowest = Math.min(lowest, price);
+    }
+    expect(fare.amount).toBe(Math.floor(lowest / 100));
+  });
+
   it('links airports to destinations that exist', () => {
-    const slugs = new Set(DESTINATIONS.map((d) => d.slug));
+    const slugs = new Set(DESTINATION_CONTENT.map((d) => d.slug));
     for (const airport of AIRPORTS) {
       if (airport.destinationSlug) expect(slugs).toContain(airport.destinationSlug);
     }

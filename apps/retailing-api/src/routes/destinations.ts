@@ -6,9 +6,12 @@ import {
 } from '@aeronova/contracts';
 import type { FastifyPluginAsync } from 'fastify';
 import { parseInput, sendError } from '../http';
-import { catalog } from '../services/catalog';
+import type { Catalog } from '../services/catalog';
 
-export const destinationRoutes: FastifyPluginAsync = async (app) => {
+export const destinationRoutes: FastifyPluginAsync<{ catalog: Catalog }> = async (
+  app,
+  { catalog },
+) => {
   app.get('/v1/destinations', async (request, reply) => {
     const query = parseInput(destinationListQuerySchema, request.query, reply);
     if (!query) return reply;
