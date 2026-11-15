@@ -54,7 +54,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${textFont.variable} ${headingFont.variable}`}>
+    // Browser extensions (password managers, passkey bridges) add attributes to <html> before
+    // React hydrates. This silences only this element's own attributes, not its children.
+    <html
+      lang="en"
+      className={`${textFont.variable} ${headingFont.variable}`}
+      suppressHydrationWarning
+    >
       <body className="flex min-h-dvh flex-col">
         <a
           href="#main"

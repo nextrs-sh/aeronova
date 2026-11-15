@@ -1,5 +1,17 @@
 import 'server-only';
 import {
+  checkoutValidateResponseSchema,
+  orderResponseSchema,
+  paymentOptionsResponseSchema,
+  paymentResultResponseSchema,
+  prepareCheckoutResponseSchema,
+  type CheckoutValidation,
+  type CreatePaymentAttemptRequest,
+  type Order,
+  type PaymentOptions,
+  type PaymentResult,
+  type PrepareCheckoutRequest,
+  type PrepareCheckoutResponse,
   ancillaryCatalogueResponseSchema,
   reviewResponseSchema,
   seatMapResponseSchema,
@@ -109,14 +121,16 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
   /** JSON request body. */
   body?: unknown;
-  /** Shopping session token, sent as a bearer token. */
+  /** Shopping session token or guest token, sent as a bearer token. */
   token?: string;
+  /** Guest token for checkout, sent as `x-velasia-guest`. */
+  guest?: string;
 }
 
 async function getJson<T extends z.ZodType>(
   path: string,
   schema: T,
-  { allowNotFound = false, live = false, method = 'GET', body, token }: RequestOptions = {},
+  { allowNotFound = false, live = false, method = 'GET', body, token, guest }: RequestOptions = {},
 ): Promise<z.output<T> | null> {
   const env = getServerEnv();
   const url = new URL(path, env.RETAILING_API_URL);
@@ -128,6 +142,7 @@ async function getJson<T extends z.ZodType>(
         accept: 'application/json',
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(token ? { authorization: `Bearer ${token}` } : {}),
+        ...(guest ? { 'x-velasia-guest': guest } : {}),
         ...(live ? await faultHeaders() : {}),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
@@ -453,6 +468,78 @@ export const retailingApi = {
       method: 'POST',
       body: expectedVersion === undefined ? {} : { expectedVersion },
       token,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  // -------------------------------------------------------------------------
+  // Checkout and orders (Milestone 5). Orders are private to the guest token.
+  // -------------------------------------------------------------------------
+
+  async getPaymentOptions(): Promise<PaymentOptions> {
+    const body = await getJson('/v1/payments/options', paymentOptionsResponseSchema);
+    return body!.data;
+  },
+
+  async validateCheckout(
+    sessionId: string,
+    sessionToken: string,
+    acceptedTotalMinor?: number,
+  ): Promise<CheckoutValidation> {
+    const body = await getJson('/v1/checkout/validate', checkoutValidateResponseSchema, {
+      method: 'POST',
+      body: { sessionId, ...(acceptedTotalMinor === undefined ? {} : { acceptedTotalMinor }) },
+      token: sessionToken,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async prepareCheckout(
+    request: PrepareCheckoutRequest,
+    sessionToken: string,
+    guestToken: string,
+  ): Promise<PrepareCheckoutResponse['data']> {
+    const body = await getJson('/v1/checkout/prepare', prepareCheckoutResponseSchema, {
+      method: 'POST',
+      body: request,
+      token: sessionToken,
+      guest: guestToken,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  /** The guest's order, or `null` when it doesn't exist or isn't theirs (indistinguishable). */
+  async getOrder(orderId: string, guestToken: string): Promise<Order | null> {
+    const body = await getJson(`/v1/orders/${encodeURIComponent(orderId)}`, orderResponseSchema, {
+      token: guestToken,
+      allowNotFound: true,
+      live: true,
+    });
+    return body?.data ?? null;
+  },
+
+  async createPaymentAttempt(
+    orderId: string,
+    guestToken: string,
+    request: CreatePaymentAttemptRequest,
+  ): Promise<PaymentResult> {
+    const path = `/v1/orders/${encodeURIComponent(orderId)}/payment-attempts`;
+    const body = await getJson(path, paymentResultResponseSchema, {
+      method: 'POST',
+      body: request,
+      token: guestToken,
+      live: true,
+    });
+    return body!.data;
+  },
+
+  async getPaymentStatus(orderId: string, guestToken: string): Promise<PaymentResult> {
+    const path = `/v1/orders/${encodeURIComponent(orderId)}/payment-status`;
+    const body = await getJson(path, paymentResultResponseSchema, {
+      token: guestToken,
       live: true,
     });
     return body!.data;

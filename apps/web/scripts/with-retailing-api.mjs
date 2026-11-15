@@ -8,6 +8,9 @@
  * of the command and stopped afterwards.
  */
 import { spawn } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 const apiUrl = process.env.RETAILING_API_URL ?? 'http://127.0.0.1:4010';
 const [command, ...args] = process.argv.slice(2);
@@ -26,6 +29,7 @@ async function isHealthy() {
 }
 
 let api;
+let dataDir;
 if (!(await isHealthy())) {
   const { hostname, port } = new URL(apiUrl);
   if (!['127.0.0.1', 'localhost'].includes(hostname)) {
@@ -33,6 +37,9 @@ if (!(await isHealthy())) {
     process.exit(1);
   }
   console.warn(`[with-retailing-api] starting a local retailing API on ${apiUrl}`);
+  // A throwaway orders database: the build reads only public data and must never touch (or be
+  // blocked by the lock on) a developer's own database.
+  dataDir = mkdtempSync(join(tmpdir(), 'velasia-build-api-'));
   api = spawn('pnpm', ['--filter', '@velasia/retailing-api', 'start'], {
     stdio: 'inherit',
     env: {
@@ -40,6 +47,7 @@ if (!(await isHealthy())) {
       RETAILING_API_HOST: hostname,
       RETAILING_API_PORT: port || '80',
       LOG_LEVEL: 'warn',
+      TALADB_PATH: join(dataDir, 'velasia.db'),
     },
   });
   const deadline = Date.now() + 30_000;
@@ -57,7 +65,10 @@ const child = spawn(command, args, {
   stdio: 'inherit',
   env: { ...process.env, RETAILING_API_URL: apiUrl },
 });
-const stopApi = () => api?.kill('SIGTERM');
+const stopApi = () => {
+  api?.kill('SIGTERM');
+  if (dataDir) rmSync(dataDir, { recursive: true, force: true });
+};
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.once(signal, () => {
     child.kill(signal);

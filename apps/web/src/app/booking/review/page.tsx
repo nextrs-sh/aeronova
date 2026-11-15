@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import {
   CABIN_LABELS,
   SEAT_CATEGORY_LABELS,
@@ -18,14 +19,7 @@ import {
 import { Badge } from '@velasia/ui/badge';
 import { Button } from '@velasia/ui/button';
 import { Container } from '@velasia/ui/container';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  CheckCircle2,
-  Pencil,
-  ShieldCheck,
-} from 'lucide-react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Pencil, ShieldCheck } from 'lucide-react';
 import type { Metadata, Route } from 'next';
 import Link from 'next/link';
 import { connection } from 'next/server';
@@ -34,6 +28,7 @@ import { BookingFrame } from '@/features/booking/booking-frame';
 import { loadBookingStep, loadReview } from '@/features/booking/data';
 import { BookingRecovery, StepSkeleton } from '@/features/booking/recovery';
 import { AcceptPriceForm, ReviewCheckForm } from '@/features/booking/review-actions';
+import { CheckoutStartForm } from '@/features/checkout/checkout-start-form';
 import { StepHeader } from '@/features/booking/step-header';
 import {
   STEP_HREF,
@@ -105,20 +100,32 @@ async function ReviewStep() {
       <SeatsSection session={session} />
       <ExtrasSection session={session} quote={review.data.quote} />
       <PriceSection quote={review.data.quote} />
-      <div className="flex flex-col-reverse gap-4 border-t border-line pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col-reverse gap-4 border-t border-line pt-6 sm:flex-row sm:items-start sm:justify-between">
         <Button asChild variant="outline">
           <Link href={STEP_HREF.extras}>
             <ArrowLeft aria-hidden="true" />
             Extras
           </Link>
         </Button>
-        <CheckoutCta ready={review.data.readiness.status === 'READY'} />
+        <CheckoutCta
+          ready={review.data.readiness.status === 'READY'}
+          version={session.version}
+          totalMinor={review.data.quote.totals.totalMinor}
+        />
       </div>
     </BookingFrame>
   );
 }
 
-function CheckoutCta({ ready }: { ready: boolean }) {
+function CheckoutCta({
+  ready,
+  version,
+  totalMinor,
+}: {
+  ready: boolean;
+  version: number;
+  totalMinor: number;
+}) {
   if (!ready) {
     return (
       <p className="text-sm text-ink-muted sm:text-right" data-testid="checkout-unavailable">
@@ -126,13 +133,9 @@ function CheckoutCta({ ready }: { ready: boolean }) {
       </p>
     );
   }
+  // The API checks everything once more, holds the seats, and creates the pending order.
   return (
-    <Button asChild size="lg">
-      <Link href={STEP_HREF.checkout} data-testid="continue-checkout">
-        Continue to checkout
-        <ArrowRight aria-hidden="true" />
-      </Link>
-    </Button>
+    <CheckoutStartForm version={version} totalMinor={totalMinor} idempotencyKey={randomUUID()} />
   );
 }
 
