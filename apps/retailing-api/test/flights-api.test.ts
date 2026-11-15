@@ -357,7 +357,14 @@ describe('configuration', () => {
         responseDelayMs: 350,
         timeoutMs: 2_500,
       },
+      servicing: { claimMs: 10 * 60_000 },
+      accounts: { registration: true, sessionMs: 7 * 24 * 60 * 60_000 },
     });
+    // Demo registration is closed in production unless explicitly enabled (Milestone 6).
+    expect(loadConfig({ NODE_ENV: 'production' }).accounts.registration).toBe(false);
+    expect(
+      loadConfig({ NODE_ENV: 'production', ACCOUNT_REGISTRATION: 'enabled' }).accounts.registration,
+    ).toBe(true);
     // Production never lets a request choose the payment outcome unless explicitly enabled.
     expect(loadConfig({ NODE_ENV: 'production' }).payments.outcomeControls).toBe(false);
     expect(

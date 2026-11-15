@@ -47,18 +47,20 @@ const started = (order = sampleOrder(), n = 1) => {
 };
 
 describe('order lifecycle: transition tables', () => {
-  it('only a pending order can change state; every other state is final', () => {
+  it('a pending order settles once; a confirmed one can only be cancelled (M6); the rest is final', () => {
     expect(ORDER_TRANSITIONS.PENDING_PAYMENT).toEqual([
       'CONFIRMED',
       'PAYMENT_FAILED',
       'EXPIRED',
       'CANCELLED',
     ]);
-    for (const state of ['CONFIRMED', 'PAYMENT_FAILED', 'EXPIRED', 'CANCELLED'] as const) {
+    expect(ORDER_TRANSITIONS.CONFIRMED).toEqual(['BOOKING_CANCELLED']);
+    for (const state of ['PAYMENT_FAILED', 'EXPIRED', 'CANCELLED', 'BOOKING_CANCELLED'] as const) {
       expect(ORDER_TRANSITIONS[state]).toEqual([]);
     }
     expect(HOLD_TRANSITIONS.HELD).toEqual(['COMMITTED', 'RELEASED', 'EXPIRED']);
-    expect(HOLD_TRANSITIONS.COMMITTED).toEqual([]);
+    // A cancelled booking gives its committed seats back; nothing else leaves COMMITTED.
+    expect(HOLD_TRANSITIONS.COMMITTED).toEqual(['RELEASED']);
     expect(PAYMENT_TRANSITIONS.SUCCEEDED).toEqual([]);
     expect(PAYMENT_TRANSITIONS.FAILED).toEqual([]);
     expect(PAYMENT_TRANSITIONS.PENDING).not.toContain('UNKNOWN');
@@ -186,7 +188,7 @@ describe('order invariants', () => {
         { ...confirmed, attempts: [...confirmed.attempts, confirmed.attempts[0]!] },
         MAX,
       ),
-    ).toThrow(/exactly one successful payment/);
+    ).toThrow(/exactly one successful checkout payment/);
     expect(() => assertOrderInvariants({ ...paying, events: paying.events.slice(1) }, MAX)).toThrow(
       /unbroken sequence/,
     );
@@ -220,10 +222,10 @@ describe('public order view', () => {
 
   it('checks ownership in constant time against the stored hash only', () => {
     const order = sampleOrder();
-    expect(ownsOrder(FIXTURE_GUEST_TOKEN, order.ownerTokenHash)).toBe(true);
-    expect(ownsOrder('H'.repeat(43), order.ownerTokenHash)).toBe(false);
-    expect(ownsOrder(undefined, order.ownerTokenHash)).toBe(false);
-    expect(ownsOrder(order.ownerTokenHash, order.ownerTokenHash)).toBe(false);
+    expect(ownsOrder(FIXTURE_GUEST_TOKEN, order.ownerTokenHash!)).toBe(true);
+    expect(ownsOrder('H'.repeat(43), order.ownerTokenHash!)).toBe(false);
+    expect(ownsOrder(undefined, order.ownerTokenHash!)).toBe(false);
+    expect(ownsOrder(order.ownerTokenHash!, order.ownerTokenHash!)).toBe(false);
   });
 });
 
