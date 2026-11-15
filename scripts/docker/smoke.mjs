@@ -99,7 +99,8 @@ await check('the retailing API publishes no port', async () => {
   } catch {
     published = '';
   }
-  assert(!/\d+$/.test(published), `published at ${published}`);
+  // Unpublished: empty output or `:0` ("invalid IP:0"); published: `<address>:<port>` with a real port.
+  assert(!/:([1-9]\d*)$/.test(published), `published at ${published}`);
 });
 await check('all three containers are healthy', async () => {
   const lines = compose('ps', '--format', 'json').split('\n').filter(Boolean);
