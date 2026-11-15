@@ -9,6 +9,7 @@ import { readGuestToken } from '@/features/checkout/checkout-cookies';
 import { getServerEnv } from '@/lib/env';
 import { RetailingApiError } from '@/lib/retailing-api/client';
 import { accountApi, type Credentials } from '@/lib/retailing-api/servicing';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * The demo account session (Milestone 6): an opaque 256-bit token in the HTTP-only
@@ -53,7 +54,7 @@ export const currentAccount = cache(async () => {
     return me ? { ...me, token } : null;
   } catch (error) {
     if (error instanceof RetailingApiError) {
-      console.error(`[account] session: ${error.code ?? error.kind}`);
+      logUpstreamFailure('account', 'session', error);
       return null;
     }
     throw error;
@@ -75,12 +76,24 @@ export async function ownerCredentials(): Promise<Credentials> {
 
 /**
  * An opaque key per browser address, for the API's sign-in rate limits. A hash, so the address
- * itself never reaches the API or its logs. Behind no proxy every request shares one key, which
- * only makes the limit stricter (documented; M7 adds edge rate limiting).
+ * itself never reaches the API or its logs.
+ *
+ * Milestone 7: the *rightmost* `X-Forwarded-For` entry is used — the address the nearest proxy
+ * saw. The leftmost entry is whatever the client sent, so trusting it let anyone pick a fresh
+ * key per request and bypass the limits. The bundled nginx overwrites the header with the
+ * connecting address; without a proxy, Next.js fills it from the socket when it is absent.
  */
+export function clientAddress(forwardedFor: string | null, realIp: string | null): string {
+  const entries = (forwardedFor ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+  return entries.at(-1) || realIp?.trim() || 'local';
+}
+
 export async function clientKey(): Promise<string> {
   const h = await headers();
-  const address = h.get('x-forwarded-for')?.split(',')[0]?.trim() || h.get('x-real-ip') || 'local';
+  const address = clientAddress(h.get('x-forwarded-for'), h.get('x-real-ip'));
   return createHash('sha256').update(`velasia-client:${address}`).digest('base64url').slice(0, 32);
 }
 

@@ -16,6 +16,7 @@ import { readSessionCookie, type SessionCredentials } from '@/features/shopping/
 import { RetailingApiError, retailingApi } from '@/lib/retailing-api/client';
 import type { BookingActionState, BookingErrorCode } from './action-state';
 import { STEP_HREF, travellerRules } from './trip';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Booking Server Actions. Each is a public POST endpoint, so each one:
@@ -46,7 +47,7 @@ const SESSION_GONE = failure(
 /** Map an API failure to a safe result. Upstream bodies and stack traces are never returned. */
 function fromApiError(error: unknown, action: string): BookingActionState {
   if (!(error instanceof RetailingApiError)) throw error;
-  console.error(`[booking] ${action}: ${error.code ?? error.kind}`);
+  logUpstreamFailure('booking', action, error);
   switch (error.code) {
     case 'SESSION_EXPIRED':
     case 'SESSION_NOT_FOUND':

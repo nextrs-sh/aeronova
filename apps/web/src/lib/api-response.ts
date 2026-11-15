@@ -1,5 +1,6 @@
 import type { ApiError, ApiErrorCode, ApiErrorIssue } from '@velasia/contracts';
 import { NextResponse } from 'next/server';
+import { logUpstreamFailure } from './observability';
 import { RetailingApiError } from './retailing-api/client';
 
 /** Public, non-personalised data: short browser cache, longer shared cache. */
@@ -28,7 +29,7 @@ export function jsonError(
  */
 export function upstreamErrorResponse(error: unknown, label: string, what: string) {
   if (!(error instanceof RetailingApiError)) throw error;
-  console.error(`[${label}] ${error.message}`);
+  logUpstreamFailure(label, 'route handler', error);
   switch (error.kind) {
     case 'rejected':
       return jsonError(400, 'BAD_REQUEST', error.message, error.issues);

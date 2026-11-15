@@ -1,5 +1,6 @@
 import 'server-only';
-import { cookies } from 'next/headers';
+import { REQUEST_ID_HEADER, isValidRequestId } from '@velasia/observability';
+import { cookies, headers } from 'next/headers';
 import { getServerEnv } from '../env';
 
 /** Browser cookie a test sets to ask for a simulated retailing API failure. */
@@ -25,4 +26,13 @@ export async function faultHeaders(): Promise<Record<string, string>> {
     ...(fault && FAULT_VALUE.test(fault) ? { 'x-velasia-fault': fault } : {}),
     ...(scenario && SCENARIO_VALUE.test(scenario) ? { 'x-velasia-scenario': scenario } : {}),
   };
+}
+
+/**
+ * Milestone 7: the incoming request's correlation id (set by the reverse proxy), forwarded so
+ * API log lines can be matched to the storefront request. Only for request-time calls.
+ */
+export async function requestIdHeaders(): Promise<Record<string, string>> {
+  const id = (await headers()).get(REQUEST_ID_HEADER);
+  return isValidRequestId(id) ? { [REQUEST_ID_HEADER]: id } : {};
 }

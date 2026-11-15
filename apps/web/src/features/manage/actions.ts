@@ -23,6 +23,7 @@ import { ownerCredentials } from '@/features/account/session';
 import { RetailingApiError } from '@/lib/retailing-api/client';
 import { servicingApi } from '@/lib/retailing-api/servicing';
 import type { ManageActionState } from './action-state';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Manage Booking Server Actions (Milestone 6). Each is a public POST endpoint, so each one:
@@ -71,7 +72,7 @@ const NOT_FOUND = failure(
 /** Map an API failure to a safe result. API messages are ours and user-facing. */
 function fromApiError(error: unknown, action: string): ManageActionState {
   if (!(error instanceof RetailingApiError)) throw error;
-  console.error(`[manage] ${action}: ${error.code ?? error.kind}`);
+  logUpstreamFailure('manage', action, error);
   switch (error.code) {
     case 'ORDER_NOT_FOUND':
       return NOT_FOUND;

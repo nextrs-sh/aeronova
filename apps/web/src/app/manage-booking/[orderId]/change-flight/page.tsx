@@ -37,6 +37,7 @@ import { getAirports, loadSection } from '@/lib/content';
 import { formatMinor } from '@/lib/format';
 import { RetailingApiError } from '@/lib/retailing-api/client';
 import { servicingApi } from '@/lib/retailing-api/servicing';
+import { logUpstreamFailure } from '@/lib/observability';
 
 export const metadata: Metadata = {
   title: 'Change flight',
@@ -102,7 +103,7 @@ async function ChangeFlight({
     result = await servicingApi.changeSearch(order.id, await ownerCredentials(), direction, date);
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[manage] change search: ${error.code ?? error.kind}`);
+    logUpstreamFailure('manage', 'change search', error);
     searchError =
       error.kind === 'rejected'
         ? error.message

@@ -21,6 +21,7 @@ import {
 import { formatMinor } from '@/lib/format';
 import { RetailingApiError } from '@/lib/retailing-api/client';
 import { servicingApi } from '@/lib/retailing-api/servicing';
+import { logUpstreamFailure } from '@/lib/observability';
 
 export const metadata: Metadata = {
   title: 'Cancel booking',
@@ -61,7 +62,7 @@ async function Cancel({ params }: { params: Promise<{ orderId: string }> }) {
     quote = await servicingApi.cancellationQuote(order.id, await ownerCredentials());
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[manage] cancellation quote: ${error.code ?? error.kind}`);
+    logUpstreamFailure('manage', 'cancellation quote', error);
     return (
       <ResultsError
         kind={error.kind}

@@ -43,6 +43,7 @@ const jar = vi.hoisted(() => {
 });
 
 vi.mock('next/headers', () => ({
+  headers: async () => new Headers(),
   cookies: async () => ({
     get: (name: string) => {
       const value = jar.cookies().get(name);
@@ -401,12 +402,24 @@ describe('Route Handlers', () => {
 it('never logs traveller details', async () => {
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
   const logs = vi.spyOn(console, 'log').mockImplementation(() => {});
+  // Milestone 7: server logs are JSON lines on stdout/stderr.
+  const stderr = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   await guestWithTrip();
   await run(savePassengersAction, travellerForm({ 'passengers.0.dateOfBirth': '2020-01-01' }));
   await run(savePassengersAction, travellerForm());
   jar.cookies().set('velasia-fault', 'unavailable');
   await run(savePassengersAction, travellerForm());
-  const printed = JSON.stringify([...errors.mock.calls, ...logs.mock.calls]);
+  const printed = JSON.stringify([
+    ...errors.mock.calls,
+    ...logs.mock.calls,
+    ...stderr.mock.calls.map((call) => String(call[0])),
+    ...stdout.mock.calls.map((call) => String(call[0])),
+  ]);
+  stderr.mockRestore();
+  stdout.mockRestore();
+  // The unavailable API was logged (so this checks real output), without traveller details.
+  expect(printed).toContain('retailing api call failed');
   expect(printed).not.toMatch(/Amihan|Dela Cruz|example\.com|917/);
   expect(new NextRequest('http://localhost/booking/seats').url).not.toMatch(/Amihan/);
 });

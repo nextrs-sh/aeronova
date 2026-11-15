@@ -3,6 +3,7 @@ import { orderIdSchema, type Order, type ServicingOverview } from '@velasia/cont
 import { ownerCredentials } from '@/features/account/session';
 import { RetailingApiError, type RetailingApiErrorKind } from '@/lib/retailing-api/client';
 import { servicingApi } from '@/lib/retailing-api/servicing';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Request-time reads for Manage Booking. Personal: never inside `use cache`, always `no-store`
@@ -24,7 +25,7 @@ export async function loadManagedOrder(orderId: string): Promise<ManagedOrder> {
     return found ? { status: 'ready', ...found } : { status: 'missing' };
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[manage] order: ${error.code ?? error.kind}`);
+    logUpstreamFailure('manage', 'order', error);
     return { status: 'error', error: error.kind };
   }
 }
@@ -35,7 +36,7 @@ export async function safely<T>(label: string, read: () => Promise<T>): Promise<
     return await read();
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
-    console.error(`[manage] ${label}: ${error.code ?? error.kind}`);
+    logUpstreamFailure('manage', label, error);
     return null;
   }
 }

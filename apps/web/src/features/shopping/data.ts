@@ -7,6 +7,7 @@ import {
   type RetailingApiErrorKind,
 } from '@/lib/retailing-api/client';
 import { readSessionCookie } from './session-cookie';
+import { logUpstreamFailure } from '@/lib/observability';
 
 export type OffersResult =
   | { ok: true; data: OfferSearchResponse }
@@ -26,7 +27,7 @@ export async function loadOffers(itineraryId: string, search: FlightSearch): Pro
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
     if (error.kind === 'not-found') return { ok: true, data: null };
-    console.error(`[offers] ${itineraryId}: ${error.message}`);
+    logUpstreamFailure('offers', itineraryId, error);
     return { ok: false, error: error.kind };
   }
 }
@@ -56,7 +57,7 @@ export const loadShoppingSession = cache(async (): Promise<SessionState> => {
     if (!(error instanceof RetailingApiError)) throw error;
     if (error.code === 'SESSION_EXPIRED') return { status: 'expired' };
     if (error.kind === 'not-found') return { status: 'missing' };
-    console.error(`[shopping] session: ${error.message}`);
+    logUpstreamFailure('shopping', 'session', error);
     return { status: 'error', error: error.kind };
   }
 });

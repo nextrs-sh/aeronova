@@ -15,6 +15,7 @@ import {
   type RetailingApiErrorKind,
 } from '@/lib/retailing-api/client';
 import { resumeTarget } from './trip';
+import { logUpstreamFailure } from '@/lib/observability';
 
 /*
  * Server-side reads for the booking steps. Personal and live: every call is `no-store`, outside
@@ -52,7 +53,7 @@ async function withCredentials<T>(
   } catch (error) {
     if (!(error instanceof RetailingApiError)) throw error;
     // Messages never contain personal details or the session's token.
-    console.error(`[booking] ${label}: ${error.kind}`);
+    logUpstreamFailure('booking', label, error);
     return { ok: false, error: error.kind };
   }
 }

@@ -79,7 +79,8 @@ import {
 } from '@velasia/contracts';
 import type { z } from 'zod';
 import { getServerEnv } from '../env';
-import { faultHeaders } from './faults';
+import { operationOf, webMetrics } from '../observability';
+import { faultHeaders, requestIdHeaders } from './faults';
 
 export type RetailingApiErrorKind =
   /** Unreachable, or answered 5xx. */
@@ -147,6 +148,21 @@ export async function getJson<T extends z.ZodType>(
 ): Promise<z.output<T> | null> {
   const env = getServerEnv();
   const url = new URL(path, env.RETAILING_API_URL);
+  // Milestone 7: latency and outcome per operation (path template, never ids).
+  const metrics = webMetrics();
+  const labels = { operation: operationOf(path), method };
+  const stopTimer = metrics.upstreamDuration.startTimer(labels);
+  const outcome = (value: string) => {
+    stopTimer();
+    metrics.upstreamRequests.inc({ ...labels, outcome: value });
+  };
+  // Request-time calls carry the browser request's correlation id to the API.
+  const requestScoped = live || Boolean(token || guest || account);
+  // Outside the try: a failure here is not "the API is unreachable".
+  const contextHeaders = {
+    ...(live ? await faultHeaders() : {}),
+    ...(requestScoped ? await requestIdHeaders() : {}),
+  };
   let response: Response;
   try {
     response = await fetch(url, {
@@ -158,7 +174,7 @@ export async function getJson<T extends z.ZodType>(
         ...(guest ? { 'x-velasia-guest': guest } : {}),
         ...(account ? { 'x-velasia-account': account } : {}),
         ...(client ? { 'x-velasia-client': client } : {}),
-        ...(live ? await faultHeaders() : {}),
+        ...contextHeaders,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
       // Live inventory must never be served from a cache.
@@ -167,6 +183,7 @@ export async function getJson<T extends z.ZodType>(
     });
   } catch (cause) {
     const timedOut = cause instanceof DOMException && cause.name === 'TimeoutError';
+    outcome(timedOut ? 'timeout' : 'unreachable');
     throw new RetailingApiError(
       timedOut
         ? `Retailing API timed out after ${env.RETAILING_API_TIMEOUT_MS} ms for ${url.pathname}`
@@ -178,6 +195,7 @@ export async function getJson<T extends z.ZodType>(
     );
   }
 
+  outcome(response.ok ? 'ok' : `${Math.floor(response.status / 100)}xx`);
   if (allowNotFound && (response.status === 404 || response.status === 400)) return null;
   if (response.status === 204) return null;
   if (!response.ok) {
