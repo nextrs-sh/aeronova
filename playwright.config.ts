@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 import { API_PORT, BASE_URL, E2E_TODAY, WEB_PORT } from './tests/e2e/constants';
 
@@ -6,6 +8,9 @@ import { API_PORT, BASE_URL, E2E_TODAY, WEB_PORT } from './tests/e2e/constants';
  * Dedicated ports keep it independent of a local `pnpm dev` session.
  */
 const baseURL = BASE_URL;
+/** A fresh orders database per run, outside the repo; never a developer's own. */
+const taladbPath =
+  process.env.E2E_TALADB_PATH ?? join(tmpdir(), 'velasia-e2e', String(Date.now()), 'velasia.db');
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -43,6 +48,16 @@ export default defineConfig({
         // Test-only: lets specs simulate failures with the `velasia-fault` cookie.
         RETAILING_API_FAULTS: 'enabled',
         RETAILING_API_FAULT_TIMEOUT_MS: '10000',
+        TALADB_PATH: taladbPath,
+        // Simulated payments: outcome controls on, quick but realistic provider timings.
+        PAYMENT_OUTCOME_CONTROLS: 'enabled',
+        PAYMENT_PROVIDER_DELAY_MS: '150',
+        PAYMENT_PROVIDER_TIMEOUT_MS: '1500',
+        PAYMENT_PENDING_RESOLVE_MS: '1500',
+        // The background sweep also settles undecided payments; slow it down so the specs that
+        // exercise the traveller's own status check stay deterministic (it is covered by the
+        // API's recovery tests).
+        ORDER_SWEEP_INTERVAL_MS: '600000',
       },
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

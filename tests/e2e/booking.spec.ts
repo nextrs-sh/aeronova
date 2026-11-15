@@ -1,5 +1,4 @@
-import AxeBuilder from '@axe-core/playwright';
-import type { Locator, Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import {
   expect,
   selectFamily,
@@ -8,105 +7,30 @@ import {
   test,
   trackPageErrors,
 } from './helpers';
+import {
+  TWO_ADULTS,
+  ONE_ADULT,
+  FLIGHT,
+  shown,
+  amount,
+  axe,
+  TRAVELLERS,
+  startBooking,
+  fillTravellers,
+  nextSeatIndex,
+  saveTravellers,
+  seat,
+  chooseSeat,
+  extrasReady,
+  reviewReady,
+  toReview,
+} from './booking-flow';
 
 /*
  * Milestone 4: traveller details, seat maps, extras, and the booking review, on top of the M3
  * shopping session. All travellers are synthetic. Failures and races use the test-only
  * `velasia-scenario` / `velasia-fault` cookies, so nothing depends on timing or randomness.
  */
-
-const TWO_ADULTS = '/flights?trip=one-way&from=MNL&to=SIN&depart=2026-12-15&adults=2&cabin=economy';
-const ONE_ADULT = '/flights?trip=one-way&from=MNL&to=SIN&depart=2026-12-15&adults=1&cabin=economy';
-const FLIGHT = 'NV501-20261215';
-
-/**
- * Next.js keeps recently visited routes mounted but hidden (React Activity), so a test id can
- * exist on an earlier step too: always look at the visible one.
- */
-const shown = (page: Page, testId: string) => page.getByTestId(testId).filter({ visible: true });
-
-const amount = async (locator: Locator) =>
-  Number((await locator.first().textContent())!.replace(/[^\d]/g, ''));
-
-async function axe(page: Page) {
-  const { violations } = await new AxeBuilder({ page })
-    .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
-    .analyze();
-  return violations
-    .filter((v) => v.impact === 'critical' || v.impact === 'serious')
-    .map((v) => `${v.id}: ${v.nodes.map((node) => node.target.join(' ')).join(' | ')}`);
-}
-
-const TRAVELLERS = [
-  { id: 'ADT1', given: 'Amihan', family: 'Dela Cruz', dob: '1990-04-12' },
-  { id: 'ADT2', given: 'Bayani', family: 'Reyes', dob: '1987-09-30' },
-];
-
-/** Search, open the fares of the first result, choose a family, and continue to travellers. */
-async function startBooking(page: Page, search: string, family: 'Light' | 'Classic' | 'Flex') {
-  await page.goto(`${search}&fares=${FLIGHT}`);
-  await expect(page.getByTestId('fare-cards')).toBeVisible();
-  await selectFamily(page, family);
-  await expect(page.getByTestId('trip-summary')).toBeVisible();
-  await page.getByRole('button', { name: 'Continue to traveller details' }).click();
-  await expect(page).toHaveURL(/\/booking\/travellers$/);
-  await expect(page.getByTestId('traveller-form')).toBeVisible();
-}
-
-async function fillTravellers(page: Page, count: number) {
-  for (const traveller of TRAVELLERS.slice(0, count)) {
-    const card = page.getByTestId(`traveller-${traveller.id}`);
-    await card.getByLabel('Given names').fill(traveller.given);
-    await card.getByLabel('Family name').fill(traveller.family);
-    await card.getByLabel('Date of birth').fill(traveller.dob);
-    await card.getByLabel('Nationality').selectOption('PH');
-  }
-  await page.getByLabel('Email').fill('amihan.delacruz@example.com');
-  await page.getByLabel('Mobile phone').fill('+63 917 555 0123');
-}
-
-async function saveTravellers(page: Page) {
-  await page.getByTestId('save-travellers').click();
-  await expect(page).toHaveURL(/\/booking\/seats/);
-  await expect(page.locator('[data-testid="seat-selector"][data-ready="true"]')).toBeVisible();
-}
-
-const seat = (page: Page, look: string, nth = 0) =>
-  page.locator(`[data-testid="seat-map"] [data-look="${look}"]`).nth(nth);
-
-/** Choose the seat under the cursor for the active traveller; returns the seat id. */
-async function chooseSeat(page: Page, target: Locator) {
-  const id = (await target.getAttribute('data-seat'))!;
-  await target.click();
-  await page.getByTestId('choose-seat').click();
-  await expect(page.getByTestId('seat-saved')).toBeVisible();
-  return id;
-}
-
-async function extrasReady(page: Page) {
-  await expect(page.locator('[data-testid^="baggage-"][data-ready="true"]').first()).toBeVisible();
-}
-
-/** Wait until the review's client actions are interactive. */
-async function reviewReady(page: Page) {
-  await expect(shown(page, 'review-ready')).toBeVisible();
-  await page.waitForLoadState('networkidle');
-}
-
-/** Travellers saved, seats skipped, extras skipped: the review for a one-adult trip. */
-async function toReview(page: Page, family: 'Light' | 'Classic' | 'Flex' = 'Classic') {
-  await startBooking(page, ONE_ADULT, family);
-  await fillTravellers(page, 1);
-  await saveTravellers(page);
-  const id = await chooseSeat(page, seat(page, 'available', 5));
-  await page.getByTestId('continue-seats').click();
-  await expect(page).toHaveURL(/\/booking\/extras$/);
-  await extrasReady(page);
-  await page.getByTestId('continue-extras').click();
-  await expect(page).toHaveURL(/\/booking\/review$/);
-  await expect(page.getByTestId('review-ready')).toBeVisible();
-  return id;
-}
 
 test.describe('booking: travellers, seats, extras, review', () => {
   // Several Server Action round trips per test; generous under a fully parallel run.
@@ -258,11 +182,17 @@ test.describe('booking: travellers, seats, extras, review', () => {
       `₱${(total - 300).toLocaleString('en-PH')}`,
     );
 
-    // 27. The checkout boundary creates nothing.
-    await page.getByTestId('continue-checkout').click();
-    await expect(page.getByTestId('checkout-preview')).toBeVisible();
-    await expect(page.getByTestId('no-order-notice')).toContainText('No order has been created');
+    // 27. Nothing is ordered or paid during the booking steps. (Since M5, "Continue to checkout"
+    //     holds the seats and opens checkout, where payment needs an explicit action; see
+    //     checkout.spec.ts.)
     expect(mutations.filter((url) => /order|payment|ticket/i.test(url))).toEqual([]);
+    await page.getByTestId('continue-checkout').click();
+    // A Server Action plus the checkout render: allow for a fully parallel run on a laptop.
+    await expect(page).toHaveURL(/\/booking\/checkout$/, { timeout: 20_000 });
+    await expect(page.getByTestId('checkout')).toHaveAttribute(
+      'data-order-status',
+      'PENDING_PAYMENT',
+    );
 
     // 26. No hydration or runtime errors anywhere in the flow.
     expect(errors).toEqual([]);
@@ -335,7 +265,7 @@ test.describe('booking: travellers, seats, extras, review', () => {
     await startBooking(page, ONE_ADULT, 'Classic');
     await fillTravellers(page, 1);
     await saveTravellers(page);
-    const target = seat(page, 'available', 4);
+    const target = seat(page, 'available', nextSeatIndex());
     const id = (await target.getAttribute('data-seat'))!;
     await target.click();
     await simulateApiFault(page, 'slow-commit');
@@ -377,10 +307,13 @@ test.describe('booking: travellers, seats, extras, review', () => {
   test('shows a recovery path for deep links without a session or with steps missing', async ({
     page,
   }) => {
-    for (const step of ['travellers', 'seats', 'extras', 'review', 'checkout']) {
+    for (const step of ['travellers', 'seats', 'extras', 'review']) {
       await page.goto(`/booking/${step}`);
       await expect(shown(page, 'booking-recovery')).toHaveAttribute('data-reason', 'none');
     }
+    // Checkout (Milestone 5) has its own recovery: there's no order to show.
+    await page.goto('/booking/checkout');
+    await expect(shown(page, 'checkout-recovery')).toHaveAttribute('data-reason', 'none');
     await startBooking(page, ONE_ADULT, 'Classic');
     // Travellers aren't saved yet: later steps stay locked.
     await page.goto('/booking/extras');
@@ -401,6 +334,8 @@ test.describe('booking: travellers, seats, extras, review', () => {
 });
 
 test.describe('booking on phones @mobile', () => {
+  // As on desktop: several Server Action round trips per test under a fully parallel run.
+  test.describe.configure({ timeout: 60_000 });
   test('fills traveller details and chooses seats without page overflow @mobile', async ({
     page,
     isMobile,
