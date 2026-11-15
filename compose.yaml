@@ -75,6 +75,8 @@ services:
       HOSTNAME: 0.0.0.0
       # Service discovery on the internal network; never a public URL.
       RETAILING_API_URL: http://velasia-api:4010
+      # Same origin as the build argument (Secure cookies follow an https:// value).
+      SITE_URL: ${SITE_URL:-http://localhost:8080}
     depends_on:
       velasia-api:
         condition: service_healthy

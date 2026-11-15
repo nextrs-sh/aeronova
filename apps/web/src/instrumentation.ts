@@ -11,16 +11,8 @@ import type { Instrumentation } from 'next';
  */
 export async function register() {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
-  const { validateServerEnvAtStartup } = await import('./lib/env');
-  try {
-    validateServerEnvAtStartup();
-  } catch (error) {
-    const { log } = await import('./lib/observability');
-    log('error', 'startup failed', { reason: (error as Error).message });
-    // A thrown error here only fails each request; exit so the container visibly fails to start.
-    if (process.env.NEXT_PHASE !== 'phase-production-build') process.exit(1);
-    throw error;
-  }
+  const { checkStartupEnvironment } = await import('./lib/startup');
+  checkStartupEnvironment();
 }
 
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
