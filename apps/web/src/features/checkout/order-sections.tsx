@@ -19,8 +19,9 @@ import { FlightTimes, type AirportNames } from '@/features/flights/itinerary-par
 import { formatDuration, formatMinor, pluralize } from '@/lib/format';
 
 /*
- * The order as it was bought, rendered from its immutable snapshot. Shared by checkout and the
- * confirmation; nothing here reads live inventory or prices.
+ * The order as the API describes it: at checkout and confirmation, what is being (or was)
+ * bought; in Manage Booking (Milestone 6), the booking as it is now. Nothing here reads live
+ * inventory or prices.
  */
 
 export function travellerLabel(order: Order, id: string): string {
@@ -216,6 +217,7 @@ const GROUPS: { kinds: OrderItem['kind'][]; label: string; testId: string }[] = 
   { kinds: ['BAGGAGE'], label: 'Extra baggage', testId: 'order-price-baggage' },
   { kinds: ['MEAL'], label: 'Meals', testId: 'order-price-meals' },
   { kinds: ['PRIORITY'], label: 'Priority services', testId: 'order-price-priority' },
+  { kinds: ['CHANGE_FEE'], label: 'Change fees', testId: 'order-price-change-fees' },
 ];
 
 /** The itemised price, from the order's own items. */
@@ -265,18 +267,23 @@ export function OrderPriceSummary({
         })}
       </ul>
       <dl className="mt-4 space-y-1 border-t border-line pt-3 text-sm">
-        <div className="flex justify-between gap-4 text-ink-muted">
-          <dt>Fares and fare benefits</dt>
-          <dd className="tabular-nums">
-            {formatMinor(totals.baseFareMinor + totals.fareFamilyMinor, currency)}
-          </dd>
-        </div>
-        <div className="flex justify-between gap-4 text-ink-muted">
-          <dt>Taxes and mandatory fees</dt>
-          <dd className="tabular-nums" data-testid="order-price-taxes">
-            {formatMinor(totals.taxesMinor, currency)}
-          </dd>
-        </div>
+        {/* The fare/tax split is the checkout quote's; after a change only the items are current. */}
+        {order.currentVersion === 1 ? (
+          <>
+            <div className="flex justify-between gap-4 text-ink-muted">
+              <dt>Fares and fare benefits</dt>
+              <dd className="tabular-nums">
+                {formatMinor(totals.baseFareMinor + totals.fareFamilyMinor, currency)}
+              </dd>
+            </div>
+            <div className="flex justify-between gap-4 text-ink-muted">
+              <dt>Taxes and mandatory fees</dt>
+              <dd className="tabular-nums" data-testid="order-price-taxes">
+                {formatMinor(totals.taxesMinor, currency)}
+              </dd>
+            </div>
+          </>
+        ) : null}
         <div className="flex items-end justify-between gap-4 border-t border-line pt-3">
           <dt className="font-semibold text-ink">
             {totalLabel}
@@ -286,7 +293,7 @@ export function OrderPriceSummary({
             className="font-display text-2xl font-extrabold text-ink tabular-nums"
             data-testid="order-total"
           >
-            {formatMinor(order.totalMinor, currency)}
+            {formatMinor(order.currentTotalMinor, currency)}
           </dd>
         </div>
       </dl>

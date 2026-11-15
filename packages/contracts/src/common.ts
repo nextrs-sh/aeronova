@@ -87,6 +87,29 @@ export const apiErrorCodeSchema = z.enum([
   'PAYMENT_IN_PROGRESS',
   /** This trip was already booked from this shopping session. */
   'SESSION_ORDERED',
+  // Milestone 6: servicing and accounts.
+  /** The booking can't be changed in its current state (cancelled, flown, still pending). */
+  'ORDER_NOT_MODIFIABLE',
+  /** The fare rules don't allow this change (or its deadline has passed). */
+  'CHANGE_NOT_ALLOWED',
+  /** The booking changed since the traveller last read it (`expectedRevision`); reload. */
+  'SERVICING_CONFLICT',
+  /** Another change on this booking is waiting for its payment to be decided. */
+  'PAYMENT_PENDING',
+  /** A refund on this booking is still being processed. */
+  'REFUND_PENDING',
+  /** No valid account session. */
+  'UNAUTHENTICATED',
+  /** Email or password is wrong. Deliberately the same answer for an unknown email. */
+  'INVALID_CREDENTIALS',
+  /** An account with this email already exists. */
+  'ACCOUNT_EXISTS',
+  /** Too many attempts; try again later. */
+  'RATE_LIMITED',
+  /** Demo account registration is switched off in this environment. */
+  'REGISTRATION_DISABLED',
+  /** A per-account or per-order limit was reached. */
+  'LIMIT_REACHED',
 ]);
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 

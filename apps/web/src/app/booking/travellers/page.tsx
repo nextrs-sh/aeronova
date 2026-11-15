@@ -11,6 +11,9 @@ import { loadBookingStep } from '@/features/booking/data';
 import { BookingRecovery, StepSkeleton } from '@/features/booking/recovery';
 import { StepHeader } from '@/features/booking/step-header';
 import { TravellerForm } from '@/features/booking/traveller-form';
+import { currentAccount } from '@/features/account/session';
+import { safely } from '@/features/manage/data';
+import { accountApi } from '@/lib/retailing-api/servicing';
 import { STEP_HREF, travellerRules, tripSummaryHref } from '@/features/booking/trip';
 
 export const metadata: Metadata = {
@@ -48,6 +51,11 @@ async function TravellersStep() {
   }
   const { session } = state;
   const { booking } = session;
+  // Milestone 6: a signed-in traveller can fill details from their saved travellers.
+  const account = await currentAccount();
+  const savedTravellers = account
+    ? ((await safely('saved travellers', () => accountApi.travellers(account.token)))?.data ?? [])
+    : [];
   const saved = booking.passengers;
   const defaultValues: TravellersFormInput = {
     passengers: booking.slots.map((slot) => {
@@ -74,6 +82,7 @@ async function TravellersStep() {
         rules={travellerRules(session)}
         defaultValues={defaultValues}
         version={session.version}
+        savedTravellers={savedTravellers}
       />
       <div className="flex flex-wrap gap-3 border-t border-line pt-6">
         <Button asChild variant="outline">

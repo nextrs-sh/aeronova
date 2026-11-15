@@ -2,6 +2,7 @@ import {
   SERVICE_ROWS,
   fareFamilySchema,
   type FareFamily,
+  type FareRules,
   type FareFamilyCode,
   type OfferService,
   type ServiceCode,
@@ -20,7 +21,17 @@ import { MINOR_PER_PESO, PRICING_CURRENCY, type FareComponent } from '../pricing
 export interface FareFamilyDefinition extends FareFamily {
   /** What the family adds to the base fare, per adult per flight (see `pricePassengerType`). */
   component: FareComponent;
+  /**
+   * The family's change and refund conditions as data, for servicing (Milestone 6). They are
+   * the same conditions the `FLIGHT_CHANGE` and `REFUND` texts describe (a test checks both
+   * agree); only the cancellation of paid extras is new in M6.
+   */
+  rules: Omit<FareRules, 'family'>;
 }
+
+const HOUR = 60;
+/** Online sales, seat changes, and cancellations close an hour before departure. */
+const DEPARTURE_CUTOFF_MINUTES = HOUR;
 
 const fee = (pesos: number) => ({
   currency: PRICING_CURRENCY,
@@ -60,6 +71,19 @@ const definitions: FareFamilyDefinition[] = [
     tagline: 'Our lowest Economy fare, for travelling with just a cabin bag.',
     cabin: 'economy',
     component: { rate: 0, fixed: { short: 0, medium: 0, long: 0 } },
+    rules: {
+      change: {
+        allowed: true,
+        feePerTravellerMinor: 2500 * MINOR_PER_PESO,
+        cutoffMinutes: 24 * HOUR,
+      },
+      refund: {
+        kind: 'TAXES_ONLY',
+        feePerTravellerMinor: 0,
+        extrasRefundable: false,
+        cutoffMinutes: DEPARTURE_CUTOFF_MINUTES,
+      },
+    },
     services: services({
       CABIN_BAGGAGE: {
         inclusion: 'included',
@@ -96,6 +120,19 @@ const definitions: FareFamilyDefinition[] = [
     tagline: 'A checked bag and your choice of seat, with changes for a lower fee.',
     cabin: 'economy',
     component: { rate: 0.12, fixed: { short: 300, medium: 450, long: 600 } },
+    rules: {
+      change: {
+        allowed: true,
+        feePerTravellerMinor: 1200 * MINOR_PER_PESO,
+        cutoffMinutes: 3 * HOUR,
+      },
+      refund: {
+        kind: 'FEE',
+        feePerTravellerMinor: 3000 * MINOR_PER_PESO,
+        extrasRefundable: true,
+        cutoffMinutes: DEPARTURE_CUTOFF_MINUTES,
+      },
+    },
     services: services({
       CABIN_BAGGAGE: {
         inclusion: 'included',
@@ -140,6 +177,15 @@ const definitions: FareFamilyDefinition[] = [
     tagline: 'More baggage, preferred seats, and no change or refund fees.',
     cabin: 'economy',
     component: { rate: 0.3, fixed: { short: 700, medium: 1000, long: 1400 } },
+    rules: {
+      change: { allowed: true, feePerTravellerMinor: 0, cutoffMinutes: HOUR },
+      refund: {
+        kind: 'FULL',
+        feePerTravellerMinor: 0,
+        extrasRefundable: true,
+        cutoffMinutes: DEPARTURE_CUTOFF_MINUTES,
+      },
+    },
     services: services({
       CABIN_BAGGAGE: {
         inclusion: 'included',
@@ -196,6 +242,15 @@ const definitions: FareFamilyDefinition[] = [
     cabin: 'business',
     // The cabin itself carries the premium (the Business base fare); nothing is added on top.
     component: { rate: 0, fixed: { short: 0, medium: 0, long: 0 } },
+    rules: {
+      change: { allowed: true, feePerTravellerMinor: 0, cutoffMinutes: HOUR },
+      refund: {
+        kind: 'FULL',
+        feePerTravellerMinor: 0,
+        extrasRefundable: true,
+        cutoffMinutes: DEPARTURE_CUTOFF_MINUTES,
+      },
+    },
     services: services({
       CABIN_BAGGAGE: {
         inclusion: 'included',
@@ -266,7 +321,15 @@ export const FARE_FAMILIES_BY_CODE: ReadonlyMap<FareFamilyCode, FareFamilyDefini
   FARE_FAMILIES.map((family) => [family.code, family]),
 );
 
-/** The public catalogue entry: everything except the pricing component. */
-export function toPublicFareFamily({ component: _component, ...family }: FareFamilyDefinition) {
+/** The public catalogue entry: everything except the pricing component and servicing rules. */
+export function toPublicFareFamily({
+  component: _component,
+  rules: _rules,
+  ...family
+}: FareFamilyDefinition) {
   return family satisfies FareFamily;
+}
+
+export function fareRules(family: FareFamilyDefinition): FareRules {
+  return { family: family.code, ...family.rules };
 }

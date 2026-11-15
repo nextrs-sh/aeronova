@@ -45,6 +45,7 @@ export const footerNav: { title: string; items: NavItem[] }[] = [
       { href: '/flights', label: 'Search flights' },
       { href: '/destinations', label: 'Destinations' },
       { href: '/manage-booking', label: 'Manage booking' },
+      { href: '/account/trips', label: 'My Trips' },
     ],
   },
   {

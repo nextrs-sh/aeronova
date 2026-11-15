@@ -3,7 +3,24 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from 'fastify';
 import { createClock, type Clock } from './clock';
-import { DEFAULT_CHECKOUT_CONFIG, DEFAULT_PAYMENTS_CONFIG, type ApiConfig } from './config';
+import {
+  DEFAULT_ACCOUNTS_CONFIG,
+  DEFAULT_CHECKOUT_CONFIG,
+  DEFAULT_PAYMENTS_CONFIG,
+  DEFAULT_SERVICING_CONFIG,
+  type ApiConfig,
+} from './config';
+import { createAccountService, type AccountService } from './accounts/account-service';
+import {
+  AccountRepository,
+  SessionRepository,
+  TravellerRepository,
+} from './db/repositories/account-repository';
+import { RefundProviderRepository } from './db/repositories/refund-provider-repository';
+import { RefundSimulator } from './orders/refund-simulator';
+import { accountRoutes } from './routes/accounts';
+import { servicingRoutes } from './routes/servicing';
+import { createServicingService, type ServicingService } from './servicing/servicing-service';
 import { openDatabase, type Database } from './db/client';
 import { OrderRepository } from './db/repositories/order-repository';
 import { PaymentProviderRepository } from './db/repositories/payment-provider-repository';
@@ -31,7 +48,7 @@ import { createRetailingService, DEFAULT_RETAILING_CONFIG } from './offers/retai
 import { createCatalog } from './services/catalog';
 import { createFlightService } from './services/flights';
 
-export const API_VERSION = '0.5.0';
+export const API_VERSION = '0.6.0';
 
 /** Hooks for tests: control time and randomness that production takes from the system. */
 export interface TestHooks {
@@ -56,8 +73,16 @@ export interface Persistence {
   queue: SerialQueue;
   checkout: CheckoutService;
   orderService: OrderService;
+  /** Milestone 6. */
+  refundProvider: RefundProviderRepository;
+  servicing: ServicingService;
+  accounts: AccountService;
+  accountRepository: AccountRepository;
+  sessions: SessionRepository;
+  travellers: TravellerRepository;
   /** What startup reconciliation did. */
   recovered: { resolved: number; expired: number; confirmed: number };
+  recoveredServicing: { payments: number; refunds: number; resent: number; expired: number };
 }
 
 declare module 'fastify' {
@@ -74,6 +99,8 @@ const DEFAULT_CONFIG: ApiConfig = {
   persistence: {},
   checkout: DEFAULT_CHECKOUT_CONFIG,
   payments: DEFAULT_PAYMENTS_CONFIG,
+  servicing: DEFAULT_SERVICING_CONFIG,
+  accounts: DEFAULT_ACCOUNTS_CONFIG,
 };
 
 /** Build the app without listening, so tests can use `app.inject()`. Await `app.ready()`. */
@@ -87,6 +114,8 @@ export function buildApp({
     ...config,
     checkout: { ...DEFAULT_CHECKOUT_CONFIG, ...config.checkout },
     payments: { ...DEFAULT_PAYMENTS_CONFIG, ...config.payments },
+    servicing: { ...DEFAULT_SERVICING_CONFIG, ...config.servicing },
+    accounts: { ...DEFAULT_ACCOUNTS_CONFIG, ...config.accounts },
   };
   const app = Fastify({ logger: false, ...options });
 
@@ -158,8 +187,44 @@ export function buildApp({
       config: settings.checkout,
       referenceGenerator: testHooks.referenceGenerator ?? newBookingReference,
     });
+    // Milestone 6: servicing (changes, seats, services, cancellations) and demo accounts.
+    const refundProvider = new RefundProviderRepository(database.refundProvider);
+    const refundSimulator = new RefundSimulator(refundProvider, {
+      responseDelayMs: settings.payments.responseDelayMs,
+      timeoutMs: settings.payments.timeoutMs,
+      pendingResolveMs: settings.payments.pendingResolveMs,
+      wallClock: testHooks.wallClock,
+    });
+    const servicing = createServicingService({
+      store,
+      flights,
+      retailing,
+      provider: simulator,
+      refunds: refundSimulator,
+      config: {
+        claimMs: settings.servicing.claimMs,
+        outcomeControls: settings.payments.outcomeControls,
+      },
+      log: app.log,
+    });
+    const accountRepository = new AccountRepository(database.accounts);
+    const sessions = new SessionRepository(database.sessions);
+    const travellers = new TravellerRepository(database.travellers);
+    const accounts = createAccountService({
+      accounts: accountRepository,
+      sessions,
+      travellers,
+      orders,
+      store,
+      inventory: () => flights.current(),
+      now: () => clock.now(),
+      config: settings.accounts,
+      log: app.log,
+    });
+
     // Finish what a previous process left undecided, and release holds that ended meanwhile.
     const recovered = await orderService.reconcile(clock.now());
+    const recoveredServicing = await servicing.reconcile(clock.now());
     app.persistence = {
       database,
       orders,
@@ -168,14 +233,26 @@ export function buildApp({
       queue,
       checkout,
       orderService,
+      refundProvider,
+      servicing,
+      accounts,
+      accountRepository,
+      sessions,
+      travellers,
       recovered,
+      recoveredServicing,
     };
 
     // Expiry is also checked on every access; the sweep releases holds nobody looks at.
     const sweep = setInterval(() => {
-      orderService.reconcile(clock.now()).catch((error: unknown) => {
-        app.log.error({ err: error }, 'order sweep failed');
-      });
+      const now = clock.now();
+      orderService
+        .reconcile(now)
+        .then(() => servicing.reconcile(now))
+        .then(() => accounts.purgeSessions())
+        .catch((error: unknown) => {
+          app.log.error({ err: error }, 'order sweep failed');
+        });
     }, settings.checkout.sweepIntervalMs);
     sweep.unref();
 
@@ -191,7 +268,14 @@ export function buildApp({
         });
     });
     scope.register(checkoutRoutes, { checkout, orders: orderService, retailing });
-    scope.register(orderRoutes, { orders: orderService, retailing });
+    scope.register(orderRoutes, { orders: orderService, retailing, accounts });
+    scope.register(servicingRoutes, {
+      servicing,
+      retailing,
+      accounts,
+      maxPaymentAttempts: settings.checkout.maxPaymentAttempts,
+    });
+    scope.register(accountRoutes, { accounts });
 
     scope.addHook('onClose', async () => {
       clearInterval(sweep);

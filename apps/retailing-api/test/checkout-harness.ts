@@ -15,7 +15,7 @@ import {
   type SimulatedOutcome,
   type TravellerInput,
 } from '@velasia/contracts';
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 import { expect } from 'vitest';
 import { buildApp, type TestHooks } from '../src/app';
 import { createClock, type Clock } from '../src/clock';
@@ -65,6 +65,10 @@ export interface CallOptions {
   fault?: string;
   /** Test-only crash point (child-process tests). */
   crash?: CrashPoint;
+  /** Milestone 6: an account session token (`x-velasia-account`). */
+  account?: string;
+  /** Milestone 6: the rate-limit client key (`x-velasia-client`). */
+  client?: string;
 }
 
 /** What a call returns, whether it went through `inject` or real HTTP. */
@@ -87,13 +91,15 @@ export interface Harness extends Caller {
   close(): Promise<void>;
 }
 
-function headersFor({ token, guest, scenario, fault, crash }: CallOptions) {
+function headersFor({ token, guest, scenario, fault, crash, account, client }: CallOptions) {
   return {
     ...(token ? { authorization: `Bearer ${token}` } : {}),
     ...(guest ? { 'x-velasia-guest': guest } : {}),
     ...(scenario ? { 'x-velasia-scenario': scenario } : {}),
     ...(fault ? { 'x-velasia-fault': fault } : {}),
     ...(crash ? { 'x-velasia-crash': crash } : {}),
+    ...(account ? { 'x-velasia-account': account } : {}),
+    ...(client ? { 'x-velasia-client': client } : {}),
   };
 }
 
@@ -133,9 +139,16 @@ export const FAST_PAYMENTS: ApiConfig['payments'] = {
 export async function startHarness({
   config = {},
   testHooks = {},
-}: { config?: Partial<ApiConfig>; testHooks?: TestHooks } = {}): Promise<Harness> {
+  logger,
+}: {
+  config?: Partial<ApiConfig>;
+  testHooks?: TestHooks;
+  /** Fastify logger options, to inspect what the API logs (Milestone 6). */
+  logger?: FastifyServerOptions['logger'];
+} = {}): Promise<Harness> {
   const time = manualClock();
   const app = buildApp({
+    ...(logger ? { logger } : {}),
     config: {
       today: TODAY,
       faults: { enabled: true, timeoutMs: 300 },

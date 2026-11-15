@@ -113,6 +113,17 @@ export interface TripLeg {
   band: DistanceBand;
 }
 
+/**
+ * What the service rules need of a leg: its direction, fare, and flights. A shopping session's
+ * `TripLeg` is one; so is a leg of a confirmed booking (Milestone 6, `servicing/order-trip.ts`),
+ * so post-booking services follow exactly the same rules as the booking steps.
+ */
+export type ServiceLeg = Pick<TripLeg, 'direction' | 'family' | 'segments' | 'band'>;
+export interface ServiceTrip {
+  legs: readonly ServiceLeg[];
+  slots: readonly TravellerSlot[];
+}
+
 export interface Trip {
   search: FlightSearch;
   /** Selected legs, in trip order. */
@@ -187,7 +198,7 @@ function includes(family: FareFamilyDefinition, code: ServiceCode): boolean {
 
 /** Who can sit, and where, from the saved traveller details. */
 export function seatTravellers(
-  booking: StoredBooking,
+  booking: { passengers: readonly Traveller[] | null },
   slots: readonly TravellerSlot[],
 ): SeatTraveller[] {
   const passengers = booking.passengers;
@@ -229,7 +240,7 @@ export function seatTemplate(segment: FlightInstance, seatId: string): SeatTempl
 }
 
 /** Categories sold in the fare's cabin on this aircraft, with their prices. */
-export function seatPricing(leg: TripLeg, segment: FlightInstance): SeatPrice[] {
+export function seatPricing(leg: Pick<ServiceLeg, 'family'>, segment: FlightInstance): SeatPrice[] {
   const layout = SEAT_LAYOUTS.get(segment.schedule.aircraftCode)!;
   const categories = new Set<SeatCategory>();
   for (const seat of layout.seats.values()) {
@@ -267,7 +278,10 @@ export function publicSeats(booking: StoredBooking, trip: Trip): SeatAssignment[
 // Baggage, meals, priority
 // ---------------------------------------------------------------------------
 
-export function mealServiceFor(segment: FlightInstance, leg: TripLeg): FlightMealService {
+export function mealServiceFor(
+  segment: FlightInstance,
+  leg: Pick<ServiceLeg, 'direction' | 'family'>,
+): FlightMealService {
   const minutes = segment.schedule.blockMinutes;
   if (minutes < 90) {
     return {
@@ -301,7 +315,7 @@ function productPrice(product: AncillaryDefinition, band: DistanceBand) {
 }
 
 /** Everything each traveller can choose on this trip, priced for their fare. */
-export function ancillaryOffers(trip: Trip): AncillaryOffer[] {
+export function ancillaryOffers(trip: ServiceTrip): AncillaryOffer[] {
   const offers: AncillaryOffer[] = [];
   for (const leg of trip.legs) {
     for (const slot of trip.slots) {
@@ -383,7 +397,10 @@ export function publicAncillaries(
   });
 }
 
-export function baggageAllowances(trip: Trip, booking: StoredBooking): TravellerBaggage[] {
+export function baggageAllowances(
+  trip: ServiceTrip,
+  booking: Pick<StoredBooking, 'ancillaries'>,
+): TravellerBaggage[] {
   return trip.legs.flatMap((leg) => {
     const allowance = leg.family.services.find((service) => service.code === 'CHECKED_BAGGAGE');
     const pieces = allowance?.inclusion === 'included' ? (allowance.allowance?.pieces ?? 0) : 0;

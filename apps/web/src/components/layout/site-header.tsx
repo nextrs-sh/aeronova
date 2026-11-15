@@ -1,4 +1,4 @@
-import { Globe } from 'lucide-react';
+import { Globe, UserRound } from 'lucide-react';
 import Link from 'next/link';
 import { Logo } from '@/components/brand/logo';
 import { primaryNav, site } from '@/lib/site';
@@ -36,6 +36,15 @@ export function SiteHeader() {
               English <span aria-hidden="true">·</span> <abbr title="Philippine peso">PHP</abbr>
             </span>
           </p>
+          <Link
+            href="/account"
+            className="inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+            data-testid="header-account"
+          >
+            <UserRound className="size-4" aria-hidden="true" />
+            <span className="hidden sm:inline">Account</span>
+            <span className="sr-only sm:hidden">Your account</span>
+          </Link>
           <MobileNav />
         </div>
       </div>

@@ -9,14 +9,16 @@ import type { FastifyPluginAsync, FastifyReply } from 'fastify';
 import { parseInput } from '../http';
 import { paymentHttpStatus, type OrderService, type PaymentOutcome } from '../orders/order-service';
 import { toPublicAttempt, toPublicOrder } from '../orders/public';
+import type { AccountService } from '../accounts/account-service';
 import type { RetailingResult, RetailingService } from '../offers/retailing-service';
+import { principalOf } from './principal';
 import { sendResult } from './results';
-import { bearerToken } from './shopping';
 
 /*
- * Orders are private to the guest who created them: every route needs the guest token as a
- * bearer token, and a wrong or missing token gets the same 404 as an unknown order. The booking
- * reference is never enough on its own. Every answer is `private, no-store`.
+ * Orders are private to their owner: the guest who created them (the guest token as a bearer
+ * token) or, once linked, the account (a verified account session; see `principal.ts`). A wrong
+ * or missing credential gets the same 404 as an unknown order. The booking reference is never
+ * enough on its own. Every answer is `private, no-store`.
  */
 
 const BODY_LIMIT = 2 * 1024;
@@ -24,7 +26,8 @@ const BODY_LIMIT = 2 * 1024;
 export const orderRoutes: FastifyPluginAsync<{
   orders: OrderService;
   retailing: RetailingService;
-}> = async (app, { orders, retailing }) => {
+  accounts: AccountService;
+}> = async (app, { orders, retailing, accounts }) => {
   const max = orders.config.maxPaymentAttempts;
 
   function sendOrder(
@@ -64,7 +67,7 @@ export const orderRoutes: FastifyPluginAsync<{
     const params = parseInput(orderParamsSchema, request.params, reply);
     if (!params) return reply;
     const scenario = request.scenario ?? undefined;
-    const result = await orders.get(params.orderId, bearerToken(request), scenario);
+    const result = await orders.get(params.orderId, await principalOf(request, accounts), scenario);
     return sendOrder(reply, result, retailing.now(scenario));
   });
 
@@ -72,7 +75,11 @@ export const orderRoutes: FastifyPluginAsync<{
     const params = parseInput(orderReferenceParamsSchema, request.params, reply);
     if (!params) return reply;
     const scenario = request.scenario ?? undefined;
-    const result = await orders.getByReference(params.reference, bearerToken(request), scenario);
+    const result = await orders.getByReference(
+      params.reference,
+      await principalOf(request, accounts),
+      scenario,
+    );
     return sendOrder(reply, result, retailing.now(scenario));
   });
 
@@ -87,7 +94,7 @@ export const orderRoutes: FastifyPluginAsync<{
       const scenario = request.scenario ?? undefined;
       const result = await orders.pay(
         params.orderId,
-        bearerToken(request),
+        await principalOf(request, accounts),
         body,
         scenario,
         request.crashPoint,
@@ -101,7 +108,11 @@ export const orderRoutes: FastifyPluginAsync<{
     const params = parseInput(orderParamsSchema, request.params, reply);
     if (!params) return reply;
     const scenario = request.scenario ?? undefined;
-    const result = await orders.refreshStatus(params.orderId, bearerToken(request), scenario);
+    const result = await orders.refreshStatus(
+      params.orderId,
+      await principalOf(request, accounts),
+      scenario,
+    );
     return sendPayment(reply, result, retailing.now(scenario), { lookup: true });
   });
 };

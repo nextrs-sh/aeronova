@@ -119,7 +119,7 @@ const EXPIRED_GRACE_MS = 30 * 60_000;
 
 export type RetailingFailure = {
   ok: false;
-  status: 400 | 404 | 409 | 410 | 422 | 503;
+  status: 400 | 401 | 403 | 404 | 409 | 410 | 422 | 429 | 503;
   code: ApiErrorCode;
   message: string;
   path?: string;
@@ -1367,6 +1367,13 @@ export function createRetailingService({
     now(scenario?: Scenario): number {
       return context(scenario).now;
     },
+
+    /** Pricing inputs as a request sees them, for servicing quotes (Milestone 6). */
+    pricingContext(scenario?: Scenario): PricingContext {
+      return context(scenario);
+    },
+
+    offerValidityMs: config.offerValidityMs,
 
     deleteSession(id: string, token: string | undefined): RetailingResult<null> {
       const session = sessions.get(id);

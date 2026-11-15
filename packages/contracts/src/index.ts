@@ -15,3 +15,5 @@ export * from './seatmaps';
 export * from './ancillaries';
 export * from './booking';
 export * from './orders';
+export * from './servicing';
+export * from './accounts';

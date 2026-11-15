@@ -19,6 +19,22 @@ export const CRASH_POINTS = [
   'payment:after-provider',
   /** The order is CONFIRMED and committed; the response hasn't been sent. */
   'payment:after-confirm',
+  // Milestone 6: servicing.
+  /** A change, seat, service, or cancellation quote is computed; nothing is written. */
+  'servicing:after-quote',
+  /**
+   * The servicing operation is written: its intent, its claim on replacement inventory, and its
+   * first payment attempt (PROCESSING) — one write. The provider hasn't been called.
+   */
+  'servicing:after-intent',
+  /** The change is applied (COMPLETED) in the order; the response hasn't been sent. */
+  'servicing:after-commit',
+  /** The cancellation is written (seats released, refund PROCESSING); no refund sent yet. */
+  'cancel:after-commit',
+  /** The refund provider recorded the refund; the order doesn't know the result yet. */
+  'refund:after-provider',
+  /** The refund's answer is applied; the cancellation response hasn't been sent. */
+  'cancel:before-response',
 ] as const;
 export type CrashPoint = (typeof CRASH_POINTS)[number];
 

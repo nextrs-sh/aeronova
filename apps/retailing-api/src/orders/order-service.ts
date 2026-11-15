@@ -7,7 +7,8 @@ import { crashIf, type CrashPoint } from '../crash';
 import type { StoredAttempt, StoredOrder } from '../db/schema';
 import type { RetailingResult, RetailingService } from '../offers/retailing-service';
 import type { Scenario } from '../offers/scenario';
-import { hashOf, newId, ownsOrder } from './ids';
+import { canAccess, type Principal } from './access';
+import { hashOf, newId } from './ids';
 import {
   confirmPayment,
   failPayment,
@@ -75,10 +76,10 @@ export function createOrderService({
   const { repository, queue } = store;
   const max = config.maxPaymentAttempts;
 
-  /** The order if this guest owns it; otherwise exactly like an unknown order. */
-  async function owned(orderId: string, token: string | undefined, now: number) {
+  /** The order if this principal may open it; otherwise exactly like an unknown order. */
+  async function owned(orderId: string, principal: Principal, now: number) {
     const order = await store.readCurrent(orderId, now);
-    return order && ownsOrder(token, order.ownerTokenHash) ? order : null;
+    return order && canAccess(order, principal) ? order : null;
   }
 
   /** Apply what the provider said about an attempt. Idempotent; inside the queue. */
@@ -143,27 +144,27 @@ export function createOrderService({
 
     async get(
       orderId: string,
-      token: string | undefined,
+      principal: Principal,
       scenario?: Scenario,
     ): Promise<RetailingResult<StoredOrder>> {
-      const order = await owned(orderId, token, retailing.now(scenario));
+      const order = await owned(orderId, principal, retailing.now(scenario));
       return order ? { ok: true, value: order } : NOT_FOUND();
     },
 
-    /** Look up by booking reference. The reference alone grants nothing: the guest must own it. */
+    /** Look up by booking reference. The reference alone grants nothing: the caller must own it. */
     async getByReference(
       reference: string,
-      token: string | undefined,
+      principal: Principal,
       scenario?: Scenario,
     ): Promise<RetailingResult<StoredOrder>> {
       const found = await repository.byReference(reference);
-      if (!found || !ownsOrder(token, found.ownerTokenHash)) return NOT_FOUND();
-      return this.get(found.orderId, token, scenario);
+      if (!found || !canAccess(found, principal)) return NOT_FOUND();
+      return this.get(found.orderId, principal, scenario);
     },
 
     async pay(
       orderId: string,
-      token: string | undefined,
+      principal: Principal,
       request: CreatePaymentAttemptRequest,
       scenario?: Scenario,
       crashAt?: CrashPoint | null,
@@ -179,7 +180,7 @@ export function createOrderService({
         async (): Promise<RetailingResult<PaymentOutcome & { fresh: boolean }>> => {
           const now = retailing.now(scenario);
           const current = await repository.byId(orderId);
-          if (!current || !ownsOrder(token, current.ownerTokenHash)) return NOT_FOUND();
+          if (!current || !canAccess(current, principal)) return NOT_FOUND();
           const replay = current.attempts.find(
             (attempt) => attempt.idempotencyKey === request.idempotencyKey,
           );
@@ -294,13 +295,13 @@ export function createOrderService({
     /** Find out what happened to an undecided payment, and apply it. */
     async refreshStatus(
       orderId: string,
-      token: string | undefined,
+      principal: Principal,
       scenario?: Scenario,
     ): Promise<RetailingResult<PaymentOutcome>> {
       return queue.run(async () => {
         const now = retailing.now(scenario);
         const current = await repository.byId(orderId);
-        if (!current || !ownsOrder(token, current.ownerTokenHash)) return NOT_FOUND();
+        if (!current || !canAccess(current, principal)) return NOT_FOUND();
         const resolved = await resolveUndecided(current, now);
         const order = await store.expireIfDue(resolved, now);
         return { ok: true, value: { order, attempt: latestAttempt(order), replayed: false } };

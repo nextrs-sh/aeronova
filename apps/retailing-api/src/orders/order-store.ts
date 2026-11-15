@@ -3,6 +3,14 @@ import type { StoredOrder } from '../db/schema';
 import type { AllocationLedger } from '../inventory/ledger';
 import { assertOrderInvariants, expireOrder, holdExpiredAt } from './lifecycle';
 import type { SerialQueue } from './serial-queue';
+import { claimExpiredAt, endOperation } from './servicing-lifecycle';
+
+const CLAIM_ENDED = 'The seats held for this change were released because it wasn’t paid in time.';
+
+/** Something about this order has ended by `now` and must be written: a hold or a change's claim. */
+function dueAt(order: StoredOrder, now: number): boolean {
+  return holdExpiredAt(order, now) || order.servicing.some((op) => claimExpiredAt(op, now));
+}
 
 /**
  * The only way orders are written. Each write checks the order's invariants, stores it with a
@@ -32,9 +40,18 @@ export class OrderStore {
     return stored;
   }
 
-  /** Expire the order if its hold has ended and no payment is undecided. Idempotent. */
+  /**
+   * Expire the order if its hold has ended and no payment is undecided, and end any servicing
+   * claim that ended the same way (Milestone 6). Idempotent; one write at most.
+   */
   async expireIfDue(order: StoredOrder, now: number): Promise<StoredOrder> {
-    return holdExpiredAt(order, now) ? this.write(order, expireOrder(order, now)) : order;
+    if (!dueAt(order, now)) return order;
+    let next = holdExpiredAt(order, now) ? expireOrder(order, now) : order;
+    for (const op of next.servicing) {
+      if (claimExpiredAt(op, now))
+        next = endOperation(next, op.operationId, 'EXPIRED', CLAIM_ENDED, now);
+    }
+    return this.write(order, next);
   }
 
   /**
@@ -43,7 +60,7 @@ export class OrderStore {
    */
   async readCurrent(orderId: string, now: number): Promise<StoredOrder | null> {
     const order = await this.repository.byId(orderId);
-    if (!order || !holdExpiredAt(order, now)) return order;
+    if (!order || !dueAt(order, now)) return order;
     return this.queue.run(async () => {
       const latest = await this.repository.byId(orderId);
       return latest ? this.expireIfDue(latest, now) : null;

@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { isIsoDate } from '@velasia/contracts';
+import { ACCOUNT_RULES, isIsoDate } from '@velasia/contracts';
 import { z } from 'zod';
 import { DEFAULT_RETAILING_CONFIG, type RetailingConfig } from './offers/retailing-service';
 
@@ -46,6 +46,14 @@ const envSchema = z.object({
   PAYMENT_PROVIDER_DELAY_MS: z.coerce.number().int().min(0).max(10_000).default(350),
   /** How long the API waits for the simulated provider before treating the result as unknown. */
   PAYMENT_PROVIDER_TIMEOUT_MS: z.coerce.number().int().min(20).max(30_000).default(2_500),
+  /**
+   * Milestone 6: demo account registration. Defaults to enabled except when
+   * `NODE_ENV=production`, where demo sign-up stays closed unless explicitly enabled (there is no
+   * email verification or recovery; see MILESTONE-6-REPORT.md).
+   */
+  ACCOUNT_REGISTRATION: z.enum(['enabled', 'disabled']).optional(),
+  /** How long a change waiting for payment keeps its replacement flights or seats. */
+  SERVICING_CLAIM_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
   /** Test-only: honour `x-velasia-crash` (needs RETAILING_API_FAULTS=enabled too). */
   RETAILING_API_CRASH_TESTS: z.enum(['enabled', 'disabled']).default('disabled'),
   NODE_ENV: z.string().optional(),
@@ -71,7 +79,16 @@ export interface ApiConfig {
     responseDelayMs: number;
     timeoutMs: number;
   };
+  /** Milestone 6. */
+  servicing: { claimMs: number };
+  accounts: { registration: boolean; sessionMs: number };
 }
+
+export const DEFAULT_SERVICING_CONFIG: ApiConfig['servicing'] = { claimMs: 10 * 60_000 };
+export const DEFAULT_ACCOUNTS_CONFIG: ApiConfig['accounts'] = {
+  registration: true,
+  sessionMs: ACCOUNT_RULES.sessionDays * 24 * 60 * 60_000,
+};
 
 export const DEFAULT_CHECKOUT_CONFIG: ApiConfig['checkout'] = {
   holdMs: 10 * 60_000,
@@ -117,6 +134,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ApiConfig {
       pendingResolveMs: parsed.PAYMENT_PENDING_RESOLVE_MS,
       responseDelayMs: parsed.PAYMENT_PROVIDER_DELAY_MS,
       timeoutMs: parsed.PAYMENT_PROVIDER_TIMEOUT_MS,
+    },
+    servicing: { claimMs: parsed.SERVICING_CLAIM_MINUTES * 60_000 },
+    accounts: {
+      ...DEFAULT_ACCOUNTS_CONFIG,
+      registration:
+        (parsed.ACCOUNT_REGISTRATION ??
+          (parsed.NODE_ENV === 'production' ? 'disabled' : 'enabled')) === 'enabled',
     },
   };
 }

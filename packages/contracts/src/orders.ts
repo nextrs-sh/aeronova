@@ -60,10 +60,13 @@ export const paymentAttemptIdSchema = z.string().regex(/^pay_[A-Za-z0-9_-]{22}$/
 
 /**
  * - `PENDING_PAYMENT`: the seats are held; waiting for a successful payment.
- * - `CONFIRMED`: paid (simulated) and the seats committed. Final.
+ * - `CONFIRMED`: paid (simulated) and the seats committed. It can be serviced (Milestone 6).
  * - `PAYMENT_FAILED`: every allowed payment attempt failed; the seats were released. Final.
  * - `EXPIRED`: the hold ended before a payment succeeded; the seats were released. Final.
  * - `CANCELLED`: replaced by a newer checkout of the same trip; the seats were released. Final.
+ *   Never a booking.
+ * - `BOOKING_CANCELLED`: a confirmed booking the traveller cancelled (Milestone 6); its seats
+ *   were released and any simulated refund is tracked separately. Final.
  */
 export const orderStatusSchema = z.enum([
   'PENDING_PAYMENT',
@@ -71,6 +74,7 @@ export const orderStatusSchema = z.enum([
   'PAYMENT_FAILED',
   'EXPIRED',
   'CANCELLED',
+  'BOOKING_CANCELLED',
 ]);
 export type OrderStatus = z.infer<typeof orderStatusSchema>;
 
@@ -142,10 +146,21 @@ export const SIMULATED_OUTCOME_LABELS: Record<
 // The order
 // ---------------------------------------------------------------------------
 
-export const orderItemKindSchema = z.enum(['FLIGHT', 'SEAT', 'BAGGAGE', 'MEAL', 'PRIORITY']);
+export const orderItemKindSchema = z.enum([
+  'FLIGHT',
+  'SEAT',
+  'BAGGAGE',
+  'MEAL',
+  'PRIORITY',
+  /** Milestone 6: the fare's change fee, charged when a flight was changed. */
+  'CHANGE_FEE',
+]);
 export type OrderItemKind = z.infer<typeof orderItemKindSchema>;
 
-/** One purchased product, priced when the order was created. */
+/**
+ * One purchased product. In `original` it is priced as at checkout; in the current items it
+ * carries the value paid for it so far (a seat upgrade adds what was paid on top).
+ */
 export const orderItemSchema = z.object({
   id: z.string().min(1),
   kind: orderItemKindSchema,
@@ -192,10 +207,119 @@ export const paymentAttemptSchema = z.object({
 });
 export type PaymentAttempt = z.infer<typeof paymentAttemptSchema>;
 
+// ---------------------------------------------------------------------------
+// Servicing (Milestone 6): what happened to a booking after it was confirmed
+// ---------------------------------------------------------------------------
+
+export const servicingOperationSchema = z.enum([
+  'CHANGE_FLIGHT',
+  'CHANGE_SEAT',
+  'ADD_ANCILLARY',
+  'CANCEL_ORDER',
+]);
+export type ServicingOperation = z.infer<typeof servicingOperationSchema>;
+
+/**
+ * - `QUOTED`: priced, awaiting the traveller's confirmation. Quotes are never stored: they are
+ *   recomputed and compared when confirmed, like the checkout total.
+ * - `AWAITING_PAYMENT`: confirmed; the replacement inventory is claimed and the original is
+ *   untouched until the additional (simulated) payment succeeds.
+ * - `COMPLETED`: applied to the booking in one durable write.
+ * - `FAILED`: not applied; the booking is exactly as before.
+ * - `EXPIRED`: the claim on replacement inventory ended before a payment succeeded.
+ */
+export const servicingStatusSchema = z.enum([
+  'QUOTED',
+  'AWAITING_PAYMENT',
+  'COMPLETED',
+  'FAILED',
+  'EXPIRED',
+]);
+export type ServicingStatus = z.infer<typeof servicingStatusSchema>;
+
+/**
+ * A simulated refund. Separate from cancellation: a booking can be cancelled while its refund is
+ * still pending.
+ *
+ * - `PROCESSING`: recorded and sent to the simulated provider; no answer yet.
+ * - `PENDING`: the provider accepted it and will decide later.
+ * - `UNKNOWN`: the provider didn't answer in time; looked up, never sent twice.
+ * - `SUCCEEDED` / `FAILED`: decided.
+ */
+export const refundStatusSchema = z.enum([
+  'PENDING',
+  'PROCESSING',
+  'SUCCEEDED',
+  'FAILED',
+  'UNKNOWN',
+]);
+export type RefundStatus = z.infer<typeof refundStatusSchema>;
+export const UNRESOLVED_REFUND_STATUSES: readonly RefundStatus[] = [
+  'PENDING',
+  'PROCESSING',
+  'UNKNOWN',
+];
+
+/**
+ * What a servicing operation does to money: nothing, a (simulated) charge, a (simulated) refund
+ * to the original payment, or a travel credit kept for later (no money moves).
+ */
+export const financialAdjustmentSchema = z.object({
+  kind: z.enum(['NONE', 'CHARGE', 'REFUND', 'CREDIT']),
+  amountMinor: minorAmountSchema,
+});
+export type FinancialAdjustment = z.infer<typeof financialAdjustmentSchema>;
+
+export const refundSchema = z.object({
+  id: z.string().regex(/^rfd_[A-Za-z0-9_-]{22}$/),
+  operationId: z.string().min(1),
+  amountMinor: minorAmountSchema,
+  currency: currencyCodeSchema,
+  status: refundStatusSchema,
+  createdAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().nullable(),
+  providerReference: z.string().nullable(),
+  failureReason: z.string().nullable(),
+});
+export type Refund = z.infer<typeof refundSchema>;
+
+export const servicingRecordSchema = z.object({
+  id: z.string().regex(/^svc_[A-Za-z0-9_-]{22}$/),
+  operation: servicingOperationSchema,
+  status: servicingStatusSchema,
+  /** What was asked for and what was applied, in words without personal data. */
+  summary: z.string().min(1),
+  createdAt: z.iso.datetime(),
+  completedAt: z.iso.datetime().nullable(),
+  /** The order revision the operation was requested against, and the one it produced. */
+  previousRevision: z.number().int().positive(),
+  newRevision: z.number().int().positive().nullable(),
+  /** Price of the change before fees and credits (signed, minor units). */
+  priceDifferenceMinor: z.number().int(),
+  adjustment: financialAdjustmentSchema,
+  failureReason: z.string().nullable(),
+  payment: z
+    .object({
+      attempts: z.array(paymentAttemptSchema),
+      canPay: z.boolean(),
+      awaitingResult: z.boolean(),
+      attemptsRemaining: z.number().int().nonnegative(),
+      /** While waiting for payment: when the claimed replacement inventory is released. */
+      claimExpiresAt: z.iso.datetime().nullable(),
+    })
+    .nullable(),
+  refunds: z.array(refundSchema),
+});
+export type ServicingRecord = z.infer<typeof servicingRecordSchema>;
+
 export const orderSchema = z.object({
   id: orderIdSchema,
   reference: bookingReferenceSchema,
   status: orderStatusSchema,
+  /** Compare-and-set revision: servicing requests send it back as `expectedRevision`. */
+  revision: z.number().int().positive(),
+  /** Who can open the booking: the guest browser that made it, or the account it was linked to. */
+  owner: z.enum(['GUEST', 'ACCOUNT']),
   /** The latest payment attempt's status, or `NOT_STARTED`. */
   paymentStatus: z.union([paymentStatusSchema, z.literal('NOT_STARTED')]),
   currency: currencyCodeSchema,
@@ -241,6 +365,32 @@ export const orderSchema = z.object({
   updatedAt: z.iso.datetime(),
   confirmedAt: z.iso.datetime().nullable(),
   serverTime: z.iso.datetime(),
+  /**
+   * What was bought at checkout, never rewritten. `journeys`, `seats`, `ancillaries`,
+   * `baggage`, and `items` above are the booking as it is now, after any servicing.
+   */
+  original: z.object({
+    journeys: z.array(orderJourneySchema).min(1),
+    items: z.array(orderItemSchema).min(1),
+    totalMinor: minorAmountSchema,
+  }),
+  /** How many times the itinerary or its services changed after confirmation. */
+  currentVersion: z.number().int().positive(),
+  /** The value of the booking as it is now: the sum of `items`. */
+  currentTotalMinor: minorAmountSchema,
+  financial: z.object({
+    /** Every successful simulated charge: checkout plus servicing. */
+    paidMinor: minorAmountSchema,
+    refundedMinor: minorAmountSchema,
+    /** Refunds decided on but not yet confirmed by the simulated provider. */
+    refundPendingMinor: minorAmountSchema,
+    /** Refunds the simulated provider declined (shown, never silently dropped). */
+    refundFailedMinor: minorAmountSchema,
+    /** Travel credit kept from changes to a cheaper flight (no money moves). */
+    creditMinor: minorAmountSchema,
+  }),
+  servicing: z.array(servicingRecordSchema),
+  cancelledAt: z.iso.datetime().nullable(),
 });
 export type Order = z.infer<typeof orderSchema>;
 
@@ -356,4 +506,5 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   PAYMENT_FAILED: 'Payment unsuccessful',
   EXPIRED: 'Hold expired',
   CANCELLED: 'Checkout cancelled',
+  BOOKING_CANCELLED: 'Booking cancelled',
 };

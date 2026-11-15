@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@velasia/contracts": "workspace:*",
+    "@node-rs/argon2": "catalog:",
     "@taladb/node": "catalog:",
     "fastify": "catalog:",
     "taladb": "catalog:",

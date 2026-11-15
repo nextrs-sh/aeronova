@@ -85,7 +85,7 @@ describe('TalaDB database lifecycle', { timeout: 60_000 }, () => {
     expect(await repo.count()).toBe(1);
     expect((await again.orders.listIndexes()).btree.sort()).toEqual([...ORDER_INDEXES].sort());
     await again.close();
-    expect(LATEST_MIGRATION).toBe(1);
+    expect(LATEST_MIGRATION).toBe(2);
   });
 
   it('refuses a second owner of the same file, in this process or another', async () => {

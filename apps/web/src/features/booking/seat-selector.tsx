@@ -56,6 +56,14 @@ interface SeatSelectorProps {
   initialMap: SessionSeatMap;
   /** Every saved seat in the session, on every flight. */
   assignments: SeatAssignment[];
+  /**
+   * Milestone 6 (Manage Booking): choosing a seat proposes it instead of saving it. The parent
+   * prices the change with the API and asks the traveller to confirm (and pay, if needed); the
+   * selector itself never changes a booking. Seats can't be removed in this mode.
+   */
+  onPropose?: (proposal: { travellerId: string; flightId: string; seatId: string }) => void;
+  /** Milestone 6: the seat the parent is pricing, highlighted while it waits. */
+  proposedSeatId?: string | null;
 }
 
 type Optimistic =
@@ -68,7 +76,13 @@ const POSITION: Record<Seat['position'], string> = {
   aisle: 'aisle',
 };
 
-export function SeatSelector({ segments, initialMap, assignments }: SeatSelectorProps) {
+export function SeatSelector({
+  segments,
+  initialMap,
+  assignments,
+  onPropose,
+  proposedSeatId = null,
+}: SeatSelectorProps) {
   const hydrated = useHydrated();
   const [maps, setMaps] = useState<Record<string, SessionSeatMap>>({});
   const [activeFlightId, setActiveFlightId] = useState(initialMap.seatMap.flightId);
@@ -185,6 +199,10 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
 
   async function choose(seat: Seat) {
     if (!map || !activeTraveller || pending) return;
+    if (onPropose) {
+      onPropose({ travellerId: activeTraveller.id, flightId: activeFlightId, seatId: seat.id });
+      return;
+    }
     const price = priceOf(seat);
     setResult(null);
     const travellerId = activeTraveller.id;
@@ -334,7 +352,7 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
                           {priceLabel ? ` · ${priceLabel}` : ''}
                         </span>
                       </button>
-                      {seat ? (
+                      {seat && !onPropose ? (
                         <Button
                           type="button"
                           variant="ghost"
@@ -402,6 +420,7 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
                 if (seat.status === 'UNAVAILABLE') return 'unavailable';
                 if (holder)
                   return holder.travellerId === activeTraveller?.id ? 'mine' : 'companion';
+                if (seat.id === proposedSeatId) return 'mine';
                 return problemFor(seat) ? 'ineligible' : 'available';
               }}
               companionOrdinal={(seatId) => {
@@ -448,6 +467,7 @@ export function SeatSelector({ segments, initialMap, assignments }: SeatSelector
             pending={pending}
             onChoose={(seat) => void choose(seat)}
             onRemove={() => activeTraveller && void remove(activeTraveller.id)}
+            canRemove={!onPropose}
           />
           {result?.status === 'error' ? (
             <p
@@ -761,6 +781,7 @@ function SeatDetails({
   problem,
   holderName,
   isMine,
+  canRemove,
   pending,
   onChoose,
   onRemove,
@@ -773,6 +794,8 @@ function SeatDetails({
   problem: ReturnType<typeof seatProblem> | 'unavailable';
   holderName: string | null;
   isMine: boolean;
+  /** `false` in Manage Booking, where a seat is changed, never removed. */
+  canRemove: boolean;
   pending: boolean;
   onChoose: (seat: Seat) => void;
   onRemove: () => void;
@@ -821,15 +844,17 @@ function SeatDetails({
       {isMine ? (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-sm text-success">This is {travellerName}’s seat.</p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={onRemove}
-            aria-disabled={pending || undefined}
-          >
-            Remove seat
-          </Button>
+          {canRemove ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onRemove}
+              aria-disabled={pending || undefined}
+            >
+              Remove seat
+            </Button>
+          ) : null}
         </div>
       ) : seat.status === 'OCCUPIED' ? (
         <p className="text-sm text-ink-muted">This seat is already taken. Please choose another.</p>

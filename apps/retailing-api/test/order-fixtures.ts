@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { ORDER_SCHEMA_VERSION, type StoredOrder } from '../src/db/schema';
+import { listingFor, ORDER_SCHEMA_VERSION, type StoredOrder } from '../src/db/schema';
 import { FARE_FAMILIES_BY_CODE } from '../src/fixtures/fare-families';
 import { createOffer, inventoryVersionFor, toPublicOffer } from '../src/offers/offer-engine';
 import { guestIdFor, hashOf, newBookingReference, newId } from '../src/orders/ids';
@@ -137,6 +137,35 @@ export function sampleOrder(overrides: Partial<StoredOrder> = {}): StoredOrder {
     holdExpiresAt,
     flightIds: ['NV501-20261215'],
     attemptIds: [],
+    // Milestone 6.
+    ownerAccountId: null,
+    ownership: [{ kind: 'GUEST', id: guestId, at: now }],
+    current: {
+      version: 1,
+      journeys: [],
+      seats: [],
+      ancillaries: [],
+      baggage: [],
+      items: [],
+    },
+    servicing: [],
+    cancelledAt: null,
+    servicingAttemptIds: [],
+    servicingState: 'NONE',
+    listing: null as never,
+    tripStartsAt: 0,
+    tripEndsAt: 0,
   };
-  return { ...order, ...overrides };
+  const withCurrent: StoredOrder = {
+    ...order,
+    current: { ...order.current, journeys: order.snapshot.journeys, items: order.items },
+  };
+  const listing = listingFor(withCurrent);
+  return {
+    ...withCurrent,
+    listing,
+    tripStartsAt: listing.departsAt,
+    tripEndsAt: listing.endsAt,
+    ...overrides,
+  };
 }

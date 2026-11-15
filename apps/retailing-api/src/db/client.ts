@@ -1,8 +1,23 @@
 import { mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { openDB, type Collection, type Document, type TalaDB } from 'taladb';
-import { MIGRATIONS, ORDER_INDEXES, PROVIDER_INDEXES } from './migrations';
-import { ORDERS_COLLECTION, PROVIDER_COLLECTION } from './schema';
+import {
+  ACCOUNT_INDEXES,
+  MIGRATIONS,
+  ORDER_INDEXES,
+  PROVIDER_INDEXES,
+  REFUND_PROVIDER_INDEXES,
+  SESSION_INDEXES,
+  TRAVELLER_INDEXES,
+} from './migrations';
+import {
+  ACCOUNTS_COLLECTION,
+  ORDERS_COLLECTION,
+  PROVIDER_COLLECTION,
+  REFUND_PROVIDER_COLLECTION,
+  SESSIONS_COLLECTION,
+  TRAVELLERS_COLLECTION,
+} from './schema';
 
 /*
  * The retailing API's TalaDB database: opened once at startup, closed at shutdown, and never
@@ -15,6 +30,10 @@ export interface Database {
   readonly path: string;
   readonly orders: Collection<Document>;
   readonly provider: Collection<Document>;
+  readonly refundProvider: Collection<Document>;
+  readonly accounts: Collection<Document>;
+  readonly sessions: Collection<Document>;
+  readonly travellers: Collection<Document>;
   /** A cheap indexed read that proves the database answers. */
   health(): Promise<{ ok: boolean; latencyMs: number }>;
   close(): Promise<void>;
@@ -54,9 +73,17 @@ export async function openDatabase(path: string): Promise<Database> {
   }
   const orders = db.collection(ORDERS_COLLECTION);
   const provider = db.collection(PROVIDER_COLLECTION);
+  const refundProvider = db.collection(REFUND_PROVIDER_COLLECTION);
+  const accounts = db.collection(ACCOUNTS_COLLECTION);
+  const sessions = db.collection(SESSIONS_COLLECTION);
+  const travellers = db.collection(TRAVELLERS_COLLECTION);
   try {
     await verifyIndexes(orders, ORDER_INDEXES);
     await verifyIndexes(provider, PROVIDER_INDEXES);
+    await verifyIndexes(refundProvider, REFUND_PROVIDER_INDEXES);
+    await verifyIndexes(accounts, ACCOUNT_INDEXES);
+    await verifyIndexes(sessions, SESSION_INDEXES);
+    await verifyIndexes(travellers, TRAVELLER_INDEXES);
   } catch (error) {
     await db.close();
     throw error;
@@ -67,6 +94,10 @@ export async function openDatabase(path: string): Promise<Database> {
     path: file,
     orders,
     provider,
+    refundProvider,
+    accounts,
+    sessions,
+    travellers,
     async health() {
       const started = performance.now();
       if (closed) return { ok: false, latencyMs: 0 };

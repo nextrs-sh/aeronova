@@ -177,7 +177,7 @@ export function countryName(code: string): string {
 /** Letters (including common Latin accents), spaces, hyphens, and apostrophes. */
 const NAME_PATTERN = /^\p{Script=Latin}(?:[\p{Script=Latin}' -]*\p{Script=Latin})?$/u;
 
-const nameSchema = (label: string, min: number) =>
+export const nameSchema = (label: string, min: number) =>
   z
     .string()
     .transform((value) => value.trim().replace(/\s+/g, ' '))
@@ -197,30 +197,34 @@ const nameSchema = (label: string, min: number) =>
     );
 
 /** Optional text field: an empty string means "not given" and becomes `null`. */
-const optional = <T extends z.ZodType>(schema: T) =>
+export const optional = <T extends z.ZodType>(schema: T) =>
   z
     .union([z.literal(''), z.null(), z.undefined(), schema])
     .transform(
       (value) => (value === '' || value === undefined ? null : value) as z.output<T> | null,
     );
 
-const optionalName = optional(nameSchema('middle name', 1));
+export const optionalName = optional(nameSchema('middle name', 1));
+export const givenNameSchema = nameSchema('given name', TRAVELLER_RULES.givenNameMinLength);
+export const familyNameSchema = nameSchema('family name', TRAVELLER_RULES.familyNameMinLength);
+export const dateOfBirthSchema = z
+  .string()
+  .min(1, 'Enter the date of birth.')
+  .refine(isIsoDate, 'Enter a valid date of birth.');
+export const nationalitySchema = z
+  .string()
+  .min(1, 'Choose a nationality.')
+  .refine((code) => COUNTRY_CODES.has(code), 'Choose a nationality from the list.');
 
 export const travellerInputSchema = z.object({
   id: travellerIdSchema,
   type: z.enum(['adult', 'child', 'infant']),
   title: optional(travellerTitleSchema),
-  givenName: nameSchema('given name', TRAVELLER_RULES.givenNameMinLength),
+  givenName: givenNameSchema,
   middleName: optionalName,
-  familyName: nameSchema('family name', TRAVELLER_RULES.familyNameMinLength),
-  dateOfBirth: z
-    .string()
-    .min(1, 'Enter the date of birth.')
-    .refine(isIsoDate, 'Enter a valid date of birth.'),
-  nationality: z
-    .string()
-    .min(1, 'Choose a nationality.')
-    .refine((code) => COUNTRY_CODES.has(code), 'Choose a nationality from the list.'),
+  familyName: familyNameSchema,
+  dateOfBirth: dateOfBirthSchema,
+  nationality: nationalitySchema,
   specialAssistance: optional(specialAssistanceSchema),
   /** Infants only: the adult (`ADT…`) whose lap the infant travels on. */
   infantOf: optional(travellerIdSchema),

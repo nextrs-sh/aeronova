@@ -125,12 +125,25 @@ interface RequestOptions {
   token?: string;
   /** Guest token for checkout, sent as `x-velasia-guest`. */
   guest?: string;
+  /** Milestone 6: the account session token, sent as `x-velasia-account`. */
+  account?: string;
+  /** Milestone 6: an opaque per-browser key for the API's rate limits (`x-velasia-client`). */
+  client?: string;
 }
 
-async function getJson<T extends z.ZodType>(
+export async function getJson<T extends z.ZodType>(
   path: string,
   schema: T,
-  { allowNotFound = false, live = false, method = 'GET', body, token, guest }: RequestOptions = {},
+  {
+    allowNotFound = false,
+    live = false,
+    method = 'GET',
+    body,
+    token,
+    guest,
+    account,
+    client,
+  }: RequestOptions = {},
 ): Promise<z.output<T> | null> {
   const env = getServerEnv();
   const url = new URL(path, env.RETAILING_API_URL);
@@ -143,6 +156,8 @@ async function getJson<T extends z.ZodType>(
         ...(body === undefined ? {} : { 'content-type': 'application/json' }),
         ...(token ? { authorization: `Bearer ${token}` } : {}),
         ...(guest ? { 'x-velasia-guest': guest } : {}),
+        ...(account ? { 'x-velasia-account': account } : {}),
+        ...(client ? { 'x-velasia-client': client } : {}),
         ...(live ? await faultHeaders() : {}),
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
