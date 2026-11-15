@@ -296,10 +296,10 @@ describe('simulated network conditions', () => {
   });
   afterAll(() => faulty.close());
   const fault = (value: string) =>
-    faulty.inject({ method: 'GET', url: SEARCH, headers: { 'x-aeronova-fault': value } });
+    faulty.inject({ method: 'GET', url: SEARCH, headers: { 'x-velasia-fault': value } });
 
   it('ignores fault headers unless explicitly enabled', async () => {
-    const response = await get(SEARCH, { 'x-aeronova-fault': 'unavailable' });
+    const response = await get(SEARCH, { 'x-velasia-fault': 'unavailable' });
     expect(response.statusCode).toBe(200);
   });
 
@@ -334,7 +334,7 @@ describe('simulated network conditions', () => {
     const response = await faulty.inject({
       method: 'GET',
       url: '/health',
-      headers: { 'x-aeronova-fault': 'unavailable' },
+      headers: { 'x-velasia-fault': 'unavailable' },
     });
     expect(response.statusCode).toBe(200);
   });
@@ -351,7 +351,7 @@ describe('configuration', () => {
 
   it('parses overrides and rejects bad values', () => {
     const config = loadConfig({
-      AERONOVA_TODAY: '2027-01-10',
+      VELASIA_TODAY: '2027-01-10',
       INVENTORY_HORIZON_DAYS: '90',
       RETAILING_API_FAULTS: 'enabled',
       RETAILING_API_LATENCY_MS: '900-200',
@@ -361,7 +361,14 @@ describe('configuration', () => {
       inventory: { horizonDays: 90 },
       faults: { enabled: true, latency: { minMs: 200, maxMs: 900 } },
     });
-    expect(() => loadConfig({ AERONOVA_TODAY: '2027-13-01' })).toThrow();
+    expect(() => loadConfig({ VELASIA_TODAY: '2027-13-01' })).toThrow();
     expect(() => loadConfig({ RETAILING_API_FAULTS: 'yes' })).toThrow();
+  });
+
+  it('still honours the deprecated pre-rebrand AERONOVA_TODAY, with VELASIA_TODAY winning', () => {
+    expect(loadConfig({ AERONOVA_TODAY: '2027-02-01' }).today).toBe('2027-02-01');
+    expect(loadConfig({ VELASIA_TODAY: '2027-03-01', AERONOVA_TODAY: '2027-02-01' }).today).toBe(
+      '2027-03-01',
+    );
   });
 });
