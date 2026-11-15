@@ -147,3 +147,16 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# --- AeroNova additions ---
+.next/
+out/
+.turbo/
+playwright-report/
+test-results/
+blob-report/
+coverage/
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+.env*.local
