@@ -16,7 +16,16 @@
     "test": "turbo run test",
     "test:e2e": "turbo run build --filter=@velasia/web && playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "docker:build": "sh scripts/docker/compose.sh build",
+    "docker:up": "sh scripts/docker/compose.sh up -d --wait",
+    "docker:down": "sh scripts/docker/compose.sh down",
+    "docker:logs": "sh scripts/docker/compose.sh logs -f --tail=200",
+    "docker:smoke": "node scripts/docker/smoke.mjs",
+    "docker:backup": "sh scripts/docker/backup.sh",
+    "docker:restore": "sh scripts/docker/restore.sh",
+    "docker:verify-db": "sh scripts/docker/verify-db.sh",
+    "test:docker": "playwright test -c playwright.docker.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",

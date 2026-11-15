@@ -1,0 +1,126 @@
+# Velasia Airways — production-mode deployment (Milestone 7).
+#
+#   cp .env.production.example .env.production   # then edit (see docs/DEPLOYMENT.md)
+#   docker compose up --build -d --wait
+#   pnpm docker:smoke
+#
+# Three services. Only the proxy publishes a port (127.0.0.1:8080 by default). The storefront
+# and the retailing API share an internal network with no route to the internet; the API and
+# its TalaDB volume are never reachable from outside.
+#
+# SINGLE WRITER: the retailing API embeds TalaDB and must have exactly one replica. The fixed
+# `container_name` makes `docker compose up --scale velasia-api=2` fail, and TalaDB's file lock
+# refuses a second process on the same volume anyway. Do not run a second API against
+# `velasia-taladb-data`; see docs/ARCHITECTURE.md ("Deployment model").
+#
+# Velasia Airways is fictional: no real reservations, tickets, or payments.
+
+name: velasia
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  init: true
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '5' }
+
+services:
+  velasia-api:
+    <<: *hardening
+    container_name: velasia-api
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: velasia-api:${VELASIA_TAG:-local}
+    platform: linux/amd64
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      RETAILING_API_HOST: 0.0.0.0
+      RETAILING_API_PORT: '4010'
+      TALADB_PATH: /data/velasia.db
+    volumes:
+      - velasia-taladb-data:/data
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [internal]
+    # Longer than SHUTDOWN_TIMEOUT_MS (10 s): in-flight requests and queued writes finish first.
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2', memory: 768M }
+
+  velasia-web:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.web
+      args:
+        SITE_URL: ${SITE_URL:-http://localhost:8080}
+        VELASIA_DEPLOYMENT_ID: ${VELASIA_DEPLOYMENT_ID:-}
+        VELASIA_TODAY: ${VELASIA_TODAY:-}
+    image: velasia-web:${VELASIA_TAG:-local}
+    platform: linux/amd64
+    env_file:
+      - path: .env.production
+        required: false
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      HOSTNAME: 0.0.0.0
+      # Service discovery on the internal network; never a public URL.
+      RETAILING_API_URL: http://velasia-api:4010
+    depends_on:
+      velasia-api:
+        condition: service_healthy
+    volumes:
+      # Optimised images and the fetch cache (everything else in the image is read-only).
+      - velasia-web-cache:/app/apps/web/.next/cache
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    networks: [internal, edge]
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2', memory: 1024M }
+
+  velasia-proxy:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.proxy
+    image: velasia-proxy:${VELASIA_TAG:-local}
+    environment:
+      VELASIA_RATE_LIMIT_RPS: ${VELASIA_RATE_LIMIT_RPS:-50}
+      VELASIA_RATE_LIMIT_BURST: ${VELASIA_RATE_LIMIT_BURST:-100}
+      VELASIA_POST_RATE_LIMIT_RPS: ${VELASIA_POST_RATE_LIMIT_RPS:-10}
+      VELASIA_POST_RATE_LIMIT_BURST: ${VELASIA_POST_RATE_LIMIT_BURST:-30}
+    ports:
+      - '${VELASIA_HTTP_BIND:-127.0.0.1}:${VELASIA_HTTP_PORT:-8080}:8080'
+    depends_on:
+      velasia-web:
+        condition: service_healthy
+    tmpfs:
+      - /tmp:size=32m,mode=1777
+    networks: [edge]
+    stop_grace_period: 15s
+    deploy:
+      resources:
+        limits: { cpus: '1', memory: 128M }
+
+networks:
+  # API and storefront only; no gateway to the internet (nothing here calls out).
+  internal:
+    internal: true
+  # Proxy and storefront.
+  edge: {}
+
+volumes:
+  # The TalaDB file (orders, payments, accounts, sessions). Back it up with `pnpm docker:backup`.
+  velasia-taladb-data:
+  velasia-web-cache:
