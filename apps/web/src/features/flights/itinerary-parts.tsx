@@ -47,7 +47,8 @@ export function AirlineMark({
         <LogoMark tone="inverse" className="h-3.5" />
       </span>
       <span className="font-semibold text-ink">{airline.shortName}</span>
-      <span className="text-ink-subtle">{flightNumbers.map(formatFlightNumber).join(' · ')}</span>
+      {/* ink-muted, not ink-subtle: this also sits on tinted (navy-50) panels. */}
+      <span className="text-ink-muted">{flightNumbers.map(formatFlightNumber).join(' · ')}</span>
     </span>
   );
 }
