@@ -8,11 +8,11 @@ export function JourneySteps({ stage, roundTrip }: { stage: JourneyStage; roundT
     ? [
         { id: 'outbound', label: 'Departing flight' },
         { id: 'inbound', label: 'Return flight' },
-        { id: 'review', label: 'Review' },
+        { id: 'review', label: 'Trip summary' },
       ]
     : [
         { id: 'outbound', label: 'Choose flight' },
-        { id: 'review', label: 'Review' },
+        { id: 'review', label: 'Trip summary' },
       ];
   const currentIndex = steps.findIndex((step) => step.id === stage);
   return (
@@ -54,8 +54,7 @@ export function JourneySteps({ stage, roundTrip }: { stage: JourneyStage; roundT
         })}
       </ol>
       <p className="hidden text-xs text-ink-subtle sm:ml-auto sm:block">
-        Then: fare options · passengers · payment{' '}
-        <span className="font-semibold">(coming soon)</span>
+        Then: traveller details · payment <span className="font-semibold">(coming soon)</span>
       </p>
     </div>
   );

@@ -1,8 +1,5 @@
 import {
-  DEFAULT_RESULTS_STATE,
   buildResultsHref,
-  serializeFlightSearch,
-  serializeResultsState,
   type FlightSearch,
   type JourneyDirection,
   type ResultsState,
@@ -33,19 +30,58 @@ const href = (search: FlightSearch, state: Partial<ResultsState>) =>
   buildResultsHref(search, state) as Route;
 
 /**
- * Selecting a flight moves to the next step. Filters belong to the leg they
- * were set on, so they reset; the sort order carries over.
+ * Compare fares for one itinerary in the current step. The rest of the results state (filters,
+ * sort, page) is kept, so "Back to flights" returns to the same list.
  */
-export function selectHref(
+export function faresHref(search: FlightSearch, state: ResultsState, itineraryId: string): Route {
+  return href(search, { ...state, inboundId: undefined, faresId: itineraryId });
+}
+
+/** Leave the fare comparison, back to the results it was opened from. */
+export function backToResultsHref(search: FlightSearch, state: ResultsState): Route {
+  return href(search, { ...state, faresId: undefined });
+}
+
+/** Compare fares again for a flight already chosen, e.g. from the trip summary. */
+export function changeFareHref(
   search: FlightSearch,
-  state: ResultsState,
+  state: Pick<ResultsState, 'sort' | 'outboundId'>,
   direction: JourneyDirection,
   itineraryId: string,
 ): Route {
-  const next = { ...DEFAULT_RESULTS_STATE, sort: state.sort };
   return direction === 'outbound'
-    ? href(search, { ...next, outboundId: itineraryId })
-    : href(search, { ...next, outboundId: state.outboundId, inboundId: itineraryId });
+    ? href(search, { sort: state.sort, faresId: itineraryId })
+    : href(search, { sort: state.sort, outboundId: state.outboundId, faresId: itineraryId });
+}
+
+/** The trip summary for chosen flights. */
+export function summaryHref(
+  search: FlightSearch,
+  sort: ResultsState['sort'],
+  outboundId: string,
+  inboundId?: string,
+): Route {
+  return href(search, {
+    sort,
+    outboundId,
+    ...(search.tripType === 'round-trip' && inboundId ? { inboundId } : {}),
+  });
+}
+
+/**
+ * Where to go once a fare is chosen: the return flights next, unless a return that still fits
+ * is already chosen — then (as for one-way trips and returns) the trip summary.
+ */
+export function afterSelectionHref(
+  search: FlightSearch,
+  sort: ResultsState['sort'],
+  chosen: { outbound?: string; inbound?: string },
+): Route {
+  if (!chosen.outbound) return href(search, { sort });
+  if (search.tripType === 'round-trip' && !chosen.inbound) {
+    return href(search, { sort, outboundId: chosen.outbound });
+  }
+  return summaryHref(search, sort, chosen.outbound, chosen.inbound);
 }
 
 /** Back to choosing a direction's flight, keeping earlier choices. */
@@ -75,13 +111,4 @@ export function dateHref(
 
 export function resultsHref(search: FlightSearch, state: ResultsState): Route {
   return href(search, state);
-}
-
-/** The fare-selection preview for the chosen flights. */
-export function faresHref(search: FlightSearch, state: ResultsState): Route {
-  const params = serializeResultsState(
-    { ...DEFAULT_RESULTS_STATE, outboundId: state.outboundId, inboundId: state.inboundId },
-    serializeFlightSearch(search),
-  );
-  return `/flights/fares?${params}` as Route;
 }

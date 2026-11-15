@@ -58,3 +58,22 @@ export function ResultsSkeleton() {
 export function SelectedFlightSkeleton() {
   return <Skeleton className="h-32 rounded-[1.5rem]" aria-hidden="true" />;
 }
+
+export function FaresSkeleton() {
+  return (
+    <div aria-busy="true" className="space-y-6">
+      <span className="sr-only" role="status">
+        Loading fares…
+      </span>
+      <div className="space-y-6" aria-hidden="true">
+        <Skeleton className="h-8 w-64" />
+        <Skeleton className="h-36 rounded-[1.5rem]" />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: 4 }, (_, index) => (
+            <Skeleton key={index} className="h-[26rem] rounded-[1.5rem]" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}

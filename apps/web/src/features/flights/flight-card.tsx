@@ -13,18 +13,12 @@ interface FlightCardProps {
   itinerary: Itinerary;
   passengers: PassengerCounts;
   airports: AirportNames;
-  selectHref: Route;
-  selectLabel: string;
+  /** Opens the fare families for this itinerary. */
+  faresHref: Route;
 }
 
 /** One itinerary in the results: schedule first, then duration and stops, then price and action. */
-export function FlightCard({
-  itinerary,
-  passengers,
-  airports,
-  selectHref,
-  selectLabel,
-}: FlightCardProps) {
+export function FlightCard({ itinerary, passengers, airports, faresHref }: FlightCardProps) {
   const headingId = `flight-${itinerary.id}`;
   const aircraft = [...new Set(itinerary.segments.map((segment) => segment.aircraft.name))];
   return (
@@ -64,8 +58,8 @@ export function FlightCard({
           <PriceBlock price={itinerary.price} passengers={passengers} align="start" />
           <div className="flex shrink-0 flex-col gap-2 sm:flex-row md:flex-col">
             <Button asChild size="md">
-              <Link href={selectHref}>
-                {selectLabel}
+              <Link href={faresHref}>
+                View fares
                 <span className="sr-only">
                   {' '}
                   {cityOf(airports, itinerary.origin)} {itinerary.departure.time} flight
@@ -77,8 +71,8 @@ export function FlightCard({
               itinerary={itinerary}
               passengers={passengers}
               airports={airports}
-              selectHref={selectHref}
-              selectLabel={selectLabel}
+              selectHref={faresHref}
+              selectLabel="View fares"
             />
           </div>
         </div>

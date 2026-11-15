@@ -18,16 +18,18 @@ import { DateStrip } from '@/features/flights/date-strip';
 import { EditSearch } from '@/features/flights/edit-search';
 import { FlightResults } from '@/features/flights/flight-results';
 import { cityOf, type AirportNames } from '@/features/flights/itinerary-parts';
-import { changeHref, journeyStage, legDate, legRoute } from '@/features/flights/journey';
+import { journeyStage, legDate, legRoute } from '@/features/flights/journey';
 import { JourneySteps } from '@/features/flights/journey-steps';
 import { SearchSummary } from '@/features/flights/search-summary';
-import { SelectedFlight } from '@/features/flights/selected-flight';
 import {
   DateStripSkeleton,
+  FaresSkeleton,
   ResultsSkeleton,
   SelectedFlightSkeleton,
 } from '@/features/flights/skeletons';
-import { TripReview } from '@/features/flights/trip-review';
+import { FareComparison } from '@/features/shopping/fare-comparison';
+import { SelectedOffer } from '@/features/shopping/selected-offer';
+import { TripSummary } from '@/features/shopping/trip-summary';
 import { SearchWidget } from '@/features/search/search-widget';
 import { getAirports, loadSection } from '@/lib/content';
 import { pageMetadata } from '@/lib/metadata';
@@ -153,7 +155,10 @@ async function FlightSearchView({ searchParams }: Pick<PageProps<'/flights'>, 's
   );
 }
 
-/** The current step: choose a departing flight, a return flight, or review. */
+/**
+ * The current step: choose a departing flight (and its fare), a return flight (and its fare),
+ * or review the trip summary. The URL decides the step; the shopping session holds the offers.
+ */
 function Journey({
   search,
   state,
@@ -171,29 +176,40 @@ function Journey({
         key={`review|${searchKey}|${state.outboundId}|${state.inboundId}`}
         fallback={<ResultsSkeleton />}
       >
-        <TripReview search={search} state={state} airports={airports} />
+        <TripSummary search={search} state={state} airports={airports} />
       </Suspense>
     );
   }
 
   const direction: JourneyDirection = stage;
+  const selectedOutbound =
+    direction === 'inbound' && state.outboundId ? (
+      <Suspense fallback={<SelectedFlightSkeleton />}>
+        <SelectedOffer search={search} state={state} airports={airports} />
+      </Suspense>
+    ) : null;
+
+  if (state.faresId) {
+    return (
+      <>
+        {selectedOutbound}
+        <Suspense
+          key={`fares|${direction}|${searchKey}|${state.faresId}`}
+          fallback={<FaresSkeleton />}
+        >
+          <FareComparison search={search} state={state} direction={direction} airports={airports} />
+        </Suspense>
+      </>
+    );
+  }
+
   // Filters and sort keep the current results on screen while updating;
   // a new date, direction, or page shows the skeleton.
   const legKey = `${direction}|${searchKey}|${state.outboundId ?? ''}|${state.page}`;
   const { origin, destination } = legRoute(search, direction);
   return (
     <>
-      {direction === 'inbound' && state.outboundId ? (
-        <Suspense fallback={<SelectedFlightSkeleton />}>
-          <SelectedFlight
-            id={state.outboundId}
-            search={search}
-            direction="outbound"
-            airports={airports}
-            changeHref={changeHref(search, state, 'outbound')}
-          />
-        </Suspense>
-      ) : null}
+      {selectedOutbound}
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-2">
         <h2 className="font-display text-2xl font-bold text-ink sm:text-3xl" id="results-heading">
           {search.tripType === 'one-way'
