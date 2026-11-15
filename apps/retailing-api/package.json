@@ -1,0 +1,31 @@
+{
+  "name": "@aeronova/retailing-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Independent Fastify mock of AeroNova's airline retailing API.",
+  "exports": {
+    "./app": "./src/app.ts"
+  },
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/server.ts",
+    "start": "tsx src/server.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aeronova/contracts": "workspace:*",
+    "fastify": "catalog:",
+    "tsx": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@aeronova/config": "workspace:*",
+    "@types/node": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
