@@ -66,7 +66,7 @@ export function TravelYourWay() {
                 key={bundle.name}
                 className={
                   bundle.highlighted
-                    ? 'rounded-2xl bg-white p-5 text-ink ring-2 ring-gold-400'
+                    ? 'rounded-2xl bg-white p-5 text-ink ring-2 ring-primary-accent-on-dark'
                     : 'rounded-2xl bg-white/[0.06] p-5 ring-1 ring-white/15'
                 }
               >
@@ -86,8 +86,8 @@ export function TravelYourWay() {
                       <Check
                         className={
                           bundle.highlighted
-                            ? 'mt-0.5 size-4 shrink-0 text-gold-700'
-                            : 'mt-0.5 size-4 shrink-0 text-gold-300'
+                            ? 'mt-0.5 size-4 shrink-0 text-primary'
+                            : 'mt-0.5 size-4 shrink-0 text-primary-on-dark'
                         }
                         aria-hidden="true"
                       />

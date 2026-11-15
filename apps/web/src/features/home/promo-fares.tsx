@@ -41,7 +41,7 @@ export async function PromoFares() {
                       sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
                       className="object-cover"
                     />
-                    <Badge tone="gold" className="absolute top-3 left-3 bg-white">
+                    <Badge tone="primary" className="absolute top-3 left-3 bg-white">
                       <Tag aria-hidden="true" />
                       {destination.name}
                     </Badge>
@@ -57,7 +57,7 @@ export async function PromoFares() {
                       <IllustrativeFare fare={destination.illustrativeFare!} />
                       <Link
                         href={`/destinations/${destination.slug}` as Route}
-                        className="inline-flex items-center gap-1 text-sm font-semibold text-navy-700 hover:text-gold-800"
+                        className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:text-primary-hover"
                       >
                         Explore<span className="sr-only"> {destination.name}</span>
                         <ArrowRight className="size-4" aria-hidden="true" />

@@ -88,7 +88,7 @@ export function DestinationExplorer({ destinations }: { destinations: Destinatio
               className={cn(
                 'h-10 shrink-0 rounded-full border px-4 text-sm font-semibold transition-colors',
                 region === filter.value
-                  ? 'border-navy-900 bg-navy-900 text-white'
+                  ? 'border-primary bg-primary text-primary-foreground'
                   : 'border-line-strong bg-white text-ink-muted hover:border-navy-300 hover:text-ink',
               )}
             >

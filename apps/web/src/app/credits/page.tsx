@@ -51,7 +51,7 @@ export default function CreditsPage() {
                 </p>
                 <a
                   href={credit.sourceUrl}
-                  className="mt-2 inline-block font-semibold text-navy-700 underline underline-offset-2"
+                  className="mt-2 inline-block font-semibold text-primary underline underline-offset-2 hover:text-primary-hover"
                   rel="noreferrer"
                 >
                   View source<span className="sr-only"> for {credit.subject}</span>

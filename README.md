@@ -153,8 +153,9 @@ and retailing scenarios (`x-velasia-scenario`: `offer-expired`, `price-increase`
 ## Brand
 
 The Velasia symbol is two swept wing blades forming a V on a shared horizon line; the trailing
-blade, in Warm Gold, climbs past the frame. Midnight Navy carries the brand, gold is reserved for
-selective emphasis, and booking screens stay on light, readable surfaces.
+blade, in Velasia Crimson, climbs past the frame. Crimson marks primary actions and selected
+states, Midnight Navy carries premium surfaces, and booking screens stay on light, readable
+surfaces.
 
 - Assets: [`apps/web/public/brand/`](apps/web/public/brand/) (SVG logos, favicon, app icons,
   social card)

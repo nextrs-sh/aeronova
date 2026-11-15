@@ -32,7 +32,7 @@ the airline's retailing API, and three small shared packages.
 | `apps/web`           | Storefront. Feature folders (`features/search`, `features/destinations`, `features/home`, `features/flights`, `features/shopping`), app shell in `components/layout`.                                  |
 | `apps/retailing-api` | Fastify service: `routes/` (HTTP + validation), `inventory/` (schedule + seats), `pricing/`, `search/`, `offers/` (engine, sessions, stores, scenarios), `serialization.ts`, `services/`, `faults.ts`. |
 | `packages/contracts` | Zod schemas and types for airports, destinations, network, flights, offers, shopping sessions, and errors, plus pure rules: search validation, time zones, URL codecs.                                 |
-| `packages/ui`        | Tailwind 4 `@theme` tokens (navy, gold, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                                                                  |
+| `packages/ui`        | Tailwind 4 `@theme` tokens (crimson primary, navy, surfaces, motion) and primitives: Button, Badge, Container, Skeleton, Popover, Sheet (Radix).                                                       |
 | `packages/config`    | Shared `tsconfig` bases and the ESLint flat config.                                                                                                                                                    |
 
 Internal packages ship TypeScript source (Turborepo "just-in-time" packages). Next.js compiles

@@ -51,7 +51,7 @@ export default function CheckoutPage() {
     <>
       <div className="bg-navy-950 text-white print:hidden">
         <Container className="py-8 sm:py-10">
-          <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">
+          <p className="text-xs font-bold tracking-[0.16em] text-primary-on-dark uppercase">
             Book your trip · Checkout
           </p>
           <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Checkout</h1>
@@ -122,7 +122,7 @@ function CheckoutView({
               {total}
             </span>
           </span>
-          <span className="flex items-center gap-1 text-sm font-semibold text-navy-700">
+          <span className="flex items-center gap-1 text-sm font-semibold text-primary">
             Trip summary
             <ChevronDown
               className="size-4 transition-transform group-open:rotate-180 motion-reduce:transition-none"
@@ -134,7 +134,7 @@ function CheckoutView({
       </details>
       <a
         href="#payment"
-        className="-mt-3 block text-right text-sm font-semibold text-navy-700 underline-offset-4 hover:underline lg:hidden"
+        className="-mt-3 block text-right text-sm font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline lg:hidden"
         data-testid="go-to-payment"
       >
         Go to payment ↓
@@ -312,7 +312,7 @@ async function StartAgain({ label }: { label: string }) {
       <CheckoutRecheckForm />
       <Link
         href={STEP_HREF.review}
-        className="text-sm font-semibold text-navy-700 underline-offset-4 hover:underline"
+        className="text-sm font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
       >
         Go to your booking review
       </Link>

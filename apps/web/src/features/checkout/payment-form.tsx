@@ -129,9 +129,9 @@ export function PaymentForm({
               <label
                 key={option.code}
                 className={cn(
-                  'flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-navy-500',
+                  'flex cursor-pointer flex-col gap-1 rounded-2xl border p-3 text-sm transition-colors has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus',
                   checked
-                    ? 'border-navy-700 bg-navy-50'
+                    ? 'border-primary bg-primary-subtle ring-1 ring-primary'
                     : 'border-line bg-white hover:border-navy-300',
                 )}
               >
@@ -142,7 +142,7 @@ export function PaymentForm({
                     value={option.code}
                     checked={checked}
                     onChange={() => setMethod(option.code)}
-                    className="size-4 accent-navy-800"
+                    className="size-4 accent-primary"
                   />
                   <Icon className="size-4 text-navy-700" aria-hidden="true" />
                   {option.name}
@@ -169,7 +169,7 @@ export function PaymentForm({
                   value={option.code}
                   checked={outcome === option.code}
                   onChange={() => setOutcome(option.code)}
-                  className="mt-0.5 size-4 accent-navy-800"
+                  className="mt-0.5 size-4 accent-primary"
                 />
                 <span>
                   <span className="font-semibold">{option.name}</span>

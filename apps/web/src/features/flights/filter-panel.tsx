@@ -163,7 +163,7 @@ export function FilterPanel({ facets, filters: current, currency, className }: F
               { maxStops: undefined, departureWindows: [], maxPrice: undefined, aircraft: [] },
             )
           }
-          className="text-sm font-semibold text-navy-700 underline-offset-4 hover:underline"
+          className="text-sm font-semibold text-primary underline-offset-4 hover:text-primary-hover hover:underline"
         >
           Clear all filters
         </button>
@@ -174,8 +174,8 @@ export function FilterPanel({ facets, filters: current, currency, className }: F
 
 const optionRow =
   'flex min-h-10 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm text-ink transition-colors hover:bg-surface has-disabled:cursor-not-allowed has-disabled:text-ink-subtle/70';
-const checkbox = 'size-4.5 shrink-0 rounded accent-navy-700';
-const radio = 'size-4.5 shrink-0 accent-navy-700';
+const checkbox = 'size-4.5 shrink-0 rounded accent-primary';
+const radio = 'size-4.5 shrink-0 accent-primary';
 
 function Count({ value }: { value: number }) {
   return (
@@ -235,7 +235,7 @@ function PriceFilter({
         value={draft}
         aria-valuetext={`${label} per adult`}
         onChange={(event) => setDraft(Number(event.target.value))}
-        className="mt-3 w-full accent-gold-600"
+        className="mt-3 w-full accent-primary"
       />
       <div className="mt-1 flex justify-between text-xs text-ink-subtle" aria-hidden="true">
         <span>{formatMoney({ amount: min, currency })}</span>

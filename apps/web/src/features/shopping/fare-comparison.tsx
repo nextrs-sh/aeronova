@@ -164,7 +164,7 @@ export async function FareComparison({ search, state, direction, airports }: Far
           <FlightTimes itinerary={itinerary} airports={airports} size="md" />
         </div>
         <details className="mt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-navy-700 focus-visible:outline-2 focus-visible:outline-focus">
+          <summary className="cursor-pointer text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-focus">
             Flight details
           </summary>
           <div className="mt-4">

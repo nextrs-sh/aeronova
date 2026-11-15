@@ -34,7 +34,7 @@ export function JourneySteps({ stage, roundTrip }: { stage: JourneyStage; roundT
                 className={cn(
                   'inline-flex size-6 items-center justify-center rounded-full text-xs font-bold',
                   done && 'bg-success text-white',
-                  current && 'bg-navy-900 text-white',
+                  current && 'bg-primary text-primary-foreground',
                   !done && !current && 'bg-surface-strong text-ink-muted',
                 )}
               >

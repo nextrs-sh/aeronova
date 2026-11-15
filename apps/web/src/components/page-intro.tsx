@@ -18,7 +18,9 @@ export function PageIntro({ eyebrow, title, description, children }: PageIntroPr
       />
       <Container className="relative py-14 sm:py-16 lg:py-20">
         {eyebrow ? (
-          <p className="text-xs font-bold tracking-[0.16em] text-gold-300 uppercase">{eyebrow}</p>
+          <p className="text-xs font-bold tracking-[0.16em] text-primary-on-dark uppercase">
+            {eyebrow}
+          </p>
         ) : null}
         <h1 className="mt-2 max-w-3xl text-4xl font-bold sm:text-5xl">{title}</h1>
         {description ? (

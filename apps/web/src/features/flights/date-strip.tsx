@@ -87,7 +87,7 @@ export async function DateStrip({ search, state, direction }: DateStripProps) {
           const classes = cn(
             'block h-full rounded-2xl border px-2 py-3 text-center transition-colors',
             current
-              ? 'border-navy-900 bg-navy-900 text-white shadow-card'
+              ? 'border-primary bg-primary text-primary-foreground shadow-card'
               : disabled
                 ? 'border-transparent bg-surface text-ink-subtle'
                 : 'border-line bg-white text-ink hover:border-navy-300',

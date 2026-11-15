@@ -32,7 +32,7 @@ export function Hero() {
           <path
             d="M0 70Q720 -10 1440 70"
             fill="none"
-            className="stroke-gold-400/80"
+            className="stroke-primary-accent-on-dark/80"
             strokeWidth="1.5"
             vectorEffect="non-scaling-stroke"
           />
@@ -47,7 +47,7 @@ export function Hero() {
           >
             Beyond every
             <br />
-            <span className="text-gold-300">horizon.</span>
+            <span className="text-primary-accent-on-dark">horizon.</span>
           </h1>
           <p className="mt-5 max-w-xl animate-rise text-lg leading-relaxed text-white/90 [animation-delay:160ms] sm:text-xl">
             Island weekends, city breaks, and long-awaited reunions — flown with warm Filipino
@@ -62,7 +62,7 @@ export function Hero() {
           className="scroll-mt-28 rounded-[1.75rem] bg-white p-4 shadow-float ring-1 ring-navy-950/5 sm:p-6 lg:p-7"
         >
           <div className="mb-4 flex items-center gap-2.5">
-            <span aria-hidden="true" className="h-5 w-1 rounded-full bg-gold-400" />
+            <span aria-hidden="true" className="h-5 w-1 rounded-full bg-primary" />
             <h2 className="font-display text-lg font-bold text-ink sm:text-xl">Book a flight</h2>
           </div>
           <SearchWidget />

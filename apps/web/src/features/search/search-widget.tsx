@@ -183,7 +183,7 @@ export function SearchWidget({ initialDraft, presetDestination, className }: Sea
                   className="peer sr-only"
                   {...register('tripType')}
                 />
-                <span className="block rounded-full px-4 py-1.5 text-sm font-semibold text-ink-muted transition-colors peer-checked:bg-white peer-checked:text-ink peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
+                <span className="block rounded-full px-4 py-1.5 text-sm font-semibold text-ink-muted transition-colors peer-checked:bg-white peer-checked:text-primary peer-checked:shadow-sm peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-focus">
                   {TRIP_TYPE_LABELS[option]}
                 </span>
               </label>

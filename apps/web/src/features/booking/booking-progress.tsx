@@ -37,7 +37,7 @@ export function BookingProgress({
               aria-hidden="true"
               className={cn(
                 'inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-bold',
-                isCurrent && 'bg-navy-900 text-white',
+                isCurrent && 'bg-primary text-primary-foreground',
                 done && 'bg-success text-white',
                 !isCurrent && !done && 'bg-surface-strong text-ink-muted',
               )}
@@ -79,7 +79,7 @@ export function BookingProgress({
                 aria-hidden="true"
                 className={cn(
                   'h-1 rounded-full sm:hidden',
-                  position <= index || done ? 'bg-navy-900' : 'bg-surface-strong',
+                  position <= index || done ? 'bg-primary' : 'bg-surface-strong',
                 )}
               />
               {reachable ? (

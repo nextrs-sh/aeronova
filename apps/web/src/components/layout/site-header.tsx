@@ -20,7 +20,7 @@ export function SiteHeader() {
                 <NavLink
                   href={item.href}
                   className="relative inline-flex h-10 items-center rounded-full px-4 text-[0.9375rem] font-medium text-ink-muted transition-colors hover:bg-surface hover:text-ink"
-                  activeClassName="text-ink after:absolute after:inset-x-4 after:-bottom-[0.9rem] after:h-0.5 after:rounded-full after:bg-gold-600"
+                  activeClassName="text-ink after:absolute after:inset-x-4 after:-bottom-[0.9rem] after:h-0.5 after:rounded-full after:bg-primary"
                 >
                   {item.label}
                 </NavLink>
