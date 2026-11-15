@@ -1,0 +1,50 @@
+{
+  "name": "@aeronova/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AeroNova storefront \u2014 Next.js App Router.",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "node scripts/with-retailing-api.mjs next build",
+    "start": "next start --port 3000",
+    "lint": "eslint .",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aeronova/contracts": "workspace:*",
+    "@aeronova/ui": "workspace:*",
+    "@hookform/resolvers": "catalog:",
+    "axios": "catalog:",
+    "lucide-react": "catalog:",
+    "next": "catalog:",
+    "radix-ui": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-hook-form": "catalog:",
+    "server-only": "catalog:",
+    "zod": "catalog:",
+    "zustand": "catalog:"
+  },
+  "devDependencies": {
+    "@aeronova/config": "workspace:*",
+    "@aeronova/retailing-api": "workspace:*",
+    "@tailwindcss/postcss": "catalog:",
+    "@testing-library/dom": "catalog:",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
+    "@testing-library/user-event": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
+    "eslint": "catalog:",
+    "eslint-config-next": "catalog:",
+    "jsdom": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
+  }
+}
