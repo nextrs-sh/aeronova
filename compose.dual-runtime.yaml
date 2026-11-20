@@ -1,0 +1,131 @@
+# Velasia Airways: the two storefront runtimes side by side on ONE shared retailing API
+# (Milestone 8). Local validation of the DigitalOcean App Platform topology; production-mode
+# compose.yaml (with its nginx proxy) is unchanged.
+#
+#   docker compose -f compose.dual-runtime.yaml up --build -d --wait
+#   pnpm test:parity                      # tests/parity, against both storefronts
+#   docker compose -f compose.dual-runtime.yaml down --volumes
+#
+#   velasia-api     docker/Dockerfile.api   (Fastify + TalaDB)  internal network only
+#   velasia-node    Dockerfile.node         (official Next.js server)  127.0.0.1:8081
+#   velasia-nextrs  Dockerfile.nextrs       (NextRS, no Node.js)       127.0.0.1:8082
+#
+# Both storefronts: same source, same build arguments (so BuildKit reuses one `next build`
+# output for both images), same environment, same API, same CPU/memory limits. Like App
+# Platform, no init process is added: each server is PID 1 and handles SIGTERM itself.
+#
+# RETAILING_API_SERVICE_TOKEN (optional, 32+ characters) turns on the API's caller check as on
+# App Platform, where the API has a public hostname: e.g.
+#   RETAILING_API_SERVICE_TOKEN=$(openssl rand -hex 24) docker compose -f compose.dual-runtime.yaml up -d --wait
+#
+# Velasia Airways is fictional: no real reservations, tickets, or payments.
+
+name: velasia-dual
+
+x-hardening: &hardening
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: '5' }
+
+# VELASIA_DEPLOYMENT_ID is deliberately absent: NextRS 0.1.0-rc.1 cannot serve a build that
+# uses Next.js deploymentId, and both images must come from the same build.
+x-storefront-build-args: &storefront-build-args
+  SITE_URL: ${SITE_URL:-http://localhost:8080}
+  VELASIA_TODAY: ${VELASIA_TODAY:-}
+  VELASIA_NEXT_COMPRESS: ${VELASIA_NEXT_COMPRESS:-}
+
+x-storefront-env: &storefront-env
+  NODE_ENV: production
+  PORT: '8080'
+  RETAILING_API_URL: http://velasia-api:4010
+  RETAILING_API_SERVICE_TOKEN: ${RETAILING_API_SERVICE_TOKEN:-}
+  RETAILING_API_TIMEOUT_MS: ${RETAILING_API_TIMEOUT_MS:-5000}
+  SITE_URL: ${SITE_URL:-http://localhost:8080}
+  VELASIA_TODAY: ${VELASIA_TODAY:-}
+  METRICS_TOKEN: ${METRICS_TOKEN:-}
+
+x-storefront-limits: &storefront-limits
+  resources:
+    limits: { cpus: '${STOREFRONT_CPUS:-1}', memory: '${STOREFRONT_MEMORY:-1024M}' }
+
+services:
+  velasia-api:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    image: velasia-api:${VELASIA_TAG:-m8}
+    platform: linux/amd64
+    environment:
+      NODE_ENV: production
+      RETAILING_API_HOST: 0.0.0.0
+      RETAILING_API_PORT: '4010'
+      TALADB_PATH: /data/velasia.db
+      RETAILING_API_SERVICE_TOKEN: ${RETAILING_API_SERVICE_TOKEN:-}
+      VELASIA_TODAY: ${VELASIA_TODAY:-}
+      ACCOUNT_REGISTRATION: ${ACCOUNT_REGISTRATION:-disabled}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
+    volumes:
+      - velasia-api-data:/data
+    networks: [backend]
+    stop_grace_period: 30s
+    deploy:
+      resources:
+        limits: { cpus: '2', memory: 768M }
+
+  velasia-node:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: Dockerfile.node
+      args: *storefront-build-args
+    image: velasia-node:${VELASIA_TAG:-m8}
+    platform: linux/amd64
+    environment:
+      <<: *storefront-env
+    depends_on:
+      velasia-api:
+        condition: service_healthy
+    ports:
+      - '${VELASIA_HTTP_BIND:-127.0.0.1}:${VELASIA_NODE_PORT:-8081}:8080'
+    networks: [backend, frontend]
+    stop_grace_period: 30s
+    deploy: *storefront-limits
+
+  velasia-nextrs:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: Dockerfile.nextrs
+      args: *storefront-build-args
+    image: velasia-nextrs:${VELASIA_TAG:-m8}
+    platform: linux/amd64
+    environment:
+      <<: *storefront-env
+      # The API resolves to a private address here (on App Platform it is a public HTTPS host
+      # and this is not needed). NextRS refuses private destinations unless listed.
+      NEXTRS_NET_ALLOW_ADDR: 172.30.48.0/24
+      NEXTRS_ISOLATES: ${NEXTRS_ISOLATES:-1}
+    depends_on:
+      velasia-api:
+        condition: service_healthy
+    ports:
+      - '${VELASIA_HTTP_BIND:-127.0.0.1}:${VELASIA_NEXTRS_PORT:-8082}:8080'
+    networks: [backend, frontend]
+    stop_grace_period: 30s
+    deploy: *storefront-limits
+
+networks:
+  # API and storefronts; no route to the internet. Subnet pinned for NEXTRS_NET_ALLOW_ADDR.
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.48.0/24
+  # Storefronts only: carries the published ports.
+  frontend: {}
+
+volumes:
+  velasia-api-data:

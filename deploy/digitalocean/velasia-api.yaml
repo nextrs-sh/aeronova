@@ -1,0 +1,61 @@
+# DigitalOcean App Platform spec: the shared retailing API (Fastify + embedded TalaDB).
+# Milestone 8. See docs/deployment/digitalocean-app-platform.md before using it.
+#
+#   doctl apps create --spec deploy/digitalocean/velasia-api.yaml
+#
+# Replace every REPLACE_ME first (Settings -> App Spec, or edit this file locally and never
+# commit the values). The placeholders are too short for the API's validation on purpose: a
+# forgotten one stops the container at startup instead of running with a weak secret.
+#
+# DATA IS EPHEMERAL: App Platform has no persistent volumes. The TalaDB file at
+# /data/velasia.db (orders, payments, demo accounts, sessions) is lost on every redeploy,
+# restart or instance replacement. Fine for a demo or benchmark; see the guide for durable
+# options. SINGLE WRITER: exactly one instance, no autoscaling.
+name: velasia-api
+region: nyc
+alerts:
+  - rule: DEPLOYMENT_FAILED
+services:
+  - name: velasia-api
+    github:
+      repo: nextrs-sh/velasia-airways
+      branch: main
+      deploy_on_push: false
+    source_dir: /
+    dockerfile_path: docker/Dockerfile.api
+    http_port: 4010
+    instance_size_slug: apps-d-1vcpu-2gb
+    instance_count: 1
+    health_check:
+      http_path: /health/ready
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 3
+      failure_threshold: 6
+    liveness_health_check:
+      http_path: /health/live
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 3
+      failure_threshold: 6
+    termination:
+      drain_seconds: 15
+      grace_period_seconds: 30
+    envs:
+      - { key: NODE_ENV, value: production, scope: RUN_TIME }
+      - { key: RETAILING_API_HOST, value: 0.0.0.0, scope: RUN_TIME }
+      - { key: RETAILING_API_PORT, value: '4010', scope: RUN_TIME }
+      - { key: TALADB_PATH, value: /data/velasia.db, scope: RUN_TIME }
+      - { key: LOG_LEVEL, value: info, scope: RUN_TIME }
+      # Same 32+ character value in velasia-node and velasia-nextrs. `openssl rand -hex 32`.
+      - { key: RETAILING_API_SERVICE_TOKEN, value: REPLACE_ME, type: SECRET, scope: RUN_TIME }
+      # 16+ characters. Required on a public hostname: guards GET /metrics.
+      - { key: METRICS_TOKEN, value: REPLACE_ME, type: SECRET, scope: RUN_TIME }
+      - { key: ACCOUNT_REGISTRATION, value: disabled, scope: RUN_TIME }
+      - { key: PAYMENT_OUTCOME_CONTROLS, value: disabled, scope: RUN_TIME }
+      - { key: SHUTDOWN_TIMEOUT_MS, value: '10000', scope: RUN_TIME }
+      # Benchmarks only: pin "today" to the same date in all three apps.
+      # - { key: VELASIA_TODAY, value: '2026-12-01', scope: RUN_TIME }
+    alerts:
+      - { rule: RESTART_COUNT, operator: GREATER_THAN, value: 0, window: FIVE_MINUTES }
+      - { rule: MEM_UTILIZATION, operator: GREATER_THAN, value: 85, window: FIVE_MINUTES }

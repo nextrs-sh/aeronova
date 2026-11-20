@@ -1,0 +1,112 @@
+#
+# Velasia Airways storefront on the official Next.js production server (Node.js). Milestone 8.
+#
+#   docker build -f Dockerfile.node -t velasia-node .
+#   docker run --rm -p 8080:8080 -e RETAILING_API_URL=http://<api>:4010 \
+#     -e SITE_URL=http://localhost:8080 velasia-node
+#
+# One of two storefront images built from the same source (see Dockerfile.nextrs and
+# docs/deployment/). The `build` stage below is byte-for-byte the same in both Dockerfiles, so a
+# local BuildKit build produces ONE `next build` output that both images copy (same build id);
+# keep the two in sync.
+#
+# - `next build` with `output: 'standalone'` (already the app's setting): the runtime runs
+#   `.next/standalone/apps/web/server.js`, which is the official Next.js production server
+#   (`next start`'s server, with only the traced production files), not a custom server.
+# - Destination pages are prerendered from the retailing API at build time: the build starts a
+#   throwaway API on a temporary TalaDB file (apps/web/scripts/with-retailing-api.mjs). No
+#   database or `.env` file enters the image.
+# - Listens on 0.0.0.0:$PORT (default 8080). Runs as the unprivileged `node` user. SIGTERM
+#   stops accepting connections, lets in-flight requests finish, and exits (Next.js's own
+#   handler; it works as PID 1).
+#
+# Build arguments (all public; never pass secrets as build arguments):
+#   SITE_URL               canonical origin baked into sitemap/robots/metadata (and, at runtime,
+#                          https:// => Secure cookies; set the same value as a runtime variable)
+#   VELASIA_DEPLOYMENT_ID  version-skew protection id (e.g. the git commit); optional. Leave it
+#                          unset when comparing with velasia-nextrs: NextRS 0.1.0-rc.1 refuses
+#                          builds that use it, and both images must come from the same build.
+#   VELASIA_TODAY          pin "today" (YYYY-MM-DD) for deterministic demos/benchmarks; optional
+#   VELASIA_NEXT_COMPRESS  `disabled` turns off the Next.js server's gzip (benchmarks); optional
+#
+# Portable Dockerfile syntax only (no BuildKit `RUN --mount`, `COPY --chmod` or heredocs): App
+# Platform's Dockerfile builder is not documented to support them. Hence no pnpm store cache
+# mount and no Server Actions key secret mount (one build serves every instance of an app, so
+# the per-build key is already consistent; see docs/deployment/digitalocean-app-platform.md).
+
+ARG NODE_IMAGE=node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d
+
+# ---------------------------------------------------------------------------------------------
+# BEGIN shared build stage (identical in Dockerfile.node and Dockerfile.nextrs).
+FROM ${NODE_IMAGE} AS build
+ENV PNPM_HOME=/pnpm \
+    CI=true \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
+    TURBO_TELEMETRY_DISABLED=1 \
+    NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable
+WORKDIR /repo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+COPY apps/retailing-api/package.json apps/retailing-api/
+COPY apps/web/package.json apps/web/
+COPY packages/config/package.json packages/config/
+COPY packages/contracts/package.json packages/contracts/
+COPY packages/observability/package.json packages/observability/
+COPY packages/ui/package.json packages/ui/
+RUN pnpm install --frozen-lockfile --filter "@velasia/web..." --filter "@velasia/retailing-api..."
+COPY packages packages
+COPY apps/retailing-api apps/retailing-api
+COPY apps/web apps/web
+ARG SITE_URL=http://localhost:8080
+ARG VELASIA_DEPLOYMENT_ID=
+ARG VELASIA_TODAY=
+ARG VELASIA_NEXT_COMPRESS=
+ENV SITE_URL=${SITE_URL} \
+    VELASIA_DEPLOYMENT_ID=${VELASIA_DEPLOYMENT_ID} \
+    VELASIA_TODAY=${VELASIA_TODAY} \
+    VELASIA_NEXT_COMPRESS=${VELASIA_NEXT_COMPRESS} \
+    RETAILING_API_START_TIMEOUT_MS=180000
+RUN pnpm --filter @velasia/web build
+# The standalone server is complete (public/ and .next/static/ beside it), and the build-time
+# API wrote only to a temporary directory: no database or .env file leaked in.
+RUN test -f apps/web/.next/standalone/apps/web/server.js \
+ && test -d apps/web/.next/standalone/apps/web/.next/static \
+ && test -d apps/web/.next/standalone/apps/web/public \
+ && ! find apps/web/.next/standalone -name '*.db' -o -name '.env*' | grep -q . \
+ && node -p "'next ' + require('/repo/apps/web/node_modules/next/package.json').version" \
+      > apps/web/.next/standalone/next-version.txt \
+ && echo "build id: $(cat apps/web/.next/standalone/apps/web/.next/BUILD_ID)"
+# END shared build stage.
+# ---------------------------------------------------------------------------------------------
+
+FROM ${NODE_IMAGE} AS runtime
+LABEL org.opencontainers.image.title="velasia-node" \
+      org.opencontainers.image.description="Velasia Airways storefront on the official Next.js server (fictional demo; no real reservations or payments)" \
+      org.opencontainers.image.source="https://github.com/nextrs-sh/velasia-airways" \
+      org.opencontainers.image.licenses="MIT" \
+      dev.velasia.runtime="nodejs"
+ENV NODE_ENV=production \
+    PORT=8080 \
+    HOSTNAME=0.0.0.0 \
+    NEXT_TELEMETRY_DISABLED=1
+WORKDIR /app
+# Security updates from Debian for the base image's packages (the Node.js image lags behind
+# Debian point releases), then package managers are removed: none in the runtime image.
+RUN apt-get update \
+ && apt-get -y --no-install-recommends upgrade \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+           /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
+# Application files belong to root (read-only for `node`); only the cache is writable.
+COPY --from=build /repo/apps/web/.next/standalone ./
+RUN mkdir -p apps/web/.next/cache && chown node:node apps/web/.next/cache \
+ && node --version > /app/node-version.txt
+USER node
+EXPOSE 8080
+# Docker's own health check (App Platform uses its HTTP health check instead; same path).
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:' + (process.env.PORT || 8080) + '/api/internal/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+STOPSIGNAL SIGTERM
+CMD ["node", "apps/web/server.js"]

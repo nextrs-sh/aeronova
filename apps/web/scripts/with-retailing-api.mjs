@@ -40,20 +40,39 @@ if (!(await isHealthy())) {
   // A throwaway orders database: the build reads only public data and must never touch (or be
   // blocked by the lock on) a developer's own database.
   dataDir = mkdtempSync(join(tmpdir(), 'velasia-build-api-'));
-  api = spawn('pnpm', ['--filter', '@velasia/retailing-api', 'start'], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      RETAILING_API_HOST: hostname,
-      RETAILING_API_PORT: port || '80',
-      LOG_LEVEL: 'warn',
-      TALADB_PATH: join(dataDir, 'velasia.db'),
-    },
-  });
-  const deadline = Date.now() + 30_000;
+  const startApi = (attempt) => {
+    // A fresh file per attempt: a failed start may leave its file locked or half-created.
+    const path = join(dataDir, `velasia-${attempt}.db`);
+    return spawn('pnpm', ['--filter', '@velasia/retailing-api', 'start'], {
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        RETAILING_API_HOST: hostname,
+        RETAILING_API_PORT: port || '80',
+        LOG_LEVEL: 'warn',
+        TALADB_PATH: path,
+      },
+    });
+  };
+  // A cold container build (tsx compiling the API on a busy builder) can need more than the
+  // 30 s default; Dockerfile.node and Dockerfile.nextrs raise it. On a slow, busy disk the API
+  // can also exit at startup (its database plugin misses Fastify's 10 s plugin timeout); it is
+  // then started again, up to 3 times, within the same deadline.
+  const startTimeoutMs = Number(process.env.RETAILING_API_START_TIMEOUT_MS) || 30_000;
+  const deadline = Date.now() + startTimeoutMs;
+  let attempt = 1;
+  api = startApi(attempt);
   while (!(await isHealthy())) {
-    if (Date.now() > deadline || api.exitCode !== null) {
-      console.error('[with-retailing-api] the retailing API did not become healthy.');
+    if (api.exitCode !== null && attempt < 3 && Date.now() < deadline) {
+      attempt += 1;
+      console.warn(
+        `[with-retailing-api] the retailing API exited; starting it again (${attempt}/3)`,
+      );
+      api = startApi(attempt);
+    } else if (Date.now() > deadline || api.exitCode !== null) {
+      console.error(
+        `[with-retailing-api] the retailing API did not become healthy within ${startTimeoutMs} ms.`,
+      );
       api.kill('SIGTERM');
       process.exit(1);
     }

@@ -154,6 +154,7 @@ vite.config.ts.timestamp-*
 out/
 .turbo/
 playwright-report/
+playwright-report-parity/
 test-results/
 blob-report/
 coverage/

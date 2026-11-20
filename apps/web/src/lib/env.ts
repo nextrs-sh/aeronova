@@ -16,6 +16,11 @@ const serverEnvSchema = z.object({
   RETAILING_API_FORWARD_FAULTS: z.enum(['enabled', 'disabled']).default('disabled'),
   /** Milestone 7: optional bearer token for `/api/internal/metrics`. */
   METRICS_TOKEN: z.string().min(16).max(256).optional(),
+  /**
+   * Milestone 8: shared secret sent to the retailing API in `x-velasia-service-token` (server
+   * side only). Required when the API is reachable outside a private network (App Platform).
+   */
+  RETAILING_API_SERVICE_TOKEN: z.string().min(32).max(256).optional(),
   /** Milestone 7: production guard for test-only controls (see the retailing API). */
   VELASIA_ALLOW_TEST_CONTROLS: z.enum(['enabled', 'disabled']).default('disabled'),
   NODE_ENV: z.string().optional(),
@@ -37,6 +42,7 @@ export function getServerEnv(): ServerEnv {
     VELASIA_TODAY: read('VELASIA_TODAY'),
     RETAILING_API_FORWARD_FAULTS: read('RETAILING_API_FORWARD_FAULTS'),
     METRICS_TOKEN: read('METRICS_TOKEN'),
+    RETAILING_API_SERVICE_TOKEN: read('RETAILING_API_SERVICE_TOKEN'),
     VELASIA_ALLOW_TEST_CONTROLS: read('VELASIA_ALLOW_TEST_CONTROLS'),
     NODE_ENV: read('NODE_ENV'),
   });

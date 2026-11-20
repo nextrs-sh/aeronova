@@ -7,7 +7,9 @@
   "include": [
     "./**/*.ts",
     "../docker/**/*.ts",
+    "../parity/**/*.ts",
     "../../playwright.config.ts",
-    "../../playwright.docker.config.ts"
+    "../../playwright.docker.config.ts",
+    "../../playwright.parity.config.ts"
   ]
 }

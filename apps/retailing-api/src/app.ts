@@ -63,6 +63,7 @@ import { shoppingRoutes } from './routes/shopping';
 import { createRetailingService, DEFAULT_RETAILING_CONFIG } from './offers/retailing-service';
 import { createCatalog } from './services/catalog';
 import { createFlightService } from './services/flights';
+import { registerServiceAuth } from './service-auth';
 
 export const API_VERSION = '0.7.0';
 
@@ -81,6 +82,8 @@ export interface BuildAppOptions extends FastifyServerOptions {
   /** Milestone 7: metrics registry (a private one per app when omitted) and options. */
   metrics?: ApiMetrics;
   observability?: { metricsToken?: string; slowRequestMs?: number };
+  /** Milestone 8: shared service token required from callers (see `service-auth.ts`). */
+  access?: { serviceToken?: string };
 }
 
 /** Milestone 7: whether the API should receive traffic. */
@@ -143,6 +146,7 @@ export function buildApp({
   testHooks = {},
   metrics = createApiMetrics(),
   observability = {},
+  access = {},
   ...options
 }: BuildAppOptions = {}): FastifyInstance {
   const settings: ApiConfig = {
@@ -171,6 +175,7 @@ export function buildApp({
   registerHttpObservability(app, metrics, {
     slowRequestMs: observability.slowRequestMs ?? 1_000,
   });
+  registerServiceAuth(app, access.serviceToken);
   // Changed shopping sessions are durable before a mutating request is answered (Milestone 7).
   let sessionWriter: SessionWriter | null = null;
   app.addHook('onSend', async (request, reply, payload) => {

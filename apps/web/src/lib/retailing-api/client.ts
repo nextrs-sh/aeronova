@@ -76,6 +76,7 @@ import {
   type ItineraryResponse,
   type NetworkRoute,
   type RouteListQuery,
+  SERVICE_TOKEN_HEADER,
 } from '@velasia/contracts';
 import type { z } from 'zod';
 import { getServerEnv } from '../env';
@@ -174,6 +175,9 @@ export async function getJson<T extends z.ZodType>(
         ...(guest ? { 'x-velasia-guest': guest } : {}),
         ...(account ? { 'x-velasia-account': account } : {}),
         ...(client ? { 'x-velasia-client': client } : {}),
+        ...(env.RETAILING_API_SERVICE_TOKEN
+          ? { [SERVICE_TOKEN_HEADER]: env.RETAILING_API_SERVICE_TOKEN }
+          : {}),
         ...contextHeaders,
       },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),

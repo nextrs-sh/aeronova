@@ -64,6 +64,11 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   /** Optional bearer token for `GET /metrics` (the API is internal-only either way). */
   METRICS_TOKEN: z.string().min(16).max(256).optional(),
+  /**
+   * Milestone 8: shared secret every caller must send in `x-velasia-service-token` (health
+   * probes excepted). Set it whenever the API is reachable from outside a private network.
+   */
+  RETAILING_API_SERVICE_TOKEN: z.string().min(32).max(256).optional(),
   /** Bound on a graceful shutdown; past it the process exits (TalaDB stays consistent). */
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(10_000),
   /** Requests slower than this are logged at `warn`. */
@@ -111,6 +116,8 @@ export interface RuntimeConfig {
   port: number;
   logLevel: z.output<typeof envSchema>['LOG_LEVEL'];
   metricsToken?: string;
+  /** Milestone 8: required from callers when set (see `service-auth.ts`). */
+  serviceToken?: string;
   shutdownTimeoutMs: number;
   slowRequestMs: number;
   production: boolean;
@@ -125,6 +132,7 @@ export function loadRuntimeConfig(env: NodeJS.ProcessEnv = process.env): Runtime
     port: parsed.RETAILING_API_PORT ?? parsed.PORT ?? 4010,
     logLevel: parsed.LOG_LEVEL,
     metricsToken: parsed.METRICS_TOKEN,
+    serviceToken: parsed.RETAILING_API_SERVICE_TOKEN,
     shutdownTimeoutMs: parsed.SHUTDOWN_TIMEOUT_MS,
     slowRequestMs: parsed.SLOW_REQUEST_MS,
     production: parsed.NODE_ENV === 'production',

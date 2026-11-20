@@ -1,7 +1,7 @@
 {
   "name": "velasia-airways",
   "private": true,
-  "description": "Velasia Airways — a fictional premium airline retailing demo built with Next.js.",
+  "description": "Velasia Airways \u2014 a fictional premium airline retailing demo built with Next.js.",
   "license": "MIT",
   "packageManager": "pnpm@10.23.0",
   "engines": {
@@ -25,7 +25,10 @@
     "docker:backup": "sh scripts/docker/backup.sh",
     "docker:restore": "sh scripts/docker/restore.sh",
     "docker:verify-db": "sh scripts/docker/verify-db.sh",
-    "test:docker": "playwright test -c playwright.docker.config.ts"
+    "test:docker": "playwright test -c playwright.docker.config.ts",
+    "dual:up": "docker compose -f compose.dual-runtime.yaml up --build -d --wait",
+    "dual:down": "docker compose -f compose.dual-runtime.yaml down --volumes",
+    "test:parity": "playwright test -c playwright.parity.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "catalog:",

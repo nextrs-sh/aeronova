@@ -47,6 +47,7 @@ const app = buildApp({
   },
   config,
   observability: { metricsToken: runtime.metricsToken, slowRequestMs: runtime.slowRequestMs },
+  access: { serviceToken: runtime.serviceToken },
 });
 
 let shuttingDown = false;
@@ -76,6 +77,7 @@ async function main() {
       paymentOutcomeControls: config.payments.outcomeControls,
       accountRegistration: config.accounts.registration,
       faults: config.faults.enabled,
+      serviceToken: runtime.serviceToken ? 'required' : 'off',
       production: runtime.production,
     },
     'orders database ready',
