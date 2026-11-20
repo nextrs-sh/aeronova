@@ -343,6 +343,7 @@ export const LOG_REDACT_PATHS = [
   'req.headers["x-velasia-guest"]',
   'req.headers["x-velasia-account"]',
   'req.headers["x-velasia-client"]',
+  'req.headers["x-velasia-service-token"]',
   'headers.authorization',
   'headers.cookie',
   'password',

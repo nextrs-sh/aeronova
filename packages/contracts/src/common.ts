@@ -152,3 +152,10 @@ export function minorToMajor(amountMinor: number, currency: string): number {
 export function majorToMinor(amount: number, currency: string): number {
   return Math.round(amount * minorUnitFactor(currency));
 }
+
+/**
+ * Milestone 8: the header that carries the storefront's shared service token to the retailing
+ * API (`RETAILING_API_SERVICE_TOKEN` on both). Required by the API only when it is configured,
+ * i.e. when the API is reachable from outside a private network (DigitalOcean App Platform).
+ */
+export const SERVICE_TOKEN_HEADER = 'x-velasia-service-token';
