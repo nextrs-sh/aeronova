@@ -1,4 +1,6 @@
-# Milestone 7: what never goes into a build context (and so never into an image).
+# What never goes into a build context (and so never into an image). Milestone 7; Milestone 8
+# adds test sources and reports (no image needs them) for Dockerfile.node, Dockerfile.nextrs and
+# docker/Dockerfile.*, which all use the repository root as their context.
 **/node_modules
 **/.next
 **/.turbo
@@ -11,9 +13,13 @@
 docs
 benchmarks/**/results
 backups
-playwright-report
+playwright-report*
 test-results
 blob-report
+tests
+**/*.log
+.vscode
+.idea
 # Secrets and local configuration
 **/.env
 **/.env.*

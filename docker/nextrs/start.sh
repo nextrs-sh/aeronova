@@ -53,7 +53,10 @@ set -- start /app/apps/web \
 
 for name in RETAILING_API_URL RETAILING_API_SERVICE_TOKEN SITE_URL RETAILING_API_TIMEOUT_MS \
   VELASIA_TODAY METRICS_TOKEN RETAILING_API_FORWARD_FAULTS VELASIA_ALLOW_TEST_CONTROLS; do
-  set -- "$@" --js-env "$name"
+  # Only variables that are set: an unset one reads as undefined in JavaScript either way, and
+  # NextRS warns about each --js-env name that is missing.
+  eval "isset=\${$name+x}"
+  [ -z "$isset" ] || set -- "$@" --js-env "$name"
 done
 
 for addr in $(printf '%s' "${NEXTRS_NET_ALLOW_ADDR:-}" | tr ',' ' '); do

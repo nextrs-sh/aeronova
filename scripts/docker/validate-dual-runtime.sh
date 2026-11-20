@@ -42,7 +42,8 @@ log ""
 log "## 1. Images"
 for rt in api node nextrs; do
   img="velasia-$rt:$TAG"
-  log "- $img: $(d image inspect -f '{{.Id}} size={{.Size}} user={{.Config.User}} entrypoint={{json .Config.Entrypoint}} cmd={{json .Config.Cmd}}' "$img")"
+  # No Cmd key at all in an image with only an ENTRYPOINT: read it from the JSON.
+  log "- $img: $(d image inspect -f '{{.Id}} size={{.Size}} user={{.Config.User}} entrypoint={{json .Config.Entrypoint}}' "$img") cmd=$(d image inspect -f '{{json .Config}}' "$img" | sed -n 's/.*"Cmd":\(\[[^]]*\]\|null\).*/\1/p')"
   d image inspect -f '{{.Size}}' "$img" | awk -v n="$img" '{ printf "  %s: %.1f MB\n", n, $1/1000/1000 }' | tee -a "$OUT/summary.txt"
 done
 log "- node runtime: $(d run --rm --entrypoint node "velasia-node:$TAG" --version)"
@@ -107,10 +108,14 @@ for rt in node nextrs; do
   curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$p$q" > "$OUT/inflight-$rt.txt" &
   cpid=$!
   sleep 0.05
-  s=$(now_ms); d stop -t 30 "$c" >/dev/null; e=$(now_ms)
+  # SIGTERM -> process exit, from the container's own FinishedAt (docker stop's wall time also
+  # includes Docker's teardown, seconds on Docker Desktop).
+  sent=$(date -u +%s%3N); d kill -s TERM "$c" >/dev/null
+  until [ "$(d inspect -f '{{.State.Running}}' "$c")" = false ]; do sleep 0.2; done
   wait "$cpid" || true
+  fin=$(date -u -d "$(d inspect -f '{{.State.FinishedAt}}' "$c")" +%s%3N)
   code=$(d inspect -f '{{.State.ExitCode}}' "$c")
-  log "- $rt: stop took $((e - s)) ms, exit code $code, in-flight request -> $(cat "$OUT/inflight-$rt.txt")"
+  log "- $rt: SIGTERM -> exit $((fin - sent)) ms, exit code $code, in-flight request -> $(cat "$OUT/inflight-$rt.txt")"
   d logs --tail 5 "$c" > "$OUT/shutdown-$rt.log" 2>&1
   d start "$c" >/dev/null
   wait_live "$p" 120 >/dev/null
