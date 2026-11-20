@@ -1,0 +1,60 @@
+# DigitalOcean App Platform spec: the Velasia storefront on NextRS (@nextrs/cli@0.1.0-rc.1; no Node.js in the image).
+# Milestone 8. See docs/deployment/digitalocean-app-platform.md before using it.
+#
+#   doctl apps create --spec deploy/digitalocean/velasia-nextrs.yaml
+#
+# velasia-node and velasia-nextrs must differ ONLY in name and dockerfile_path (plus the
+# NEXTRS_* settings): same repository, branch and commit, region, instance size, environment.
+#
+# Replace every REPLACE_ME first (never commit the values):
+#   RETAILING_API_URL            velasia-api's https://...ondigitalocean.app URL (no trailing path)
+#   RETAILING_API_SERVICE_TOKEN  the value velasia-api has
+#   METRICS_TOKEN                16+ characters (guards /api/internal/metrics)
+#   SITE_URL                     this app's own https://...ondigitalocean.app URL. It is only known
+#                                once the app exists: create, copy the URL, update, redeploy.
+#                                SITE_URL is also a BUILD_TIME value (sitemap/robots/metadata).
+name: velasia-nextrs
+region: nyc
+alerts:
+  - rule: DEPLOYMENT_FAILED
+services:
+  - name: velasia-nextrs
+    github:
+      repo: nextrs-sh/velasia-airways
+      branch: main
+      deploy_on_push: false
+    source_dir: /
+    dockerfile_path: Dockerfile.nextrs
+    http_port: 8080
+    instance_size_slug: apps-d-1vcpu-2gb
+    instance_count: 1
+    health_check:
+      http_path: /api/internal/health/live
+      initial_delay_seconds: 5
+      period_seconds: 10
+      timeout_seconds: 3
+      failure_threshold: 6
+    liveness_health_check:
+      http_path: /api/internal/health/live
+      initial_delay_seconds: 30
+      period_seconds: 10
+      timeout_seconds: 3
+      failure_threshold: 6
+    termination:
+      drain_seconds: 15
+      grace_period_seconds: 30
+    envs:
+      - { key: SITE_URL, value: REPLACE_ME, scope: RUN_AND_BUILD_TIME }
+      - { key: RETAILING_API_URL, value: REPLACE_ME, scope: RUN_TIME }
+      - { key: RETAILING_API_SERVICE_TOKEN, value: REPLACE_ME, type: SECRET, scope: RUN_TIME }
+      - { key: METRICS_TOKEN, value: REPLACE_ME, type: SECRET, scope: RUN_TIME }
+      - { key: RETAILING_API_TIMEOUT_MS, value: '5000', scope: RUN_TIME }
+      # NextRS settings (docker/nextrs/start.sh). One isolate = one JavaScript thread, as in
+      # velasia-node; see docs/deployment/runtime-parity-report.md before changing it.
+      - { key: NEXTRS_ISOLATES, value: '1', scope: RUN_TIME }
+      - { key: NEXTRS_SHUTDOWN_GRACE, value: '25', scope: RUN_TIME }
+      # Benchmarks only: the same date in all three apps (also a build argument here).
+      # - { key: VELASIA_TODAY, value: '2026-12-01', scope: RUN_AND_BUILD_TIME }
+    alerts:
+      - { rule: RESTART_COUNT, operator: GREATER_THAN, value: 0, window: FIVE_MINUTES }
+      - { rule: MEM_UTILIZATION, operator: GREATER_THAN, value: 85, window: FIVE_MINUTES }

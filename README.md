@@ -29,17 +29,17 @@ ticket, and no money ever moves.
 
 ## Milestone status
 
-| Milestone | Scope                                                         | Status         |
-| --------- | ------------------------------------------------------------- | -------------- |
-| 1         | Monorepo foundation, premium storefront, search, destinations | ✅ Done        |
-| 2         | Flight inventory, dynamic search, indicative pricing          | ✅ Done        |
-| 2.5       | Velasia Airways rebrand: identity, design system, API, docs   | ✅ Done        |
-| 3         | Dynamic offers, fare families, shopping sessions              | ✅ Done        |
-| 4         | Traveller details, seat maps, ancillaries, booking review     | ✅ Done        |
-| 5         | Checkout, durable orders (TalaDB), simulated payments         | ✅ Done        |
-| 6         | Manage Booking, order servicing, demo accounts, My Trips      | ✅ Done        |
-| 7         | Production hardening, Docker, observability, Node.js baseline | ✅ Done        |
-| 8         | NextRS runtime integration and compatibility                  | Planned (last) |
+| Milestone | Scope                                                           | Status  |
+| --------- | --------------------------------------------------------------- | ------- |
+| 1         | Monorepo foundation, premium storefront, search, destinations   | ✅ Done |
+| 2         | Flight inventory, dynamic search, indicative pricing            | ✅ Done |
+| 2.5       | Velasia Airways rebrand: identity, design system, API, docs     | ✅ Done |
+| 3         | Dynamic offers, fare families, shopping sessions                | ✅ Done |
+| 4         | Traveller details, seat maps, ancillaries, booking review       | ✅ Done |
+| 5         | Checkout, durable orders (TalaDB), simulated payments           | ✅ Done |
+| 6         | Manage Booking, order servicing, demo accounts, My Trips        | ✅ Done |
+| 7         | Production hardening, Docker, observability, Node.js baseline   | ✅ Done |
+| 8         | Dual runtime Docker images (Node.js, NextRS), App Platform prep | ✅ Done |
 
 See [docs/ROADMAP.md](docs/ROADMAP.md) and the milestone reports:
 [M1](docs/MILESTONE-1-REPORT.md), [M2](docs/MILESTONE-2-REPORT.md),
@@ -275,6 +275,28 @@ as non-root on read-only root filesystems. linux/amd64 only: TalaDB 0.13.1 ships
 binary. Backups: `pnpm docker:backup` (a cold, verified copy; the API pauses for seconds).
 Everything else — configuration, TLS, restore, rollback, troubleshooting — is in
 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+
+## Two runtimes: Node.js and NextRS (Milestone 8)
+
+The storefront ships as two production images built from the same source and the same
+`next build` output, both talking to one shared retailing API:
+
+| Image            | Server                                                                                                                        | Dockerfile              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| `velasia-node`   | the official Next.js production server (standalone `server.js`, Node.js 24)                                                   | `Dockerfile.node`       |
+| `velasia-nextrs` | [NextRS](https://github.com/nextrs-sh/nextrs) `@nextrs/cli@0.1.0-rc.1` from npm (Rust + embedded V8, no Node.js in the image) | `Dockerfile.nextrs`     |
+| `velasia-api`    | the retailing API (unchanged role)                                                                                            | `docker/Dockerfile.api` |
+
+```bash
+docker compose -f compose.dual-runtime.yaml up --build -d --wait   # :8081 Node.js, :8082 NextRS
+pnpm test:parity                                                   # the same checks against both
+```
+
+Prepared for DigitalOcean App Platform as three apps (not deployed):
+[docs/deployment/](docs/deployment/digitalocean-app-platform.md), with the
+[API architecture](docs/deployment/api-architecture.md),
+[Docker validation](docs/deployment/docker-validation-report.md) and
+[runtime parity](docs/deployment/runtime-parity-report.md) reports.
 
 ## Screenshots
 
