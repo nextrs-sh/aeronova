@@ -5,7 +5,7 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "env": ["RETAILING_API_URL", "SITE_URL"],
+      "env": ["RETAILING_API_URL", "SITE_URL", "VELASIA_NEXT_COMPRESS"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "start": {
